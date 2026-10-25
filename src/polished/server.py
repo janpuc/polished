@@ -84,7 +84,21 @@ def create_app(settings: Settings) -> FastAPI:
     return app
 
 
+class HideCallbackQuery(logging.Filter):
+    """The sign-in callback's query holds the one-time authorization code and state: the access log
+    keeps the path and drops the query."""
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        args = record.args
+        if isinstance(args, tuple) and len(args) >= 3 and isinstance(args[2], str):
+            path = args[2]
+            if path.startswith("/auth/callback?"):
+                record.args = (*args[:2], "/auth/callback?…", *args[3:])
+        return True
+
+
 def serve(settings: Settings) -> int:
+    logging.getLogger("uvicorn.access").addFilter(HideCallbackQuery())
     # One worker: the scheduler and the database assume a single process.
     uvicorn.run(
         create_app(settings),
