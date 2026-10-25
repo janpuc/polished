@@ -39,6 +39,20 @@
 <h2 class="section-title">Collections</h2>
 <p class="chips">{% for value in shade.tags.collection %}<a class="chip" href="/shades?collection={{ value|urlencode }}">{{ value|label }}</a>{% endfor %}</p>
 {% endif %}
+<h2 class="section-title">Tip colour</h2>
+<form class="tip-colour" method="post" action="/shades/{{ shade.id }}/tip-colour">
+  <span class="tip-preview" aria-hidden="true"><img src="{{ tip_shade_url(shade) }}" width="34" height="56" alt=""></span>
+  <span class="tip-colour-body">
+    <label class="tip-colour-title" for="tip-hex">Colour of the nail tip</label>
+    <span class="caption muted">{% if shade.swatch_override_hex %}Your colour.{% elif shade.swatch_hex %}Read from the photos.{% else %}Not read yet.{% endif %} The finish comes from the tags.</span>
+    {% if tip_error %}<span class="field-error" role="alert">{{ tip_error }}</span>{% endif %}
+  </span>
+  <input id="tip-hex" class="tip-input" type="color" name="hex" value="{{ tip_hex(shade) }}">
+  <span class="tip-colour-actions">
+    <button type="submit" class="btn btn-secondary">Save</button>
+    {% if shade.swatch_override_hex %}<button type="submit" name="reset" value="1" class="btn btn-text">Reset</button>{% endif %}
+  </span>
+</form>
 {% if swatched_on %}
 <h2 class="section-title">Swatched on</h2>
 <ul class="group">

@@ -13,6 +13,8 @@ dependencies = [
   "pydantic-settings>=2.6",
   "tzdata>=2026.5",
   "segno>=1.6.6",
+  "pillow>=13.0.0",
+  "numpy>=2.5.4",
 ]
 
 [project.optional-dependencies]

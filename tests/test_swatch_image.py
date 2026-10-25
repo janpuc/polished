@@ -91,7 +91,7 @@ def test_an_unchanged_shade_without_a_swatch_is_filled_by_the_next_sync(syncer, 
     assert conn.execute("select content_hash from product order by id").fetchall() == hashes
 
 
-def test_layers_carry_the_swatch_image(syncer, conn, feed):
+def test_layers_carry_what_the_tip_is_drawn_from(syncer, conn, feed):
     feed = copy.deepcopy(feed)
     with_images(by_handle(feed, "thirst-trap"), "b-Bottle.jpg", "t_macro1.jpg")
     syncer.apply(feed)
@@ -100,5 +100,6 @@ def test_layers_carry_the_swatch_image(syncer, conn, feed):
     stack_id = stacks.open_draft(conn, wheel_id, 1).stack_id
     stacks.append(conn, stack_id, shade)
     [layer] = stacks.layers(conn, stack_id)
-    assert layer["swatch_image_url"] == f"{CDN}t_macro1.jpg?v=1"
-    assert layer["hero_image_url"]
+    assert {"swatch_hex", "swatch_hex2", "swatch_override_hex", "finishes", "is_topper"} <= set(
+        layer
+    )

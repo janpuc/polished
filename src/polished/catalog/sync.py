@@ -19,6 +19,7 @@ import httpx
 from ..config import Settings
 from ..db import connect, transaction
 from .classify import classify
+from .colour import fill_colours
 from .fetch import Clock, FeedError, Sleep, fetch_feed
 from .hashing import content_hash
 from .parse import (
@@ -376,8 +377,15 @@ class SyncRunner:
         clock: Clock | None = None,
         sleep: Sleep | None = None,
         now: Callable[[], datetime] = utc_now,
+        colour_transport: httpx.BaseTransport | None = None,
+        colour_sleep: Callable[[float], None] | None = None,
     ):
         self.settings = settings
+        self.colour_options = {
+            key: value
+            for key, value in (("transport", colour_transport), ("sleep", colour_sleep))
+            if value is not None
+        }
         self.transport = transport
         self.now = now
         self.fetch_options = {
@@ -436,6 +444,7 @@ class SyncRunner:
             else:
                 pages = await asyncio.to_thread(read_pages, files)
             counts = await asyncio.to_thread(self._apply, run_id, pages)
+            await asyncio.to_thread(self._read_colours)
         except asyncio.CancelledError:
             self._record_error(run_id, "interrupted")
             raise
@@ -460,6 +469,20 @@ class SyncRunner:
         conn = connect(self.settings.db_path)
         try:
             return apply_feed(conn, run_id, pages, self.now(), self.tz)
+        finally:
+            conn.close()
+
+    def _read_colours(self) -> None:
+        """After the feed is applied and the run is closed: reads the polish colour of the shades
+        that have none (DESIGN 5.5). Never raises, so it can never fail the run."""
+        conn = connect(self.settings.db_path)
+        try:
+            stored = fill_colours(conn, **self.colour_options)
+        except Exception:
+            log.exception("colour step failed")
+        else:
+            if stored:
+                log.info("polish colour read for %d shades", stored)
         finally:
             conn.close()
 

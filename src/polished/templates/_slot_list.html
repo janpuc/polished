@@ -1,5 +1,5 @@
 {# The filled slots as a plain list, so every stack can be read without squinting. #}
-{% from "_tip_img.html" import tip_img %}
+{% from "_tip_img.html" import shade_tip %}
 <div id="slot-list"{% if oob %} hx-swap-oob="outerHTML"{% endif %}>
   {% if filled %}
   <h2 class="section-title">Swatches</h2>
@@ -11,7 +11,7 @@
         <span class="slot-row-num">{{ tile.position }}</span>
         <span class="row-body"><span class="row-title">{{ tile.summary }}</span>{% if tile.painted_on and tile.painted_on != seen.date %}<span class="row-sub"><span>{{ tile.painted_on|day }}</span></span>{% endif %}{% set seen.date = tile.painted_on %}</span>
         <span class="mini-tips" aria-hidden="true">
-          {% for layer in tile.layers[-3:] %}<span class="tip-mini">{{ tip_img(layer, 102, 168, 24, 32) }}</span>{% endfor %}
+          {% for layer in tile.layers[-3:] %}<span class="tip-mini">{{ shade_tip(layer, 24, 32) }}</span>{% endfor %}
         </span>
       </button>
     </li>

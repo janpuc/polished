@@ -35,6 +35,7 @@ def test_migrations_apply_once_and_a_second_run_applies_nothing(tmp_path):
         "003_identifiers.sql",
         "004_wheels_stacks.sql",
         "005_swatch_image.sql",
+        "006_swatch_colour.sql",
     ]
     assert migrate(db) == []
     conn = sqlite3.connect(db)
@@ -44,6 +45,7 @@ def test_migrations_apply_once_and_a_second_run_applies_nothing(tmp_path):
         (3, "003_identifiers.sql"),
         (4, "004_wheels_stacks.sql"),
         (5, "005_swatch_image.sql"),
+        (6, "006_swatch_colour.sql"),
     ]
     conn.close()
 
@@ -101,6 +103,7 @@ def test_package_ships_the_migrations():
         "003_identifiers.sql",
         "004_wheels_stacks.sql",
         "005_swatch_image.sql",
+        "006_swatch_colour.sql",
     ]
 
 
@@ -127,6 +130,7 @@ def test_002_inventory_applies_on_top_of_a_synced_001_database(tmp_path):
         "002_inventory.sql",
         "003_identifiers.sql",
         "004_wheels_stacks.sql",
+        "006_swatch_colour.sql",
     ]
     assert names(db, "table") >= {"bottle", "wishlist_item"}
     assert names(db, "index") >= {"bottle_shade", "bottle_printed_code"}

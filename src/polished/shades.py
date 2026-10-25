@@ -309,8 +309,32 @@ def get_shade(conn: sqlite3.Connection, shade_id: int) -> dict | None:
         "select ns, value from shade_tag where shade_id = ? order by value", (shade_id,)
     ):
         tags[tag["ns"]].append(tag["value"])
-    shade.update(status=status(shade), on_sale=on_sale(shade), images=images, tags=tags)
+    shade.update(
+        status=status(shade),
+        on_sale=on_sale(shade),
+        images=images,
+        tags=tags,
+        shade_id=shade["id"],
+        finishes=",".join(tags["finish"]),
+    )
     return shade
+
+
+HEX_COLOUR = re.compile(r"#[0-9a-fA-F]{6}")
+
+
+def set_tip_colour(conn: sqlite3.Connection, shade_id: int, colour: str | None) -> bool:
+    """Saves the household's own tip colour ("#rrggbb"), or None to go back to the one read from
+    the photos. The sync never writes this column. False for an unknown shade; ValueError for
+    anything that is not a six-digit hex colour."""
+    if colour is not None:
+        if not HEX_COLOUR.fullmatch(colour):
+            raise ValueError("Pick a colour.")
+        colour = colour.lower()
+    cursor = conn.execute(
+        "update shade set swatch_override_hex = ? where id = ?", (colour, shade_id)
+    )
+    return cursor.rowcount == 1
 
 
 MANUAL_KINDS = {  # form value -> (shade.kind, shade.is_topper)

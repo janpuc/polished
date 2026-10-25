@@ -1,6 +1,9 @@
-{# The picture inside a nail tip: the photo of the polish on a nail, else the bottle shot, which
-   `is-bottle` crops to the glass. `layer` is a stack layer dict (stacks._LAYER_SELECT). #}
-{% macro tip_img(layer, src_w, src_h, width, height, lazy=true) -%}
-{% set url = layer.swatch_image_url or layer.hero_image_url -%}
-{% if url %}<img{% if not layer.swatch_image_url %} class="is-bottle"{% endif %} src="{{ url|thumb(src_w, src_h) }}" width="{{ width }}" height="{{ height }}" alt="" {% if lazy %}loading="lazy" {% endif %}decoding="async">{% endif -%}
-{% endmacro %}
+{# The picture inside a nail tip: a painted-nail SVG drawn by tips.py, never a photo. `layer` is a
+   stack layer dict (stacks._LAYER_SELECT); `layers` the layers of a saved stack. The URL carries
+   a revision, so a changed colour is a new image. #}
+{% macro shade_tip(layer, width, height, lazy=true) -%}
+<img src="{{ tip_shade_url(layer) }}" width="{{ width }}" height="{{ height }}" alt="" {% if lazy %}loading="lazy" {% endif %}decoding="async">
+{%- endmacro %}
+{% macro stack_tip(stack_id, layers, width, height, lazy=true) -%}
+<img src="{{ tip_stack_url(stack_id, layers) }}" width="{{ width }}" height="{{ height }}" alt="" {% if lazy %}loading="lazy" {% endif %}decoding="async">
+{%- endmacro %}

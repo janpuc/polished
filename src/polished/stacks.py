@@ -12,6 +12,7 @@ from datetime import date
 
 from .catalog.parse import fold
 from .db import atomic
+from .tips import TIP_FIELDS
 
 MAX_LAYERS = 8
 MIN_COATS = 1
@@ -27,7 +28,7 @@ _NOW_MS = "strftime('%Y-%m-%dT%H:%M:%fZ', 'now')"
 # stack_layer sl join shade s: a layer and what a chip shows of its shade.
 _LAYER_SELECT = (
     "select sl.id, sl.stack_id, sl.ord, sl.shade_id, sl.coats, s.title, s.handle,"
-    " s.hero_image_url, s.swatch_image_url from stack_layer sl join shade s on s.id = sl.shade_id"
+    f" {TIP_FIELDS} from stack_layer sl join shade s on s.id = sl.shade_id"
 )
 
 

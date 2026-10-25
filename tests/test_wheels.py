@@ -178,7 +178,7 @@ def test_the_grid_shows_summary_layers_and_the_draft_flag(catalog):
     assert filled["filled"] and filled["has_draft"]
     assert [layer["label"] for layer in filled["layers"]] == ["Base", "2nd", "Top"]
     assert filled["summary"].count(" + ") == 2 and "×2" in filled["summary"]
-    assert [layer["hero_image_url"] for layer in filled["layers"]]
+    assert all("finishes" in layer and "swatch_hex" in layer for layer in filled["layers"])
     assert not grid[5]["filled"] and grid[5]["has_draft"] and grid[5]["summary"] == ""
     assert not grid[6]["filled"] and not grid[6]["has_draft"]
 

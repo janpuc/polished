@@ -104,7 +104,7 @@ __main__.py, cli.py  python -m polished {serve | migrate | sync [--from-files �
 config.py            Settings (pydantic-settings, env prefix POLISHED_), section 12
 db.py                connect(path), request-scoped connection dependency, transaction helper
 migrate.py           numbered-SQL runner (serendip's, schema_version table)
-migrations/          001_catalog.sql 002_inventory.sql 003_identifiers.sql 004_wheels_stacks.sql
+migrations/          001_catalog.sql … 006_swatch_colour.sql
 server.py            create_app(): middleware order, routers, templates, static, lifespan
 web.py               Jinja environment, render(): full page vs partial, filters (money, thumb, dates)
 security.py          Origin check for unsafe methods, security headers and CSP, cache headers
@@ -116,6 +116,7 @@ catalog/
   fetch.py           polite Shopify client: fetch_feed(), rate limiter, User-Agent, 429 handling
   sync.py            apply_feed(): the feed in one transaction, absence accounting; SyncRunner: lock,
                      sync_run row, fetch or files, cooldown
+  colour.py          extract_colours(): the polish colour from a photo; fill_colours(): the sync step
   scheduler.py       next_run_at(), catchup_due(), close_stale_runs(), Scheduler loop
 shades.py            list/filter/search queries, status derivation, detail, manual shades
 bottles.py           bottle CRUD, owned rules
@@ -124,8 +125,9 @@ gtin.py              normalise_gtin(), check digit
 identifiers.py       resolve(), learn(), learn_printed(), printed-code normalisation, learned-code list
 stacks.py            draft/commit, layers, templates, summary(), default_coats()
 wheels.py            wheel CRUD, slug generation, slot grid, tag URL, QR
+tips.py              nail tips as SVG: render(layers), TIP_FIELDS, revision() for URLs and ETags (9)
 routes/              home.py shades.py bottles.py wishlist.py lookup.py wheels.py stacks.py
-                     sync.py pwa.py health.py   (thin: parse, call domain function, render)
+                     tips.py sync.py pwa.py health.py   (thin: parse, call domain function, render)
 templates/           base.html (tab bar, sheet), pages, partials (leading underscore: _shade_row.html …),
                      _icons.html (the `icon()` macro for the sprite)
 static/              css/app.css (tokens and every component, docs/VISUAL.md), js/, vendor/,
@@ -213,7 +215,8 @@ create table shade (
   sku              text,                                      -- not unique: Shopify does not enforce it
   search_text      text not null,                             -- lowercase, accent-folded title + tag values
   hero_image_url   text,                                      -- images[position = 1].src
-  -- swatch_image_url text: added by 005 (4.3), the photo of the polish on a nail
+  -- swatch_image_url text: added by 005 (4.3), the photo of the polish on a nail (the colour's source)
+  -- swatch_hex, swatch_hex2, swatch_hex_src, swatch_override_hex text: added by 006 (4.3), the tip colour
   price_cents      integer,
   compare_at_cents integer,
   available        integer check (available in (0, 1)),       -- null for manual shades
@@ -383,9 +386,14 @@ order by w.name, ws.position;
 
 `005_swatch_image.sql` (visual polish pass) is one statement: `alter table shade add column
 swatch_image_url text;`. It is the photo that shows the polish on a nail, chosen at sync time by
-`catalog/parse.py swatch_image_url(images, title)`; null when no photo qualifies, and the app then
-shows `hero_image_url` cropped to the glass (`object-position: 50% 68%`). A manual override column
-(`swatch_image_override`) would sit beside it later.
+`catalog/parse.py swatch_image_url(images, title)`; null when no photo qualifies. Since 006 it is
+not shown anywhere: it is the source the colour is read from (5.5).
+
+`006_swatch_colour.sql` adds four nullable text columns to `shade`: `swatch_hex` ("#rrggbb", the
+dominant polish colour), `swatch_hex2` (a second, clearly different colour, for shifts and
+duochromes), `swatch_hex_src` (the image URL the two were read from, so a new photo is read again)
+and `swatch_override_hex` (the household's own colour; only the shade page writes it, the sync
+never does). The tip colour is `swatch_override_hex`, else `swatch_hex`, else a neutral grey-mauve.
 
 ### 4.4 Later tables (sketch only, not created in v1)
 
@@ -511,6 +519,26 @@ Base Coat, a bundle, a gift that merges by handle, a gift that needs the manual 
 retired shade, a soon-retiring one, a sold-out one, and an accessory. No single shade is on sale
 in the real feed today, so the on-sale shade is a real shade whose `compare_at_price` the script
 raises; the fixture README says so.
+
+### 5.5 Polish colour (`catalog/colour.py`)
+
+After the feed is applied and the run row is closed, the sync reads the colour of every shade whose
+`swatch_hex_src` differs from its current source image (`swatch_image_url`, else `hero_image_url`):
+all of them on the first run, afterwards only new shades and changed photos. One download each from
+`cdn.shopify.com` (never holotaco.com) at `width=240`, 0.5 s apart, 8 s timeout, at most 450 per
+run, and the step stops after 4 failures in a row. It never fails the run: an error is logged, the
+colour stays as it was and the shade is tried again next sync. `sync --from-files` runs it too.
+
+`extract_colours(bytes, from_bottle, accent)` is pure (Pillow and numpy). Pixels come from the
+middle of a swatch photo (32 to 68 percent across, 30 to 70 down: the painted nail of a macro or
+hand shot), or from the glass of a bottle shot (the strip under the label and the two strips beside
+it). Skin (a YCbCr range) and blown-out highlights are dropped; on a bottle shot the black backdrop
+too; a mask that would keep under 8 percent of the pixels is not applied, so white and nude
+polishes still get a colour. The rest goes through a 2-cluster k-means in Lab from a deterministic
+start; `swatch_hex` is the median RGB of the larger cluster, and `swatch_hex2` the other's only when
+it covers 20 percent of the pixels, is more than 15 delta-E away and (bottle shots) is not just the
+dark side of the glass. For toppers, which are photographed over a base, the livelier cluster is
+the first colour instead. On the 2026-10-25 snapshot: 372 of 372 shades, 223 with a second colour.
 
 ## 6. Searching and browsing
 
@@ -707,10 +735,32 @@ auth gate → routes.
   rearranging is a database edit, renaming never invalidates a tag.
 - **Wheel page `/w/<slug>`** (the canonical page; `/wheels` links to it): the ring plus the list
   of docs/VISUAL.md 5, replacing the 4-column grid. The ring is slots 1..20 as nail tips around a
-  hub, a filled tip shows its stack's top layer as the shade's `swatch_image_url` (else the cropped bottle shot), lower layers as 6px bands from the same photos, the hub shows the filled count ("13") over "of 20 swatched" (the title above it already names the wheel), and a 12-slot ring is drawn at radius 112px, an empty slot shows its number inside a foil edge,
+  hub, a filled tip shows the whole stack as one drawing (`/tips/stack/<id>.svg`, below), the hub shows the filled count ("13") over "of 20 swatched" (the title above it already names the wheel), and a 12-slot ring is drawn at radius 112px, an empty slot shows its number inside a foil edge,
   a slot with an open draft shows a "draft" dot; below it a plain list of the filled slots reads
   each stack without squinting. Tapping a tip or a list row opens the stack builder (section 10). `?hl=<shade_id>` highlights every slot whose stack contains that shade
   and scrolls to the first (`#slot-12`), which is what "Swatched on" links on the shade page use.
+- **Nail tips are drawn, never photographed (`tips.py`, `routes/tips.py`).** A tip, a mini tip, a
+  builder layer tip and the preview on the shade page are an `<img>` of a 102×168 SVG that CSS
+  clips to the tip shape (`object-fit: cover`). `GET /tips/shade/<id>.svg` draws one shade and
+  `GET /tips/stack/<id>.svg` a whole stack in painting order; the URL carries `?v=<revision>` (a hash of
+  everything drawn), so the answer is `private, max-age=31536000, immutable` with an ETag, and a changed
+  colour is a new URL. The drawing uses presentation attributes only (no `style`, no script, no
+  external reference), is seeded by the shade id (the same shade looks the same everywhere) and
+  reads the shade's colour (`swatch_override_hex`, else `swatch_hex`, else neutral; `swatch_hex2` as a
+  second colour), its finish tags and `is_topper`:
+  creme is flat with a gloss; jelly is the colour at about 70 percent over what is below, darker toward the free
+  edge; shimmer adds fine dust; metallic, chrome and reflective a light-to-dark gradient of the hue;
+  holographic and iridescent two soft spectrum sweeps (and the second colour sweeping in); glitter dots
+  and four-point stars; flakie translucent iridescent chips; magnetic a blurred cat-eye band; thermal a
+  gradient from the first colour to the second; matte has no gloss, everything else one gloss streak.
+  A stack goes on top of the last opaque layer (the ones below are covered); a jelly tints what is
+  below; a topper or a clear base coat adds only its finish, so "One-Coat Black + Flakie Holo Taco"
+  is flakes on black. With nothing opaque below, layers go on a sheer nude, so a lone topper shows.
+  Shade rows, the shelf, picker results and the wishlist keep the bottle photo: they identify bottles.
+- **Tip colour on the shade page:** a "Tip colour" card with the drawn tip, an `<input type="color">`
+  prefilled with the effective colour, Save and (when set) Reset. `POST /shades/<id>/tip-colour`
+  takes `hex` (`#rrggbb`, else 422 with the page) or `reset=1`, answers 303 to the shade and writes
+  only `swatch_override_hex`.
 - **Tag page `/wheels/<id>/tag`:** the full URL with a Copy button, the QR code, and the NFC
   Tools steps (Write → Add a record → URL/URI → paste → Write; Web NFC writing does not exist
   on iPhone). Shown right after a wheel is created.
@@ -982,6 +1032,9 @@ carry the shade page's action bar as an out-of-band copy when `ctx=shade`, becau
 | POST | `/stacks/{id}/template/copy` | `source_stack_id` or `source=last` | P | 7 |
 | POST | `/stacks/{id}/save` | Commit draft to its slot | P tile (OOB) + `sheetClose` | 7 |
 | POST | `/stacks/{id}/cancel` | Discard the draft | P + `sheetClose` | 7 |
+| GET | `/tips/shade/{id}.svg` | The painted-nail drawing of a shade (`?v=` ignored) | `image/svg+xml`, ETag | polish |
+| GET | `/tips/stack/{id}.svg` | The drawing of a stack's layers in order | `image/svg+xml`, ETag | polish |
+| POST | `/shades/{id}/tip-colour` | `hex=#rrggbb` or `reset=1` | 303 shade page, 422 | polish |
 
 ## 14. Deviations from the advice and from the decisions so far
 
@@ -1260,6 +1313,7 @@ carry the shade page's action bar as an out-of-band copy when `ctx=shade`, becau
     older products whose files are numbered page shots (`pdp`, `layer`, position 2 or later), which lifts
     coverage from 306 to 351 of 372. `wheels.slot_grid`/`slot_tile` layers and `stacks.layers` carry the
     column. The picker, shade rows, shelf and wishlist keep the bottle shot on purpose: they identify a bottle.
+    **Superseded by 77:** no tip shows a photo any more; `swatch_image_url` is only the colour's source.
 72. **Bottle card:** the four-segment level control left the card; it shows one pill ("Half ›") that opens the
     edit sheet, which holds the segmented control. The `Edit` text button went (the pill is the way in); the
     title is the P code, else "Bought 12 Mar 2026", else "Bottle", and "No P code." moves to the caption with
@@ -1278,6 +1332,21 @@ carry the shade page's action bar as an out-of-band copy when `ctx=shade`, becau
     when it differs from the row above; the Bottles empty state offers "Add a bottle" (to `/lookup`); the
     offline and signed-out marks use `apple-touch-icon.png`; the segmented thumb is lighter (2px border,
     `0 1px 2px` shadow); the builder search focus ring is inset.
+77. **Tips are generated SVG, not photos** (Jan, 2026-10-25: bottles, then macro photos, "look extremely weird"
+    in a nail tip). Migration `006_swatch_colour.sql` (`swatch_hex`, `swatch_hex2`, `swatch_hex_src`,
+    `swatch_override_hex`), `catalog/colour.py` (5.5), `tips.py` and `routes/tips.py` (9). The `is-bottle`
+    crop, the `tip-bands` (a composite stack drawing already shows every layer) and `swatch_image_url or
+    hero_image_url` in the `tip_img` macro are gone; `_tip_img.html` now has `shade_tip` (one shade, for
+    mini tips and builder layers) and `stack_tip` (the ring). The wheel and stack queries select
+    `tips.TIP_FIELDS` (kind, is_topper, the colours, the finish tags) instead of the image URLs.
+78. **The colour step runs inside the sync's lock after the run row is closed,** so a run shows "ok" while
+    the first colour read (about 7 minutes for 372 shades at 0.5 s apart) is still going; later runs read
+    only new shades and changed photos. `sync --from-files` also reads colours from the CDN (a CDN, not the
+    store), and the unit tests inject `httpx.MockTransport` (`SyncRunner(colour_transport=...)`). A topper's
+    first colour is the livelier cluster, not the base it was photographed over.
+79. **Tip colour override instead of a photo picker:** the shade page has a colour input, not an image sheet;
+    `swatch_override_hex` replaces `swatch_hex` and drops `swatch_hex2`; the sync never writes it. Effective
+    colour order: override, `swatch_hex`, neutral (`#c9bfc0`).
 
 ## 15. Home-ops manifests
 

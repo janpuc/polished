@@ -29,6 +29,12 @@ def clean_environment(monkeypatch):
 
 
 @pytest.fixture(autouse=True)
+def no_colour_pause(monkeypatch):
+    """The colour step waits between CDN downloads; tests never wait."""
+    monkeypatch.setattr("polished.catalog.colour.CDN_INTERVAL_S", 0)
+
+
+@pytest.fixture(autouse=True)
 def no_outbound_network(monkeypatch):
     """Anything that tries to open an internet socket or resolve a name fails the test."""
 

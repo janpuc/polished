@@ -110,14 +110,14 @@ def test_a_wheel_with_another_slot_count_has_that_many_tiles(client, conn):
     assert "ring-n-12" in page and "ring-n-20" not in page
 
 
-def test_filled_slots_show_the_top_image_bands_and_the_list(catalog, client):
+def test_filled_slots_show_the_stack_drawing_and_the_list(catalog, client):
     wheel_id = wheels.create(catalog, "Holos")
     swatch(catalog, wheel_id, 3, "one-coat-black", "flakie-holo-taco")
     stacks.open_draft(catalog, wheel_id, 5)
     page = client.get(f"/w/{wheels.get(catalog, wheel_id)['slug']}").text
     assert "1 of 20 swatched" in page
     assert 'class="slot slot-pos-3 ring-n-20 is-filled"' in page
-    assert "tip-bands" in page and "width=102&amp;height=168&amp;crop=center" in page
+    assert "/tips/stack/" in page and "tip-bands" not in page
     assert "tip-dot" in page and "draft in progress" in page
     summary = wheels.slot_grid(catalog, wheels.get(catalog, wheel_id))[2]["summary"]
     assert "Flakie Holo Taco" in summary and summary in page
@@ -247,17 +247,15 @@ def test_shade_page_lists_where_the_shade_is_swatched(catalog, client):
     assert "Swatched on" not in client.get(f"/shades/{shade_id(catalog, 'flakie-holo-taco')}").text
 
 
-def test_a_tip_shows_the_swatch_photo_and_crops_the_bottle_shot_when_there_is_none(client, catalog):
-    catalog.execute(
-        "update shade set swatch_image_url = 'https://cdn.shopify.com/x/t_macro1.jpg?v=1'"
-        " where handle = 'thirst-trap'"
-    )
+def test_a_filled_tip_is_the_stack_drawing_and_never_a_photo(client, catalog):
     wheel_id = make_wheel(client)
-    swatch(catalog, wheel_id, 1, "thirst-trap")
-    swatch(catalog, wheel_id, 2, "peely-base")
+    swatch(catalog, wheel_id, 1, "one-coat-black", "flakie-holo-taco")
+    stack_id = wheels.slot_tile(catalog, wheels.get(catalog, wheel_id), 1)["stack_id"]
     slug = wheels.get(catalog, wheel_id)["slug"]
     page = client.get(f"/w/{slug}").text
-    tile = lambda n: re.search(rf'id="slot-{n}".*?</div>', page, re.S).group(0)  # noqa: E731
-    assert "t_macro1.jpg" in tile(1) and 'class="is-bottle"' not in tile(1)
-    assert 'class="is-bottle"' in tile(2)
+    tile = re.search(r'id="slot-1".*?</div>', page, re.S).group(0)
+    assert f'src="/tips/stack/{stack_id}.svg?v=' in tile
+    assert "cdn.shopify.com" not in tile and "is-bottle" not in page and "tip-bands" not in page
+    slot_list = re.search(r'id="slot-list".*', page, re.S).group(0)
+    assert slot_list.count("/tips/shade/") == 2 and "cdn.shopify.com" not in slot_list
     assert ">1<" in page and "of 20 swatched" in page  # the hub shows the count, not the name twice

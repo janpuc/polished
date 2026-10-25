@@ -7,6 +7,7 @@ from fastapi import Request
 from fastapi.templating import Jinja2Templates
 from starlette.responses import Response
 
+from . import tips
 from .bottles import is_owned
 
 PACKAGE_DIR = Path(__file__).parent
@@ -61,6 +62,9 @@ def day(value: str | None) -> str:
 
 templates = Jinja2Templates(directory=PACKAGE_DIR / "templates", context_processors=[_context])
 templates.env.filters.update(money=money, thumb=thumb, label=label, words=words, day=day)
+templates.env.globals.update(
+    tip_shade_url=tips.shade_url, tip_stack_url=tips.stack_url, tip_hex=tips.effective_hex
+)
 templates.env.tests["owned_bottle"] = is_owned
 
 

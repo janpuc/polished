@@ -75,16 +75,42 @@ def create_shade(
     return RedirectResponse(f"/shades/{shade_id}", status_code=302)
 
 
+def _detail_context(conn: sqlite3.Connection, shade: dict) -> dict:
+    return {
+        "shade": shade,
+        "bottles": bottles.for_shade(conn, shade["id"]),
+        "wish": wishlist.for_shade(conn, shade["id"]),
+        "swatched_on": wheels.swatched_on(conn, shade["id"]),
+        "ctx": "shade",
+    }
+
+
 @router.get("/{shade_id}")
 def detail(request: Request, conn: Conn, shade_id: int):
     shade = shades.get_shade(conn, shade_id)
     if shade is None:
         return render(request, "not_found.html", status_code=404)
-    context = {
-        "shade": shade,
-        "bottles": bottles.for_shade(conn, shade_id),
-        "wish": wishlist.for_shade(conn, shade_id),
-        "swatched_on": wheels.swatched_on(conn, shade_id),
-        "ctx": "shade",
-    }
-    return render(request, "shade_detail.html", context)
+    return render(request, "shade_detail.html", _detail_context(conn, shade))
+
+
+@router.post("/{shade_id}/tip-colour")
+def set_tip_colour(
+    request: Request,
+    conn: Conn,
+    shade_id: int,
+    hex: Annotated[str, Form()] = "",
+    reset: Annotated[str, Form()] = "",
+):
+    """The household's own colour for this shade's nail tip, or Reset to the one read from its
+    photos."""
+    try:
+        found = shades.set_tip_colour(conn, shade_id, None if reset else hex)
+    except ValueError as exc:
+        shade = shades.get_shade(conn, shade_id)
+        if shade is None:
+            return render(request, "not_found.html", status_code=404)
+        context = {**_detail_context(conn, shade), "tip_error": str(exc)}
+        return render(request, "shade_detail.html", context, status_code=422)
+    if not found:
+        return render(request, "not_found.html", status_code=404)
+    return RedirectResponse(f"/shades/{shade_id}", status_code=303)

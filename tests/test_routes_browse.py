@@ -125,7 +125,7 @@ def test_detail_shows_price_status_images_and_the_shop_link(seeded):
     assert response.status_code == 200
     assert "Rest In Peach" in html and "Retiring soon" in html
     assert "$13.50" in html and "$16.50" in html and "Sale" in html
-    assert html.count("<img") == 2
+    assert html.count("<img") == 3  # two photos and the tip preview
     assert 'href="https://holotaco.com/products/rest-in-peach"' in html
     assert 'rel="noopener noreferrer"' in html
     assert "/shades?finish=creme" in html
@@ -148,7 +148,7 @@ def test_detail_of_a_manual_shade_has_no_status_price_or_link(seeded):
     ).lastrowid
     html = client.get(f"/shades/{manual}").text
     assert "Gift" in html and "Added by hand" in html
-    assert "holotaco.com/products" not in html and "<img" not in html
+    assert "holotaco.com/products" not in html and "cdn.shopify.com" not in html
 
 
 def test_an_unknown_shade_is_a_404_page(seeded):
