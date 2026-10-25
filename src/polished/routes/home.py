@@ -46,7 +46,8 @@ def search(
     if ctx == "stack":
         if stack_id is None:
             raise HTTPException(422, "stack needs a stack_id")
-        return render(request, "_picker_results.html", builder.picker(conn, stack_id, q, filter))
+        picked = builder.picker(conn, stack_id, q, filter)
+        return render(request, "_picker_results.html", {"picker": picked})
     code = None
     if ctx == "learn":
         code = identifiers.normalise(kind, value)

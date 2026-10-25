@@ -83,7 +83,9 @@ def picker(conn: sqlite3.Connection, stack_id: int, q: str, scope: str) -> dict:
 
 
 def layers_context(request: Request, conn: sqlite3.Connection, stack_id: int, **extra) -> dict:
-    """The layer list, the templates row and the live summary of a draft."""
+    """The layer list, the templates row and the live summary of a draft. `layers_oob` is for
+    `_stack_layers.html` alone (the summary and the Save button ride along out of band); the slot
+    swap has its own `oob`, which the opening of a draft sets for `_slot_swap.html`."""
     sheet = stacks.sheet(conn, stack_id)
     handle = request.app.state.settings.over_black_handle
     first = sheet["layers"][0] if sheet["layers"] else None
@@ -94,7 +96,7 @@ def layers_context(request: Request, conn: sqlite3.Connection, stack_id: int, **
         "can_copy": stacks.last_saved_id(conn) is not None,
         "notice": None,
         "new_layer_id": None,
-        "oob": False,
+        "layers_oob": False,
         "picker": None,
         **extra,
     }

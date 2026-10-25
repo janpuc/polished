@@ -5,7 +5,7 @@ import sqlite3
 from datetime import date
 from typing import Annotated, Literal
 
-from fastapi import APIRouter, Depends, Form, Request
+from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from starlette.responses import Response
 
 from .. import stacks
@@ -41,7 +41,7 @@ def layers_response(
     """#stack-layers with the summary and the Save button out of band. `reset_picker` (a scope)
     also puts the results back to the empty query, for after a layer was added."""
     try:
-        context = layers_context(request, conn, stack_id, oob=True, **extra)
+        context = layers_context(request, conn, stack_id, layers_oob=True, **extra)
     except stacks.StackError as exc:
         raise fail(exc) from None
     if reset_picker is not None:
@@ -99,8 +99,11 @@ def change_coats(
     conn: Conn,
     stack_id: int,
     layer_id: int,
-    delta: Annotated[Literal[-1, 1], Form()],
+    delta: Annotated[int, Form()],
 ):
+    # An int, not Literal[-1, 1]: a form value is a string and a Literal would reject "1".
+    if delta not in (-1, 1):
+        raise HTTPException(422, "delta must be -1 or 1")
     try:
         stacks.change_coats(conn, stack_id, layer_id, delta)
     except stacks.StackError as exc:

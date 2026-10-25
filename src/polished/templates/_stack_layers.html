@@ -1,0 +1,57 @@
+{# The layers of a draft with the shortcut pills: the one element every layer edit swaps
+   (hx-target="#stack-layers", outerHTML). With `layers_oob` the live summary, the Save button and,
+   after a layer was added, the empty results come along out of band. The name and note form is
+   not in here, so typed text survives every edit. Context: routes/_builder.py layers_context. #}
+{% from "_icons.html" import icon with context %}
+{% from "_stack_parts.html" import summary_line, save_button %}
+<div id="stack-layers" class="stack-layers" hx-target="#stack-layers" hx-swap="outerHTML">
+  {% if notice %}<p class="notice" role="status">{{ notice }}</p>{% endif %}
+  {% if s.layers %}
+  <ol class="rail">
+    {% for layer in s.layers %}
+    {% set base = "/stacks/" ~ s.stack_id ~ "/layers/" ~ layer.id %}
+    <li id="layer-{{ layer.id }}" class="layer{% if layer.id == new_layer_id %} is-new{% endif %}">
+      <span class="layer-label">{{ layer.label }}</span>
+      <span class="layer-tip" aria-hidden="true">{% if layer.hero_image_url %}<img src="{{ layer.hero_image_url|thumb(96, 132) }}" width="32" height="44" alt="" decoding="async">{% endif %}</span>
+      <span class="layer-line"><span class="layer-name">{{ layer.title }}</span>{% if layer.coats > 1 %}<span class="layer-coats">{{ layer.coats }} coats</span>{% endif %}</span>
+      <div class="layer-controls">
+        <div class="stepper" role="group" aria-label="Coats of {{ layer.title }}">
+          <button type="button" class="step" hx-post="{{ base }}/coats" hx-vals='{"delta": -1}' aria-label="Fewer coats"{% if layer.coats <= 1 %} disabled{% endif %}>{{ icon("minus", "icon-sm") }}</button>
+          <span class="step-count" role="img" aria-label="{{ layer.coats }} coat{{ '' if layer.coats == 1 else 's' }}">{{ layer.coats }}</span>
+          <button type="button" class="step" hx-post="{{ base }}/coats" hx-vals='{"delta": 1}' aria-label="More coats"{% if layer.coats >= 5 %} disabled{% endif %}>{{ icon("plus", "icon-sm") }}</button>
+        </div>
+        {% if not loop.first %}<button type="button" class="layer-btn" hx-post="{{ base }}/move" hx-vals='{"dir": "up"}' aria-label="Move {{ layer.title }} earlier">{{ icon("arrow-up") }}</button>{% else %}<span class="layer-btn" aria-hidden="true"></span>{% endif %}
+        {% if not loop.last %}<button type="button" class="layer-btn" hx-post="{{ base }}/move" hx-vals='{"dir": "down"}' aria-label="Move {{ layer.title }} later">{{ icon("arrow-down") }}</button>{% else %}<span class="layer-btn" aria-hidden="true"></span>{% endif %}
+        <button type="button" class="layer-btn layer-remove" hx-post="{{ base }}/delete" aria-label="Remove {{ layer.title }}">{{ icon("x") }}</button>
+      </div>
+    </li>
+    {% endfor %}
+  </ol>
+  {% else %}
+  <div class="stack-empty">
+    <span class="nail-glyph" aria-hidden="true"></span>
+    <p>No layers yet. Search for the base shade{% if has_black %}, or tap Over black{% endif %}.</p>
+  </div>
+  {% endif %}
+  {% if s.full %}<p class="stack-hint">That is the most: a swatch holds up to 8 layers. Remove one to add another.</p>{% endif %}
+  {% if has_black or can_copy %}
+  <div class="shortcuts" role="group" aria-label="Shortcuts">
+    {% if has_black and black_first %}
+    <button type="button" class="shortcut" disabled>{{ icon("check", "icon-sm") }}Over black</button>
+    {% elif has_black %}
+    <button type="button" class="shortcut" hx-post="/stacks/{{ s.stack_id }}/template/over-black"{% if s.full %} disabled{% endif %}>Over black</button>
+    {% endif %}
+    {% if can_copy %}
+    <button type="button" class="shortcut" hx-get="/stacks/{{ s.stack_id }}/copy-sources" hx-target="#picker-results" hx-swap="innerHTML">Copy from…</button>
+    <button type="button" class="shortcut" hx-post="/stacks/{{ s.stack_id }}/template/copy" hx-vals='{"source": "last"}' hx-include="#picker-form"{% if s.layers %} hx-confirm="Replace these layers with the last saved swatch?"{% endif %}>Same as last</button>
+    {% endif %}
+  </div>
+  {% endif %}
+</div>
+{% if layers_oob %}
+{{ summary_line(s, true) }}
+{{ save_button(s, true) }}
+{% if picker is not none %}
+<div id="picker-results" hx-swap-oob="innerHTML">{% include "_picker_results.html" %}</div>
+{% endif %}
+{% endif %}

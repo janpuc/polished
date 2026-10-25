@@ -733,8 +733,9 @@ keeps nothing, so a dropped connection or a backgrounded tab loses nothing.
    draft `stack` containing a copy of the slot's saved layers (or none) and stores it in
    `draft_stack_id`. The partial is the sheet; `sheet.js` calls `showModal()` on the `<dialog>`
    when `#sheet-body` is swapped.
-2. **Sheet layout, top to bottom** (bottom-anchored `<dialog>`, `max-height: 100dvh`; the
-   layers list and the results scroll independently; buttons are at least 44 pt). Layers are
+2. **Sheet layout, top to bottom** (bottom-anchored `<dialog>`, `max-height: 92dvh`; the head
+   with the live summary and the Save footer are sticky, the results scroll in their own area;
+   buttons are at least 44 pt; see deviations 60 to 64). Layers are
    listed in painting order, **Base at the top**, as the advice recommends:
 
    ```
@@ -1168,6 +1169,49 @@ carry the shade page's action bar as an out-of-band copy when `ctx=shade`, becau
     group under the list.
 56. **`not_found.html` takes an optional message, button and tab,** so an unknown wheel says so and
     offers "See your wheels". Without them it is the shade page as before.
+57. **The builder's context key `oob` was split in two** (stage 7). `layers_context` passes
+    `layers_oob`, which only `_stack_layers.html` reads (the live summary, the Save button and the reset
+    results ride along out of band); `oob` stays the flag of `_slot_swap.html`. Opening a draft merges both
+    dicts, and with one name the sheet's own layer list would have rendered its summary out of band.
+58. **`POST /stacks/{id}/layers/{lid}/coats` took `Literal[-1, 1]`, which rejected every form value**
+    (`"1"` is a string; the route answered 422 for all of them). `delta` is now an `int` checked against
+    -1 and 1 in the route (422 otherwise). The domain layer was not touched.
+59. **`/search?ctx=stack` renders `_picker_results.html` with `{"picker": ...}`**, not with the dict as
+    the context, so the sheet (`picker_ctx`), the layer responses (`picker`, out of band into
+    `#picker-results`) and the search route share one template.
+60. **The results sit outside the search form.** `#picker-form` holds the search field and the Owned,
+    Toppers and All radios (`hx-trigger="input delay:200ms, search, submit"`, `hx-sync="this:replace"`);
+    `#picker-results` is a sibling that carries `hx-target="#stack-layers"` and `hx-include="#picker-form"`
+    for its rows. Inside the form the rows would inherit the form's `hx-sync` and a search request could
+    abort an in-flight append whose server side had already happened.
+61. **More partials than PLAN.md lists:** `_stack_parts.html` (macros for the summary line and the Save
+    button, which exist both in the sheet and as out-of-band replacements). The Save button sits in the
+    sticky footer and belongs to `#save-form` by its `form` attribute, so the name and note form can
+    stay in the scrolling part. The sheet is `div.builder`, not a form, because the search form and the save form sit side by side in it.
+62. **No scan button in the builder.** VISUAL 6 draws a camera in the search field; the lookup flow
+    ends in "Add bottle", not in a layer, so a link there would leave the builder with nowhere to
+    return to. A P code typed into the field is resolved (section 7.2) and shows as a suggestion row.
+63. **Layer rows are more compact than VISUAL 6 draws them:** the mini tip spans the name line and the
+    controls line (44pt tall), so a row is about 80pt and three layers leave room for the results on
+    390x844. A layer with more than one coat also says "2 coats" at the trailing edge of its name. Up and
+    down are 24pt arrow icons in 44pt buttons; a missing up (first row) or down (last row) is an empty
+    placeholder of the same width, so the others do not jump. Coats `-` is disabled at 1 and `+` at 5.
+64. **A short viewport (`max-height: 560px`, which is what an open keyboard leaves) compacts the sheet:**
+    no grabber, the summary on two lines, the layers in a scroll area of about 150pt and the footer no
+    longer sticky, so the search field and the first results stay in view. The live summary is in the
+    sticky head in every case, so the whole stack stays readable while the layers scroll.
+65. **Keyboard handling on the results:** `mousedown` on a result row is cancelled while the search field has
+    focus (the click still fires), so a tap does not drop the keyboard; after a layer was added the
+    server sends `HX-Trigger: pickerReset`, `sheet.js` empties the field, puts focus back only if it had
+    it when the request left, and scrolls the new layer (`is-new`) into view. Nothing is focused when the
+    field was not, because iOS ignores focus outside a gesture. Whether the keyboard really stays up on
+    a tap is the manual check of PLAN stage 7.
+66. **Cancel and the save error.** Cancel in the header discards the draft without a confirmation (the
+    spec's word); a 404 or 409 from a stale sheet (`htmx:responseError`) shows "This swatch changed
+    somewhere else" in `#builder-status`. A failed save (no layer, a date that is not YYYY-MM-DD) is a
+    422 retargeted at `#save-error` in the footer. Save is disabled while the draft has no layer.
+67. **PLAN stage 7's acceptance `grep -c 'slot hl'` is stale:** the highlighted tile's class list is
+    `slot slot-pos-N ring-n-M is-filled is-hl`; the check is `grep -c is-hl`.
 
 ## 15. Home-ops manifests
 

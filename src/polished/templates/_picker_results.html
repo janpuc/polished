@@ -1,0 +1,38 @@
+{# The rows under the builder's search field: a P code the resolver knows first (DESIGN 7.2), then
+   shades, owned first. Tapping a row adds it as the next layer. `picker` is routes/_builder.py
+   picker(). #}
+{% from "_icons.html" import icon with context %}
+{% macro pick_row(shade) %}
+<li class="pick-item">
+  <button type="button" class="pick-add" hx-post="/stacks/{{ picker.stack_id }}/layers" hx-vals='{{ {"shade_id": shade.id}|tojson }}' aria-label="Add {{ shade.title }}">
+    {% if shade.hero_image_url %}<img class="thumb thumb-pick" src="{{ shade.hero_image_url|thumb(80, 104) }}" srcset="{{ shade.hero_image_url|thumb(80, 104) }} 2x, {{ shade.hero_image_url|thumb(120, 156) }} 3x" width="40" height="52" alt="" loading="lazy" decoding="async">{% else %}<span class="thumb thumb-pick thumb-empty" aria-hidden="true"></span>{% endif %}
+    <span class="row-body">
+      <span class="row-title">{{ shade.title }}</span>
+      <span class="row-sub"><span>{{ ((["topper"] if shade.is_topper else []) + shade.finishes[:3])|words }}</span>{% if shade.owned_count %}<span class="pill">Owned ×{{ shade.owned_count }}</span>{% endif %}{% if shade.wishlisted %}<span class="heart" role="img" aria-label="On the wishlist">{{ icon("heart", "icon-sm") }}</span>{% endif %}</span>
+    </span>
+    <span class="pick-plus" aria-hidden="true">{{ icon("plus") }}</span>
+  </button>
+</li>
+{% endmacro %}
+{% if picker.suggestion %}
+{% set found = picker.suggestion %}
+<p class="pick-lead">{% if found.kind == 'gtin' %}Barcode {{ found.code }} is{% elif found.kind == 'printed' %}{{ found.code }} was this on a bottle you added before:{% else %}SKU {{ found.code }} is{% endif %}</p>
+<ul class="list picker-list">{{ pick_row(found.shade) }}</ul>
+{% elif picker.unknown_code %}
+<p class="pick-lead">{% if picker.unknown_code.outcome == 'invalid_code' %}“{{ picker.q }}” is not a valid barcode number.{% else %}{{ picker.unknown_code.code }} is not on any bottle yet. Search by name instead.{% endif %}</p>
+{% endif %}
+{% if picker.result is not none and not picker.suggestion %}
+{% if not picker.result.rows %}
+<div class="pick-empty">
+  {% if picker.q %}<p>Nothing {{ 'owned ' if picker.scope == 'owned' else 'among the toppers ' if picker.scope == 'toppers' else '' }}matches “{{ picker.q }}”.</p>{% elif picker.scope == 'toppers' %}<p>No toppers in the catalog yet.</p>{% else %}<p>You do not own any shades yet.</p>{% endif %}
+  {% if picker.scope != 'all' %}<label class="btn btn-text" for="scope-all">Search all shades</label>{% endif %}
+</div>
+{% else %}
+<ul class="list picker-list">
+  {% for shade in picker.result.rows %}{{ pick_row(shade) }}{% endfor %}
+</ul>
+{% if picker.result.total > picker.result.rows|length %}
+<p class="more-link muted">Showing {{ picker.result.rows|length }} of {{ picker.result.total }}. Type more of the name.</p>
+{% endif %}
+{% endif %}
+{% endif %}

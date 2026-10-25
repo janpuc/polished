@@ -1,0 +1,9 @@
+{# Two bits of the builder that sit outside #stack-layers and follow it: the live summary under
+   the title and the Save button. `oob` makes a layer response replace them in the open sheet. #}
+{% macro summary_line(s, oob=False) -%}
+<p id="stack-summary" class="stack-summary" aria-live="polite"{% if oob %} hx-swap-oob="true"{% endif %}>{% if s.layers %}{{ s.summary }}{% else %}<span class="summary-empty">Nothing on this nail yet</span>{% endif %}</p>
+{%- endmacro %}
+
+{% macro save_button(s, oob=False) -%}
+<button id="save-button" type="submit" form="save-form" class="btn btn-block"{% if not s.layers %} disabled{% endif %}{% if oob %} hx-swap-oob="true"{% endif %}>Save swatch</button>
+{%- endmacro %}

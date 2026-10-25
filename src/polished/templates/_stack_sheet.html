@@ -1,0 +1,63 @@
+{# The layer-stack builder, swapped into #sheet-body (DESIGN 10). Layer edits swap only
+   #stack-layers (and the summary, Save button and results out of band); the search form and the
+   name and note form are never re-rendered, so typed text survives. When the sheet opens from a
+   wheel page, the slot's tile comes along out of band (tile is in the context then). #}
+{% from "_icons.html" import icon with context %}
+{% from "_stack_parts.html" import summary_line, save_button %}
+<div class="builder" data-builder>
+  <div class="builder-head">
+    <div class="grabber" aria-hidden="true"></div>
+    <header class="sheet-head">
+      <h2 tabindex="-1" autofocus>{{ s.wheel_name }}<span class="sheet-sub">Slot {{ s.position }}</span></h2>
+      <button type="button" class="btn btn-text" hx-post="/stacks/{{ s.stack_id }}/cancel" hx-swap="none">Cancel</button>
+    </header>
+    {{ summary_line(s) }}
+  </div>
+  <div class="builder-body sheet-form">
+    <p id="builder-status" class="notice notice-error" role="alert" hidden></p>
+    {% include "_stack_layers.html" %}
+    <form id="picker-form" class="picker" role="search" action="/search" method="get" hx-get="/search" hx-target="#picker-results" hx-swap="innerHTML" hx-trigger="input delay:200ms, search, submit" hx-sync="this:replace">
+      <input type="hidden" name="ctx" value="stack">
+      <input type="hidden" name="stack_id" value="{{ s.stack_id }}">
+      <div class="search-field">
+        {{ icon("search") }}
+        <input id="picker-q" type="search" name="q" placeholder="Search shades or a P code…" aria-label="Search shades or a P code" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="search">
+      </div>
+      <div class="segmented" role="radiogroup" aria-label="Show">
+        {% for key, text in (("owned", "Owned"), ("toppers", "Toppers"), ("all", "All")) %}
+        <label class="pick"><input type="radio" id="scope-{{ key }}" name="filter" value="{{ key }}"{% if scope == key %} checked{% endif %}><span>{{ text }}</span></label>
+        {% endfor %}
+      </div>
+    </form>
+    <div id="picker-results" class="picker-results" aria-live="polite" hx-target="#stack-layers" hx-swap="outerHTML" hx-include="#picker-form">
+      {% with picker = picker_ctx %}{% include "_picker_results.html" %}{% endwith %}
+    </div>
+    <form id="save-form" class="save-form" method="post" action="/stacks/{{ s.stack_id }}/save" hx-post="/stacks/{{ s.stack_id }}/save" hx-swap="none">
+      <details class="more-fields"{% if s.name or s.note %} open{% endif %}>
+        <summary>{{ icon("chevron-right", "icon-sm") }}Name and note</summary>
+        <div class="field">
+          <label for="stack-name">Name</label>
+          <input id="stack-name" name="name" value="{{ s.name or '' }}" maxlength="80" autocomplete="off" enterkeyhint="done" placeholder="For example Midnight jelly…">
+        </div>
+        <div class="field">
+          <label for="stack-note">Note</label>
+          <textarea id="stack-note" name="note" rows="2" maxlength="500">{{ s.note or '' }}</textarea>
+        </div>
+        <div class="field">
+          <label for="painted-on">Swatched on</label>
+          <input id="painted-on" name="painted_on" type="date" value="{{ painted_on }}">
+        </div>
+      </details>
+    </form>
+    {% if saved_slot %}
+    <div class="sheet-danger">
+      <button type="button" class="btn btn-text btn-danger" hx-post="/wheels/{{ s.wheel_id }}/slots/{{ s.position }}/clear" hx-swap="none" hx-confirm="Remove the swatch from slot {{ s.position }}?">Remove swatch</button>
+    </div>
+    {% endif %}
+  </div>
+  <div class="sheet-actions">
+    <p id="save-error" class="field-error" role="alert"></p>
+    {{ save_button(s) }}
+  </div>
+</div>
+{% if tile is defined %}{% include "_slot_swap.html" %}{% endif %}

@@ -1,0 +1,36 @@
+{# Saved swatches to copy into the draft, swapped over the search results. Tapping one replaces
+   the draft's layers with copies of its layers (never the stack itself, DESIGN 10.6). #}
+{% from "_icons.html" import icon with context %}
+<div id="copy-sources" class="copy-sources">
+  <div class="copy-head">
+    <h3 class="copy-title">Copy from a saved swatch</h3>
+    <button type="button" class="btn btn-text" hx-get="/search" hx-include="#picker-form" hx-target="#picker-results" hx-swap="innerHTML">Back to shades</button>
+  </div>
+  <div class="search-field">
+    {{ icon("search") }}
+    <input type="search" name="q" value="{{ q }}" placeholder="Search saved swatches by shade…" aria-label="Search saved swatches by shade" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="search"
+           hx-get="/stacks/{{ stack_id }}/copy-sources" hx-trigger="input changed delay:200ms, search" hx-target="#copy-list" hx-select="#copy-list" hx-swap="outerHTML" hx-sync="this:replace" hx-include="this">
+  </div>
+  <div id="copy-list" aria-live="polite">
+    {% if sources %}
+    <ul class="list picker-list">
+      {% for source in sources %}
+      <li class="pick-item">
+        <button type="button" class="pick-add copy-row" hx-post="/stacks/{{ stack_id }}/template/copy" hx-vals='{{ {"source_stack_id": source.stack_id}|tojson }}'{% if has_layers %} hx-confirm="Replace the layers in this draft?"{% endif %}>
+          <span class="row-body">
+            <span class="row-title">{{ source.name or source.summary }}</span>
+            <span class="row-sub"><span>{% if source.name %}{{ source.summary }}. {% endif %}{{ source.wheel_name }}, slot {{ source.position }}</span></span>
+          </span>
+          <span class="mini-tips" aria-hidden="true">
+            {% for layer in source.layers[-3:] %}<span class="tip-mini">{% if layer.hero_image_url %}<img src="{{ layer.hero_image_url|thumb(72, 96) }}" width="24" height="32" alt="" loading="lazy" decoding="async">{% endif %}</span>{% endfor %}
+          </span>
+          <span class="pick-plus" aria-hidden="true">{{ icon("plus") }}</span>
+        </button>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <div class="pick-empty"><p>{% if q %}No saved swatch uses “{{ q }}”.{% else %}Nothing is saved yet to copy.{% endif %}</p></div>
+    {% endif %}
+  </div>
+</div>
