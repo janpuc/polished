@@ -259,3 +259,25 @@ def test_deleting_a_wheel_row_cascades_to_its_slots(catalog):
     put_stack(catalog, wheel_id, 1, [shade_id(catalog, "thirst-trap")])
     catalog.execute("delete from wheel where id = ?", (wheel_id,))
     assert catalog.execute("select count(*) from wheel_slot").fetchone()[0] == 0
+
+
+def test_most_recent_is_the_wheel_touched_last_else_the_newest(catalog):
+    assert wheels.most_recent(catalog) is None
+    first = wheels.create(catalog, "First")
+    second = wheels.create(catalog, "Second")
+    assert wheels.most_recent(catalog)["id"] == second  # nothing swatched: the newest
+    put_stack(catalog, first, 1, [shade_id(catalog, "thirst-trap")])
+    catalog.execute("update stack set updated_at = '2030-01-01T00:00:00.000Z'")
+    recent = wheels.most_recent(catalog)
+    assert recent["id"] == first and recent["filled"] == 1 and recent["drafts"] == 0
+    wheels.set_archived(catalog, first, True)
+    assert wheels.most_recent(catalog)["id"] == second  # archived wheels never lead
+    wheels.set_archived(catalog, second, True)
+    assert wheels.most_recent(catalog) is None
+
+
+def test_unpainted_ring_has_a_tile_per_position():
+    tiles = wheels.unpainted_ring(12)
+    assert [t["position"] for t in tiles] == list(range(1, 13)) and not any(
+        t["filled"] for t in tiles
+    )

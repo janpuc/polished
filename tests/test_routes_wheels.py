@@ -56,11 +56,38 @@ def test_list_shows_the_count_and_hides_archived_wheels(client, conn):
     make_wheel(client, "Glitters")
     client.post(f"/wheels/{first}/archive", data={"archived": "1"})
     page = client.get("/wheels").text
-    assert "Glitters" in page and "0 of 20 swatched" in page
+    assert "Glitters" in page and "0 of 20<" in page
     assert "Holos" not in page.split('class="group wheel-list"')[1].split("</ul>")[0]
     assert "Archived wheels" in page
     archived = client.get("/wheels?archived=1").text
     assert "Holos" in archived and "Glitters" not in archived
+
+
+def test_the_empty_list_shows_the_unpainted_ring_and_the_form_open(client):
+    page = client.get("/wheels").text
+    assert page.count('class="slot slot-pos-') == 12 and "is-filled" not in page
+    assert "new-wheel-box" not in page and 'action="/wheels"' in page
+
+
+def test_each_wheel_row_is_a_ring_of_its_own_tips_with_its_count(catalog, client):
+    wheel_id = wheels.create(catalog, "Holos")
+    swatch(catalog, wheel_id, 3, "one-coat-black", "flakie-holo-taco")
+    stacks.open_draft(catalog, wheel_id, 5)
+    stack_id = wheels.slot_tile(catalog, wheels.get(catalog, wheel_id), 3)["stack_id"]
+    page = client.get("/wheels").text
+    row = re.search(r'<a class="wheel-row".*?</a>', page, re.S).group(0)
+    assert row.count('class="slot slot-pos-') == 20 and row.count("is-filled") == 1
+    assert f'src="/tips/stack/{stack_id}.svg?v=' in row and 'class="ring ring-mini"' in row
+    assert "1 of 20, 1 draft<" in row and "mini-dot" not in page
+    assert 'aria-label="New wheel"' in page  # the + in the title row opens the form
+
+
+def test_a_failed_create_keeps_the_form_open_on_the_list(catalog, client):
+    wheels.create(catalog, "Holos")
+    page = client.post("/wheels", data={"name": " ", "slot_count": "20"}).text
+    assert (
+        re.search(r'<details class="new-wheel-box" open>', page) and "A wheel needs a name." in page
+    )
 
 
 # --- the tag page and the QR code ------------------------------------------------------
@@ -189,6 +216,30 @@ def test_rename_keeps_the_slug_and_answers_htmx_with_out_of_band_names(client, c
     assert client.post("/wheels/99", data={"name": "x"}).status_code == 404
 
 
+def test_the_rename_sheet_has_the_name_and_a_saved_rename_closes_it(client, conn):
+    wheel_id = make_wheel(client)
+    sheet = client.get(f"/wheels/{wheel_id}/rename")
+    assert sheet.status_code == 200 and "<html" not in sheet.text
+    assert 'value="Holos"' in sheet.text and f'hx-post="/wheels/{wheel_id}"' in sheet.text
+    assert client.get("/wheels/99/rename").status_code == 404
+    saved = client.post(
+        f"/wheels/{wheel_id}", data={"name": "Foils"}, headers={"HX-Request": "true"}
+    )
+    assert saved.headers["HX-Trigger"] == "sheetClose"
+    assert wheels.get(conn, wheel_id)["name"] == "Foils"
+
+
+def test_the_wheel_page_ends_in_a_quiet_row_of_three_actions(client, conn):
+    wheel_id = make_wheel(client)
+    slug = wheels.get(conn, wheel_id)["slug"]
+    page = client.get(f"/w/{slug}").text
+    foot = re.search(r'<nav class="wheel-foot".*?</nav>', page, re.S).group(0)
+    assert f'href="/wheels/{wheel_id}/tag"' in foot
+    assert f'hx-get="/wheels/{wheel_id}/rename"' in foot
+    assert f'hx-post="/wheels/{wheel_id}/archive"' in foot and "hx-confirm" in foot
+    assert "This wheel</h2>" not in page and 'id="rename"' not in page
+
+
 def test_archive_keeps_the_slug_and_the_page_shows_the_banner(client, conn):
     one, two = make_wheel(client, "One"), make_wheel(client, "Two")
     slug = wheels.get(conn, one)["slug"]
@@ -260,3 +311,39 @@ def test_a_filled_tip_is_the_stack_drawing_and_never_a_photo(client, catalog):
     assert f'src="/tips/stack/{stack_id}.svg?v=' in slot_list  # the composite tip, one per row
     assert '<span class="tip-m"' in slot_list and "cdn.shopify.com" not in slot_list
     assert ">1<" in page and "of 20 swatched" in page  # the hub shows the count, not the name twice
+
+
+# --- home and the shade page ----------------------------------------------------------
+
+
+def test_home_opens_on_the_ring_of_the_wheel_touched_last(catalog, client):
+    page = client.get("/").text
+    assert "No wheels yet" in page and 'href="/wheels"' in page
+    assert page.count('class="slot slot-pos-') == 12 and "is-filled" not in page
+    quiet = wheels.create(catalog, "Winter")
+    busy = wheels.create(catalog, "Holos")
+    swatch(catalog, busy, 3, "one-coat-black")
+    page = client.get("/").text
+    slug = wheels.get(catalog, busy)["slug"]
+    assert f'<a class="home-wheel" href="/w/{slug}">' in page
+    assert "<strong>Holos</strong>, 1 of 20" in page and "Winter" not in page
+    assert page.count('class="slot slot-pos-') == 20 and 'class="ring ring-home"' in page
+    swatch(catalog, quiet, 1, "flakie-holo-taco")
+    catalog.execute(
+        "update stack set updated_at = '2030-01-01T00:00:00.000Z' where id = ?",
+        (wheels.slot_tile(catalog, wheels.get(catalog, quiet), 1)["stack_id"],),
+    )
+    assert "<strong>Winter</strong>, 1 of 20" in client.get("/").text
+
+
+def test_swatched_on_rows_lead_with_the_stack_tip(catalog, client):
+    wheel_id = wheels.create(catalog, "Holos")
+    swatch(catalog, wheel_id, 12, "one-coat-black", "flakie-holo-taco")
+    stack_id = wheels.slot_tile(catalog, wheels.get(catalog, wheel_id), 12)["stack_id"]
+    black = shade_id(catalog, "one-coat-black")
+    page = client.get(f"/shades/{black}").text
+    row = re.search(
+        r'<a class="group-link group-link-tip" href="/w/[^"]+">.*?</a>', page, re.S
+    ).group(0)
+    assert f'<span class="tip-s" aria-hidden="true"><img src="/tips/stack/{stack_id}.svg' in row
+    assert row.index("tip-s") < row.index("Holos, slot 12")

@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% from "_icons.html" import icon with context %}
+{% from "_mini_ring.html" import mini_ring %}
 {% set tab = "wheels" %}
 {% block title %}{{ "Archived wheels" if archived else "Wheels" }} | Polished{% endblock %}
 {% block content %}
@@ -18,13 +19,13 @@
 </form>
 {% endmacro %}
 {% if archived %}<a class="back" href="/wheels">{{ icon("chevron-left") }}Wheels</a>{% endif %}
-<header class="page-head">
+<header class="page-head{% if cards and not archived %} has-add{% endif %}">
   <h1 class="title">{{ "Archived" if archived else "Wheels" }}</h1>
 </header>
 {% if cards %}
 {% if not archived %}
 <details class="new-wheel-box"{% if error %} open{% endif %}>
-  <summary class="btn btn-secondary">{{ icon("plus") }}New wheel</summary>
+  <summary class="btn btn-text btn-icon" aria-label="New wheel">{{ icon("plus") }}</summary>
   {{ new_form() }}
 </details>
 {% endif %}
@@ -32,12 +33,10 @@
   {% for card in cards %}
   <li>
     <a class="wheel-row" href="/w/{{ card.slug }}">
-      <span class="mini-ring" aria-hidden="true">
-        {% for tile in card.tiles %}<span class="mini-dot slot-pos-{{ tile.position }} ring-n-{{ card.slot_count }}{% if tile.filled %} is-filled{% endif %}"></span>{% endfor %}
-      </span>
+      {{ mini_ring(card.tiles, card.slot_count, "mini") }}
       <span class="row-body">
         <span class="row-title">{{ card.name }}</span>
-        <span class="row-sub"><span>{{ card.filled }} of {{ card.slot_count }} swatched{% if card.drafts %}, {{ card.drafts }} draft{{ '' if card.drafts == 1 else 's' }}{% endif %}</span></span>
+        <span class="row-sub"><span>{{ card.filled }} of {{ card.slot_count }}{% if card.drafts %}, {{ card.drafts }} draft{{ '' if card.drafts == 1 else 's' }}{% endif %}</span></span>
       </span>
       {{ icon("chevron-right") }}
     </a>
@@ -53,7 +52,7 @@
 </div>
 {% else %}
 <div class="empty-state">
-  <div class="nail-glyph" aria-hidden="true"></div>
+  {{ mini_ring(ghost, 12, "home") }}
   <h2>No wheels yet</h2>
   <p>Make a wheel for the nail tips you swatch, then stick an NFC tag on it.</p>
 </div>

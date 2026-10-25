@@ -117,16 +117,18 @@ def test_public_list_does_not_include_lookalikes(oidc_client):
 
 
 def test_auth_none_lets_the_dev_user_in(client):
-    response = client.get("/")
+    assert client.get("/").status_code == 200
+    response = client.get("/more")
     assert response.status_code == 200
     assert "Dev" in response.text
 
 
 def test_a_valid_session_passes_the_gate(oidc_app_settings, oidc_client):
     signed_in(oidc_app_settings, oidc_client)
-    response = oidc_client.get("/")
+    assert oidc_client.get("/").status_code == 200
+    response = oidc_client.get("/more")
     assert response.status_code == 200
-    assert "Rae" in response.text
+    assert "Rae" in response.text and "Sign out" in response.text
 
 
 def test_a_session_cookie_with_a_bad_signature_is_ignored(oidc_client):

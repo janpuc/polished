@@ -7,7 +7,7 @@
   {% if saved %}<p class="notice">Saved. {{ r.code }} is now {{ shade.title }}.</p>
   {% elif kept_other %}<p class="notice">{{ r.code }} already points at {{ shade.title }}, so that stays.</p>{% endif %}
   <p class="result-lead">{% if r.kind == 'gtin' %}Barcode {{ r.code }}{% elif r.kind == 'printed' %}{{ r.code }}{% else %}SKU {{ r.code }}{% endif %} is</p>
-  <ul class="list">{% with ctx = 'result' %}{% include "_shade_row.html" %}{% endwith %}</ul>
+  {% include "_result_card.html" %}
   <div class="actions">
     <button type="button" class="btn action-primary" hx-get="/shades/{{ shade.id }}/bottles/new?ctx=lookup{% if r.kind == 'printed' %}&amp;printed_code={{ r.code|urlencode }}{% endif %}" hx-target="#sheet-body" hx-swap="innerHTML">{{ icon("plus") }}Add bottle</button>
     {% if r.identifier_id %}
@@ -18,7 +18,7 @@
 {% elif r.outcome == 'suggestion' %}
 <section class="result result-suggestion">
   <p class="result-lead">{{ r.code }} was {{ shade.title }} on a bottle you added before. A P code can differ between batches, so check the bottle.</p>
-  <ul class="list">{% with ctx = 'result' %}{% include "_shade_row.html" %}{% endwith %}</ul>
+  {% include "_result_card.html" %}
   <div class="actions">
     <button type="button" class="btn action-primary" hx-get="/shades/{{ shade.id }}/bottles/new?ctx=lookup&amp;printed_code={{ r.code|urlencode }}" hx-target="#sheet-body" hx-swap="innerHTML">Yes, add a bottle</button>
   </div>

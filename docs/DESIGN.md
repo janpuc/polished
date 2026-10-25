@@ -561,16 +561,23 @@ the first colour instead. On the 2026-10-25 snapshot: 372 of 372 shades, 223 wit
   newest = `published_at`; manual shades without a date or price sort last), `page` (40 a page,
   a "Load more" button, not infinite scroll). A value the page does not know means "no filter".
   The form sits in a `<details>` next to the sticky search field; the panel drops down over the
-  list. A change or 200 ms of typing sends the form with `hx-get`, the fragment (rows, Load more
+  list, always shut on load (the badge on its button counts the active filters), and ends in a bar
+  with "Clear all" and the one filled button "Show N shades", which only closes the panel (the list
+  already follows the filters; the button's count rides along out of band). A change or 200 ms of typing sends the form with `hx-get`, the fragment (rows, Load more
   and the two counts as out-of-band spans) replaces `#shade-list`, and `hx-push-url` keeps the URL.
 - A shade row (`_shade_row.html`, one line, class `shade-row`) shows the painted tip (`_tip.html`,
-  40 by 66; the lookup result keeps the bottle photo), title, up to three finishes (plus "Topper"),
-  the status label, the price, an "owned ×N" badge when `shade_status.owned_count` is above 0 and
-  a ♥ when the shade is wishlisted; it opens the shade.
+  40 by 66), the title with a pink ♥ right after it when the shade is wishlisted and the price at the
+  trailing edge, and under them the status word (`--bad` or `--warn`, no fill), up to three finishes
+  (plus "Topper") and, under the price, "×N" as a footnote when `shade_status.owned_count` is above 0
+  (its `aria-label` is "Owned ×N"); it opens the shade. A bottle photo appears only in the shade
+  page's strip and in the lookup result card.
 - The detail page shows the images (every `images[]` entry of the product's stored feed JSON) in
-  a horizontally scrolling, scroll-snapped strip, the status, price (with the compare-at price and
-  a "Sale" chip when `price < compare_at`), finish, colour and collection chips that link back to
-  the filtered list, and a link to `POLISHED_STORE_URL/products/<handle>` (replaced by "No longer
+  a horizontally scrolling, scroll-snapped strip; under it the shade's painted tip (`tip-l`, 56 by 92)
+  beside the title, and on the subhead line the price (with the compare-at price and a "Sale" chip
+  when `price < compare_at`), "Owned ×N" and the status word. Then the actions, the bottles, a quiet
+  list of Finish, Colour and Collections with outlined chips that link back to the filtered list,
+  "Swatched on" rows (the stack's composite tip and "Holos, slot 1"), the Tip colour disclosure
+  (section 9), and a link to `POLISHED_STORE_URL/products/<handle>` (replaced by "No longer
   listed" for a missing shade).
 - Images are hotlinked from `cdn.shopify.com` with `&width=` added for thumbnails (Shopify's
   image CDN resizes by query parameter) and `loading="lazy"`. The service worker does not cache
@@ -643,14 +650,17 @@ nothing.
   guide's box mapped through the video's `object-fit: cover`) at about 6 per second. A code is
   accepted after two identical consecutive reads. `BarcodeDetector` is feature-detected as a
   two-line branch and not tested (iPhone only).
-- Fallback button "Take a photo of the barcode": `<input type="file" accept="image/*"
+- Fallback text action "Take a photo instead": `<input type="file" accept="image/*"
   capture="environment">`, decoded from the still, which is sharper than video frames for a
   small printed barcode.
-- The scanner is a full-screen `<dialog id="scanner">` on `/lookup` (video, guide, status line,
-  Close). It opens from `[data-scan-open]` buttons, or at load for `/lookup?scan=1` (what the
-  Scan buttons on home and `/bottles` link to). When the camera cannot start (no secure context,
-  denied, none, busy) a note on the page says which, and names the photo button and the typed
-  field.
+- The scanner is a non-modal `<dialog id="scanner">` laid over a 4:3 viewfinder (radius 16) at the
+  top of `/lookup` (video, framing guide, Close); under the viewfinder a caption ("Point at the
+  barcode under the bottle", also the status line). Until the camera runs the viewfinder shows an
+  idle tile with the one `[data-scan-open]` button ("Scan the barcode"); `/lookup?scan=1` (what the
+  Scan buttons on home and `/bottles` link to) opens the camera at load. Esc and Close end it. When
+  the camera cannot start (no secure context, denied, none, busy) a note on the page says which, and
+  names the photo action and the typed field. Below sit the one field ("Type the digits, a P code, or
+  a name"), "Take a photo instead", the result area and the "Learned codes" row.
 - On accept it vibrates where supported, flashes the guide, stops the camera at once, and calls
   `htmx.ajax('GET', '/lookup/resolve?q=<digits>&via=scan', '#lookup-result')`.
 - CSP: `script-src 'self' 'wasm-unsafe-eval'`.
@@ -741,7 +751,7 @@ auth gate → routes.
   slot count, a 1.5px hairline circle runs through the stems of the tips like the plastic ring of a real
   wheel, an empty slot is a `--fill` tip with its number and no foil (foil is for `?hl` and the save
   sweep only), a slot with an open draft shows a "draft" dot; below it a plain list of the filled
-  slots (the composite tip, name and date) reads each stack without squinting. Tapping a tip or a list row opens the stack builder (section 10). `?hl=<shade_id>` highlights every slot whose stack contains that shade
+  slots (the composite tip, name and date) reads each stack without squinting. Tapping a tip or a list row opens the stack builder (section 10). The page ends in one quiet row of three text actions, "Tag and QR code", "Rename" and "Archive" (confirmed); Rename opens a small sheet (`GET /wheels/{id}/rename`, saved with `POST /wheels/{id}`, which answers `sheetClose` and swaps the title out of band). `?hl=<shade_id>` highlights every slot whose stack contains that shade
   and scrolls to the first (`#slot-12`), which is what "Swatched on" links on the shade page use.
 - **Nail tips are drawn, never photographed (`tips.py`, `routes/tips.py`).** A tip, a mini tip, a
   builder layer tip and the preview on the shade page are an `<img>` of a 102×168 SVG that CSS
@@ -760,11 +770,24 @@ auth gate → routes.
   A stack goes on top of the last opaque layer (the ones below are covered); a jelly tints what is
   below; a topper or a clear base coat adds only its finish, so "One-Coat Black + Flakie Holo Taco"
   is flakes on black. With nothing opaque below, layers go on a sheer nude, so a lone topper shows.
-  Shade rows, the shelf, picker results and the wishlist keep the bottle photo: they identify bottles.
-- **Tip colour on the shade page:** a "Tip colour" card with the drawn tip, an `<input type="color">`
-  prefilled with the effective colour, Save and (when set) Reset. `POST /shades/<id>/tip-colour`
+  Every list shows tips (shade rows, the Home shelf, picker results, the wishlist, bottle groups); the
+  bottle photo is kept only in the shade page's strip and the lookup result card.
+- **The ring at small sizes** (`_mini_ring.html`, the same `.slot` and `.tip` CSS with `--ring`,
+  `--slot-h` and `--rail` set per size, tips only, nothing to tap): `.ring-home` is 200px (radius 78,
+  tips 20 by 32) and links to the wheel from Home with "Holos, 13 of 20"; `.ring-mini` is 72px (radius 28,
+  tips 9 by 14) in front of each wheel in the Wheels list. A tip is never wider than its pitch on the ring,
+  so a 40-slot wheel gets narrower tips instead of overlapping ones. Home shows the wheel whose saved or
+  draft swatch changed last (`wheels.most_recent`; the newest wheel when none has a swatch, a ring of
+  unpainted tips and "No wheels yet" when there is no wheel). Opening a wheel is not recorded.
+- **Tip colour on the shade page:** a quiet "Tip colour" disclosure at the foot (the drawn tip, where the
+  colour came from, a chevron) that opens an `<input type="color">`
+  prefilled with the effective colour, Save and (when set) Reset (open by itself after a 422). `POST /shades/<id>/tip-colour`
   takes `hex` (`#rrggbb`, else 422 with the page) or `reset=1`, answers 303 to the shade and writes
   only `swatch_override_hex`.
+- **The Wheels list** has the "+" in the title row (a `<details>` summary pulled up into it; it opens
+  the create form under the title and turns into ×; open by itself after a failed create) and a grouped list
+  of wheels, each a mini ring, the name and "13 of 20, 2 drafts". With no wheel the page is the unpainted ring,
+  "No wheels yet", one line and the form.
 - **Tag page `/wheels/<id>/tag`:** the full URL with a Copy button, the QR code, and the NFC
   Tools steps (Write → Add a record → URL/URI → paste → Write; Web NFC writing does not exist
   on iPhone). Shown right after a wheel is created.
@@ -874,7 +897,7 @@ Operations on a stack id are refused (409) unless the stack is a draft that some
   `/?source=pwa`, `scope` `/`, `display` `standalone`, background and theme colours, icons
   192 and 512 (plus a maskable 512). `<link rel="apple-touch-icon">` (180 px PNG) and the
   `apple-mobile-web-app-*` meta tags are in `base.html` because iOS ignores the manifest icons.
-  The mark is one holographic nail tip on plum (`static/icons/logo.svg`, docs/VISUAL.md 10). The
+  The mark is one holographic nail tip on plum (`static/icons/logo.svg`, docs/VISUAL.md 11). The
   tab icon is `favicon.svg` (the nail without gloss, on a rounded plum tile; no style element and no
   media query) with `favicon-32.png` as the fallback link. The PNGs (180 apple-touch, 192 and 512
   rounded, 512 maskable, 32 favicon) are committed and drawn from the two SVGs by
@@ -882,7 +905,7 @@ Operations on a stack id are refused (409) unless the stack is a draft that some
   icon's plum so the splash screen is the icon on its own ground, its `theme_color` the light page
   colour; the page's two `theme-color` metas follow the colour scheme.
 - `GET /sw.js` is served from the root so its scope is `/`, with `Cache-Control: no-cache`. It
-  has three jobs: precache `/offline`, `app.css`, `htmx.min.js`, `register-sw.js`, `chrome.js`, the
+  has three jobs: precache `/offline`, `app.css`, `htmx.min.js`, `register-sw.js`, `chrome.js` (the stuck search bar, the filter panel's Show button), the
   icon sprite, `favicon.svg`, and the 32, 180 and 192 px icons into
   `polished-static-<version>`; serve `/static/*` cache-first (templates append `?v=<version>`,
   so a release changes the URLs); answer a failed navigation with `/offline`. It never caches
@@ -945,13 +968,14 @@ builds it.
 
 | Method | Path | Purpose | Response | Stage |
 |---|---|---|---|---|
-| GET | `/` | Home: search field and links; stage 4 adds counts and recent bottles, stage 5 the Scan button | full page | 3 |
+| GET | `/` | Home: large title with the icon, search, the most recently touched wheel as a 200px ring, recent bottles as tips, one line of counts as links, a short grouped list (Browse all shades, Toppers, New and in stock, More) | full page | 3 |
+| GET | `/more` | Add a shade by hand, Catalog sync, Learned codes, and Sign out under "Signed in as …" | full page | 2b |
 | GET | `/search` | Typeahead rows. Params `q`, `ctx` (`home`, `stack`, `learn`), `filter` (`owned/toppers/all`), `stack_id`, `kind`+`value` for `learn` (422 without a valid code). Row action depends on `ctx`; `home` in stage 3, `learn` in 5, `stack` in 7. Always rows only (the page that asked is on screen), nothing for an empty query. `home` adds a "Look up “259” as a code" link when `q` is all digits or a P code | partial | 3 |
 | GET | `/shades` | Browse list with filters (section 6) | full page; P = rows + Load more | 3 |
 | GET | `/shades/{id}` | Detail: images, tags, price/status, product link; stage 4 adds bottles and wishlist, stage 6 "Swatched on" | full page | 3 |
 | GET | `/shades/new` | Manual shade form (gifted non-catalog bottle) | full page / P | 4 |
 | POST | `/shades` | Create manual shade (title, kind) | 302 to the shade | 4 |
-| GET | `/wheels` | The Wheels tab. A placeholder page ("Wheels are coming soon", in `routes/home.py`) until the wheel pages exist; the wheels router replaces it | full page | design |
+| GET | `/wheels` | The Wheels tab (section 13.5) | full page | design |
 | GET | `/sync` | Last runs, counts, Sync now | full page | 2 |
 | POST | `/sync/run` | Start a manual run (409 running, 429 cooldown) | P status | 2 |
 | GET | `/sync/status` | Status box; polls every 2 s while running | P | 2 |
@@ -1006,7 +1030,7 @@ carry the shade page's action bar as an out-of-band copy when `ctx=shade`, becau
 
 | Method | Path | Purpose | Response | Stage |
 |---|---|---|---|---|
-| GET | `/lookup` | Scan button, photo button, text field, result area; `?q=` resolves without JavaScript, `?scan=1` opens the camera | full page | 5 |
+| GET | `/lookup` | Viewfinder, one text field, "Take a photo instead", result area, Learned codes; `?q=` resolves without JavaScript, `?scan=1` opens the camera | full page | 5 |
 | GET | `/lookup/resolve` | `q`, `via=scan/typed` → `match`, `suggestion`, `unknown_code`, `unknown_printed`, `invalid_code`, `results` (section 7.2) | partial | 5 |
 | POST | `/identifiers` | Learn `kind` (`gtin`/`printed`), `value`, `shade_id`; a known code keeps its shade and says so | P "Saved" + the match with "+ Add bottle" | 5 |
 | GET | `/identifiers` | Learned mappings | full page | 5 |
@@ -1021,9 +1045,10 @@ carry the shade page's action bar as an out-of-band copy when `ctx=shade`, becau
 
 | Method | Path | Purpose | Response | Stage |
 |---|---|---|---|---|
-| GET | `/wheels` | Wheels (archived behind a toggle), new-wheel form | full page | 6 |
+| GET | `/wheels` | Wheels with a mini ring each (archived behind a row), new-wheel form behind the "+" | full page | 6 |
 | POST | `/wheels` | Create (name, slot_count default 20) | 302 `/wheels/{id}/tag` | 6 |
 | GET | `/w/{slug}` | The wheel page; NFC and QR target; `?hl=<shade_id>` | full page | 6 |
+| GET | `/wheels/{id}/rename` | The rename sheet (404 for no such wheel) | P sheet | 2b |
 | POST | `/wheels/{id}` | Rename | P header | 6 |
 | POST | `/wheels/{id}/archive` | `archived=0/1` | 302 | 6 |
 | GET | `/wheels/{id}/tag` | URL, Copy, QR, NFC Tools steps | full page | 6 |
@@ -1432,6 +1457,46 @@ carry the shade page's action bar as an out-of-band copy when `ctx=shade`, becau
       this bottle" in the sheet; its `<h2>Bottles</h2>` section titles and its "Past bottles" heading are
       untouched. `.group-head` (tip, name, link) is the bottle list's shade head and could serve the shade
       list. `.sheet-quiet` is the place for a sheet's secondary actions.
+
+82. **Run 2b: Home, Wheels, wheel page, shade detail, shade rows, filter panel, lookup** (advice section 3; with
+    this the swatch-book overhaul is complete and VISUAL.md is rewritten from the built result). Where it departs
+    from the advice or the brief:
+    - **Home** has no "last opened" wheel: the database does not record opens and a read should not write, so it
+      shows the wheel whose saved or draft stack was updated last (`wheels.most_recent`, no migration). The
+      ring is the wheel page's own CSS at 200px; the whole block links to the wheel. The icon tile has the
+      `--mat` ring so plum does not vanish into plum in dark. The stat block is one line of three links ("9
+      bottles, 8 shades, 6 wished", hidden while all three are zero), the big "Scan a bottle" button left (the
+      camera in the search field and the Bottles tab remain) except in the no-bottles empty state, which is one
+      line and that button. "Add a shade by hand", "Catalog sync", "Learned codes" and Sign out moved to a new
+      `GET /more`; Home keeps "More ›". The shelf heading stays "Recent bottles" (it is the latest added, not
+      what she wore). Tests that read the old stat block or "Signed in as" on `/` now read the line and `/more`.
+    - **Wheels list:** the "+" is a `<details>` summary in the title row (no JavaScript); rows show a 72px ring of
+      the wheel's real tips and "13 of 20, 2 drafts" ("swatched" is dropped; the wheel page still says it in
+      its label). The empty state is the unpainted ring (12 tips), a line and the form.
+    - **Wheel page:** ring, tips and hub were already as the advice says (150px radius, 38 by 62 tips, hairline
+      rail, hub number and "of N"); a tip is now capped at its pitch (`min()` in `.tip`), a no-op up to 24
+      slots. "This wheel" is a quiet row at the foot; **Rename moved into a sheet** (`GET /wheels/{id}/rename`)
+      because an inline field cannot sit in a row of three actions; the old "Renamed." status is gone, the
+      sheet closes and the title changes. The slot list kept the number before the tip (as in the advice's
+      wireframe).
+    - **Shade rows** put the name and price on one line, the heart inline after the name, the status word first
+      in the subhead and "×N" under the price; the "Owned ×N" pill and the row-flags line are gone. In `/search`
+      results and the learn picker the rows are the same.
+    - **Shade detail:** tip-l beside the title; price, "Owned ×N" (plain text now, no pill) and the status on one
+      line; Finish, Colour and Collections are a quiet list (label over outlined chips, not three section
+      titles); "Swatched on" rows start with the stack's composite tip (`_detail_context` loads the layers);
+      the Tip colour card is a closed disclosure at the foot (supersedes 79's card layout, not its route).
+    - **Filter panel:** shut on load even with filters active (it covered the results when Home's "Toppers"
+      opened it; the badge counts the filters; supersedes the open-when-filtered rule), no shadow in dark (a 1px
+      ring), and a sticky bar with "Clear all" and one filled "Show N shades" that closes the panel
+      (`[data-close-details]` in `chrome.js`; `_filter_show.html` is swapped out of band with the count).
+    - **Lookup:** the scanner is no longer full screen. The `<dialog id="scanner">` is non-modal, laid over a 4:3
+      viewfinder at the top of the page, so the camera is the first thing and the field is below it; `scanner.js`
+      calls `show()` instead of `showModal()`, handles Esc itself, and the status line is the caption under the
+      viewfinder. `body:has(dialog[open])` scroll lock is now `dialog.sheet`. The result card
+      (`_result_card.html`) puts the bottle photo (72 by 96) beside the shade's tip-l; both smoke tests are
+      unchanged and pass. Supersedes 33's "full-screen".
+    - Wheel list "mini ring of dots" and the "This wheel" group (55) are superseded.
 
 ## 15. Home-ops manifests
 

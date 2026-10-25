@@ -37,24 +37,14 @@
   {% endfor %}
 </div>
 {% include "_slot_list.html" %}
-<h2 class="section-title">This wheel</h2>
-<ul class="group wheel-actions">
-  <li><a class="group-link" href="/wheels/{{ wheel.id }}/tag">Tag and QR code{{ icon("chevron-right") }}</a></li>
-  <li>
-    <form class="rename-form" method="post" action="/wheels/{{ wheel.id }}" hx-post="/wheels/{{ wheel.id }}" hx-swap="none">
-      <label class="visually-hidden" for="rename">Wheel name</label>
-      <input id="rename" name="name" value="{{ wheel.name }}" maxlength="60" autocomplete="off" enterkeyhint="done">
-      <button type="submit" class="btn btn-text">Rename</button>
-    </form>
-    <p id="rename-status" class="rename-status" role="status"></p>
-  </li>
+<nav class="wheel-foot" aria-label="This wheel">
+  <a class="btn btn-text" href="/wheels/{{ wheel.id }}/tag">Tag and QR code</a>
+  <button type="button" class="btn btn-text" hx-get="/wheels/{{ wheel.id }}/rename" hx-target="#sheet-body" hx-swap="innerHTML">Rename</button>
   {% if not wheel.archived %}
-  <li>
-    <form method="post" action="/wheels/{{ wheel.id }}/archive">
-      <input type="hidden" name="archived" value="1">
-      <button type="submit" class="btn btn-text group-button" hx-post="/wheels/{{ wheel.id }}/archive" hx-include="closest form" hx-confirm="Archive this wheel? Its tag keeps working and you can restore it.">Archive wheel</button>
-    </form>
-  </li>
+  <form method="post" action="/wheels/{{ wheel.id }}/archive">
+    <input type="hidden" name="archived" value="1">
+    <button type="submit" class="btn btn-text" hx-post="/wheels/{{ wheel.id }}/archive" hx-include="closest form" hx-confirm="Archive this wheel? Its tag keeps working and you can restore it.">Archive</button>
+  </form>
   {% endif %}
-</ul>
+</nav>
 {% endblock %}

@@ -7,3 +7,8 @@ for (const bar of document.querySelectorAll(".search-bar")) {
     bar.classList.toggle("is-stuck", !entry.isIntersecting);
   }).observe(sentinel);
 }
+
+// A [data-close-details] button dismisses the <details> panel it sits in (the shade filters).
+document.addEventListener("click", (event) => {
+  event.target.closest("[data-close-details]")?.closest("details")?.removeAttribute("open");
+});

@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon with context %}
+{% set tab = "home" %}
+{% block title %}More | Polished{% endblock %}
+{% block content %}
+<a class="back" href="/">{{ icon("chevron-left") }}Home</a>
+<header class="page-head">
+  <h1 class="title">More</h1>
+</header>
+<ul class="group">
+  <li><a class="group-link" href="/shades/new">Add a shade by hand{{ icon("chevron-right") }}</a></li>
+  <li><a class="group-link" href="/sync">Catalog sync{{ icon("chevron-right") }}</a></li>
+  <li><a class="group-link" href="/identifiers">Learned codes{{ icon("chevron-right") }}</a></li>
+</ul>
+{% if user %}
+<form class="more-account" method="post" action="/auth/logout">
+  <p class="footnote muted">Signed in as {{ user.name }}.</p>
+  <button type="submit" class="btn btn-secondary btn-block">Sign out</button>
+</form>
+{% endif %}
+{% endblock %}

@@ -70,6 +70,7 @@ def _list_page(
 ) -> Response:
     context = {
         "cards": _cards(conn, archived),
+        "ghost": wheels.unpainted_ring(),
         "archived": archived,
         "archived_count": len(wheels.list_wheels(conn, True)),
         "values": values or {},
@@ -134,6 +135,12 @@ def wheel_page(request: Request, conn: Conn, slug: str, hl: str = ""):
     return render(request, "wheel.html", context)
 
 
+@router.get("/wheels/{wheel_id}/rename")
+def rename_sheet(request: Request, conn: Conn, wheel_id: int):
+    """The rename form as a sheet, opened from the wheel page."""
+    return render(request, "_wheel_rename.html", {"wheel": _wheel(conn, wheel_id)})
+
+
 @router.post("/wheels/{wheel_id}")
 def rename_wheel(request: Request, conn: Conn, wheel_id: int, name: Annotated[str, Form()] = ""):
     wheel = _wheel(conn, wheel_id)
@@ -145,7 +152,9 @@ def rename_wheel(request: Request, conn: Conn, wheel_id: int, name: Annotated[st
         return response
     if not is_partial_request(request):
         return RedirectResponse(f"/w/{wheel['slug']}", status_code=302)
-    return render(request, "_wheel_name.html", {"wheel": _wheel(conn, wheel_id)})
+    response = render(request, "_wheel_name.html", {"wheel": _wheel(conn, wheel_id)})
+    response.headers.update(SHEET_CLOSE)
+    return response
 
 
 @router.post("/wheels/{wheel_id}/archive")

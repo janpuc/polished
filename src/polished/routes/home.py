@@ -5,7 +5,7 @@ from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
-from .. import bottles, identifiers, shades, wishlist
+from .. import bottles, identifiers, shades, wheels, wishlist
 from ..db import get_conn
 from ..gtin import is_numeric
 from ..web import render
@@ -19,13 +19,23 @@ Conn = Annotated[sqlite3.Connection, Depends(get_conn)]
 @router.get("/")
 def home(request: Request, conn: Conn):
     total = conn.execute("select count(*) from shade").fetchone()[0]
+    wheel = wheels.most_recent(conn)
     context = {
         "shade_count": total,
         "counts": bottles.counts(conn),
         "wishlist": wishlist.summary(wishlist.items(conn)),
         "recent": bottles.recent(conn),
+        "wheel": wheel,
+        "tiles": wheels.slot_grid(conn, wheel) if wheel else wheels.unpainted_ring(),
     }
     return render(request, "home.html", context)
+
+
+@router.get("/more")
+def more(request: Request):
+    """What Home keeps out of the way: adding a shade by hand, catalog sync, learned codes and
+    signing out."""
+    return render(request, "more.html")
 
 
 @router.get("/search")

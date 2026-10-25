@@ -89,6 +89,22 @@ def list_wheels(conn: sqlite3.Connection, archived: bool = False) -> list[dict]:
     return [dict(r) for r in rows]
 
 
+def most_recent(conn: sqlite3.Connection) -> dict | None:
+    """The wheel (not archived) whose saved or draft swatch was touched last, for the home page;
+    with no swatches anywhere, the newest wheel. None when there is no wheel. Carries `filled` and
+    `drafts` like list_wheels."""
+    row = conn.execute(
+        "select w.id from wheel w"
+        " left join wheel_slot ws on ws.wheel_id = w.id"
+        " left join stack st on st.id in (ws.stack_id, ws.draft_stack_id)"
+        " where w.archived = 0 group by w.id"
+        " order by max(st.updated_at) desc, w.created_at desc, w.id desc limit 1"
+    ).fetchone()
+    if row is None:
+        return None
+    return next(w for w in list_wheels(conn) if w["id"] == row["id"])
+
+
 def rename(conn: sqlite3.Connection, wheel_id: int, name: str) -> None:
     """Changes the name only; the slug, and with it the tag, stays."""
     conn.execute("update wheel set name = ? where id = ?", (clean_name(name), wheel_id))
@@ -180,6 +196,11 @@ def slot_grid(conn: sqlite3.Connection, wheel: dict) -> list[dict]:
     summary and layers (with shade title, the tip fields of tips.TIP_FIELDS, coats, label), note and painted_on.
     Empty slots have no row and come back empty."""
     return _tiles(conn, wheel, range(1, wheel["slot_count"] + 1))
+
+
+def unpainted_ring(count: int = 12) -> list[dict]:
+    """Tiles of a ring with nothing on it, for the home page before the first wheel exists."""
+    return [{"position": position, "filled": False} for position in range(1, count + 1)]
 
 
 def slot_tile(conn: sqlite3.Connection, wheel: dict, position: int) -> dict:

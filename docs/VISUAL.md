@@ -1,136 +1,200 @@
 # polished: visual design
 
-Written by the design advisor (Fable, claude-fable-5-1) on 2026-10-25 from the frontend-design and
-apple-design skills in `.pi/skills/`, against screenshots of stages 1-4. Decisions taken by the
-orchestrator after it: the tab bar has five tabs (Home, Shades, Bottles, Wheels, Wishlist) because
-"what do I own" is a primary question and Bottles also holds the purchase history; the wheel page is
-the ring plus the list (DESIGN.md section 9 follows). Shopify `width`/`height`/`crop=center`
-thumbnails were verified on a real image the same day. DESIGN.md wins on behaviour; this file wins
-on looks.
+The look of the app as built, from the overhaul of 2026-10-25 (runs 1, 2a and 2b). It replaces the first
+VISUAL.md ("a pearl gallery", Fraunces, raspberry accent, bottle photos in every row). The direction is
+Fable's (`docs/advice/fable-swatch-book-2026-10-25.md`, with the critique that led to it); this file records
+what was built and where it departs from that report (DESIGN.md section 14, items 41 and 81 to 82).
+DESIGN.md wins on behaviour; this file wins on looks. Everything lives in `static/css/app.css`.
 
 ## 1. Concept
 
-**"A pearl gallery for loud bottles, and one wheel of nail tips."** Every Holo Taco photo is already shouting, so the app is the quiet wall: cool pearl in light, oil-slick plum in dark, hairlines instead of boxes, and type with a boutique voice. The one place boldness is spent is the **nail tip**: the swatch wheel renders as an actual ring of twenty tips, and the only shimmer in the app is a holographic foil that lives on tip edges (empty slots, highlight ring, save flash, logo). Nothing else shimmers.
+**"The swatch book."** A nail tech's colour chart: every shade in the app is a painted tip, laid on a quiet
+matte board, the logo's dark plum at night. The chrome is ink and board only, so the colour comes from the
+tips and nowhere else. Pink means one thing: wanted. The foil is for tips and the logo only.
 
-Review against defaults, and what changed: the first pass had a cream ground and stat cards. Cream went to a cool pearl (`#FAF7FB`, violet-leaning, because polish photography is cool-lit), cards went to plain numbers on hairlines, every middle dot became a sentence, the chip kit left the list rows, and the accent stayed raspberry because that is Holo Taco's own vocabulary, not a default.
+What makes it this app and not a Shopify companion: the content is drawn. `tips.py` paints a nail from a
+shade's colour and finish tags (DESIGN.md section 9); the same drawing is the row's identity, the Home shelf,
+the builder's head and the ring of the wheel. Bottle photos are kept only where the bottle is the point: the
+strip on a shade page and the lookup result.
 
 ## 2. Tokens
 
-Light: `--bg #FAF7FB` pearl page, `--surface #FFFFFF` sheets and grouped lists, `--fill #F1EAF3` pressed rows and tinted controls, `--ink #1F1526` text, `--ink-2 #6F6277` secondary, `--line #E7DEEA` hairlines, `--accent #A8246F` raspberry (7:1 on white) for actions and the heart, `--accent-tint rgba(168,36,111,.12)`, `--ok #1E7A4C`, `--warn #9A5A00`, `--bad #B3261E`.
+Light and dark follow the system setting (`color-scheme: light dark`, two `theme-color` metas). Hue 335.
 
-Dark: `--bg #120C16`, `--surface #1B1320`, `--fill #261C2B`, `--ink #F4ECF5`, `--ink-2 #AFA2B5`, `--line #33283A`, `--accent #F06BB0`, `--accent-on #1A0F1F`, `--ok #5FCF95`, `--warn #F0B05A`, `--bad #FF8A80`. Set `color-scheme` and both `theme-color` metas to match.
+| Role | Light | Dark |
+|---|---|---|
+| `--bg` the board | `#f6f2f5` | `#160b14` |
+| `--surface` grouped lists, sheets, inputs | `#fdfbfc` | `#20131d` |
+| `--fill` controls at rest, empty tips | `#ece5ea` | `#30212c` |
+| `--fill-2` pressed, selected track | `#e3dbe1` | `#3a2b36` |
+| `--line` hairline | `#ddd5db` | `#372834` |
+| `--line-2` input and chip border | `#c5bac2` | `#4d3c49` |
+| `--ink` | `#261322` | `#f7eff5` |
+| `--ink-2` secondary text (6.0:1 and 8.2:1) | `#6b5666` | `#b7a4b2` |
+| `--ink-3` icons and large text only | `#8c7a87` | `#92808d` |
+| `--primary` / `--primary-on` | `#381531` / `#fff` | `#f7eff5` / `#280c23` |
+| `--heart` | `#d83486` | `#ff77b4` |
+| `--ok`, `--warn`, `--bad` | `#007840`, `#975800`, `#be222a` | `#61da92`, `#f9b64f`, `#ff7f7f` |
+| `--mat` image outline | `oklch(0 0 0 / .1)` | `oklch(1 0 0 / .1)` |
+| `--foil` | the conic gradient of the logo (unchanged) | same |
 
-Holo foil: `--foil: conic-gradient(from 200deg, #FFB3C7, #FFE29A, #B7F5C8, #9FD8FF, #D3B4FF, #FFB3C7)`. Used as a 2 to 3px ring (via `mask` or a padded pseudo-element) on empty nail tips, the `?hl` ring, the save flash, the empty-state glyph and the logo. Never on text, buttons, backgrounds, chips or dividers.
+Rules:
+- `--primary` is the cap of a Holo Taco bottle. **One filled action per view.** Selected (segment, level chip,
+  active tab) is the `--primary` fill with `--primary-on`, or ink with the filled icon for the tab. Links and
+  text buttons are `--ink` at 600; nothing is coloured to say "tap me".
+- Pink is the heart and the wishlist count, nothing else. `--bad` is a sold-out word, an error and a
+  destructive action; `--warn` is retired or retiring. Status words are text colour only, never a fill.
+- Foil only on tips: the `?hl` ring, the save sweep, the logo. Never on chrome or empties.
+- No tinted notice box: a note is plain `--ink-2` text; an error is `--bad` text beside the field.
+- `prefers-contrast: more` darkens `--line`, `--line-2` and `--mat` and outlines groups.
 
-Type: two families. **Fraunces** (OFL, github.com/undercasetype/Fraunces, or Google Fonts) as a single variable woff2 subset to latin with `pyftsubset` (about 60 KB), served from `/static/fonts/`, `font-display: swap`, precached by the service worker. It carries shade names and page titles only, set with `font-variation-settings: "SOFT" 50, "opsz" 24`. Everything else is `system-ui` (SF Pro on iPhone: optical sizes, Dynamic Type, zero bytes), per the Apple skill.
+## 3. Type
 
-| Role | Face | Size/leading | Weight | Tracking |
-|---|---|---|---|---|
-| Large title | Fraunces | 34/38 | 600 | -0.015em |
-| Shade title (detail) | Fraunces | 28/32 | 600 | -0.01em |
-| Row name, stack summary | Fraunces | 19/23 | 500 | 0 |
-| Headline, buttons | system | 17/22 | 600 | 0 |
-| Body | system | 17/22 | 400 | 0 |
-| Subhead (status, price) | system | 15/20 | 400 | 0 |
-| Caption, chips | system | 13/16 | 500 | +0.01em |
-| Stat number | system | 28/32 tabular | 600 | -0.01em |
+SF Pro only (`system-ui`), no webfont (nothing to download, Dynamic Type and optical sizes for free).
+`font-optical-sizing: auto`, `tabular-nums` on prices, counts and the hub, `text-wrap: balance` on titles
+and `pretty` on paragraphs. The display moment belongs to the tips, not to letterforms.
 
-Spacing scale 4, 8, 12, 16, 24, 32, 48. Page gutter 16. Row padding 12 vertical. Section gap 32.
+| Role | Size/leading | Weight | Tracking |
+|---|---|---|---|
+| Large title (page, Home) | 34/41 | 700 | -0.02em |
+| Shade title (detail), sheet title | 28/34 | 700 | -0.02em |
+| Section title | 22/28 | 600 | -0.01em |
+| Row name, headline, buttons | 17/22 | 600 | 0 |
+| Body | 17/22 | 400 | 0 |
+| Subhead (finishes, status, price in the meta line) | 15/20 | 400 | 0 |
+| Footnote (dates, notes, "×2") | 13/18 | 400 | 0 |
+| Caption (tab labels, layer labels) | 12/16 | 500 | 0 |
+| Hub number | 44/48 | 700, tabular | -0.03em |
 
-Radii, by hierarchy: pills 999 (chips, segmented controls, grabber); 10 small thumbs; 12 row thumbs; 14 buttons and inputs; 18 grouped lists, bottle cards, the checkout box, gallery images; 24 sheet top corners; nail tips use their own shape (section 5).
+No eyebrow above a heading, no caps labels, no middle dots, no spaced dashes.
 
-Materials and shadows. No shadows on cards; rows separate with hairlines. Tab bar and sticky search: `rgba(250,247,251,.78)` light, `rgba(18,12,22,.72)` dark, `backdrop-filter: blur(20px) saturate(1.6)`, 1px top edge `rgba(31,21,38,.08)`. Sheet: opaque surface, scrim `rgba(31,21,38,.45)` light and `rgba(0,0,0,.6)` dark, shadow `0 -12px 48px rgba(31,21,38,.22)`. Every image gets a mat ring `box-shadow: inset 0 0 0 1px rgba(31,21,38,.10)` (white at .12 in dark), which is what stops loud photos from bleeding into the page. Under `prefers-reduced-transparency` the materials go solid.
+## 4. Space, radii, materials
 
-## 3. App chrome
+Spacing 4, 8, 12, 16, 24, 32, 48; gutter 16 (`--gutter`); inside a group 8, between groups 24, between
+sections 32 with 12 under the heading; row padding 12 by 16. Tap targets are 44pt (`--tap`); `.btn` is 50.
 
-Bottom tab bar, 49pt plus `safe-area-inset-bottom`, four tabs: Home, Shades, Wheels, Wishlist. Icons are an SVG sprite at `/static/icons/ui.svg` used via `<use>`; labels in caption size; active tab in accent. The top text bar goes away. Each page opens with an iOS-style large title, left-aligned, in Fraunces; pages that need a back link get a 44pt row above it with a chevron and the parent name. Scan is a 44pt camera button at the trailing edge of the search field on Home and Shades, plus the big "Scan a bottle" button on Home. The search field is sticky under the status bar and becomes material only when stuck (a one-line IntersectionObserver sentinel). Sign out moves to the Home footer. Bottles is reached from the Home numbers and from each shade page.
+Radii (concentric): tips have their own shape (`--r-tip`, `50% 50% 38% 38% / 62% 62% 30% 30%`); inputs, the
+search field, chips and the filter button 10; buttons 12; a group 16 with 3px padding and a 1px transparent
+border so a row inside is 12; the viewfinder 16; the sheet's top 20; 999 only for the segmented control, the
+badge and the grabber.
 
-## 4. Components
+Materials: the tab bar, the stuck search bar and the sheet footer are translucent (`--material`,
+`blur(20px) saturate(1.6)`, a 1px edge; solid under `prefers-reduced-transparency`). A grouped list is
+`--surface` with a 1px ring (`--ring-edge`, black at .06 in light, white at .08 in dark; a transparent
+border under it keeps the edge in forced-colors). No card shadows. The two floating surfaces: the sheet
+(`--sheet-shadow` over a scrim) and the filter panel (`--panel-shadow`: a soft drop in light, **only a 1px
+ring in dark**, since a shadow on near-black is mud). Every content image has a 1px `--mat` outline inset by
+1px.
 
-**Shade row.** Thumbnail 48×64 from the CDN as a true crop, not a CSS zoom: extend `thumb` to emit `width=144&height=240&crop=center`, which keeps the bottle and discards most of the backdrop. Radius 12, mat ring. Name in Fraunces 19. Second line in subhead: finishes as plain words ("Glitter, holographic"), then price, tabular. Status appears only when it is news: sold out or retiring in `--bad`/`--warn`; in stock says nothing. Owned shows a small ink pill "Owned ×2" in `--fill`; wishlisted shows an accent heart.
+## 5. Tips, the ring and the wheel
 
-```
-┌────┐  8-Bit Blues
-│ ▓▓ │  Glitter, holographic      $15.50
-│ ▓▓ │  Owned ×1  ♥
-└────┘ ──────────────────────────────────
-```
+**Tips** (`_tip.html`, four sizes): `tip-s` 28 by 46 (inline, the bought sheet, Swatched on), `tip-m` 40 by
+66 (every list row), `tip-l` 56 by 92 (the Home shelf, the shade page), `tip-xl` 72 by 118 (the builder's
+head). Each is the painted SVG clipped to the tip shape, with a 1px `--mat` inset, a soft gloss from the top
+left and a 1px highlight at the bottom right. A shade with no colour yet is drawn neutral.
 
-**Chips** (detail page only): pill, 36pt tall, `--fill` ground, ink text, caption weight; selected in `--accent-tint` with accent text. **Buttons**: primary accent fill, 50pt, radius 14, white 17/600, `:active` `scale(.97)` over 100ms; secondary is `--accent-tint` with accent text, no border; tertiary is plain accent text. Icon buttons are 44×44 with `aria-label`.
+**The ring** (`.ring`, `wheel.html`): `min(100%, 390px)` square, radius 150px (it gives way to the gutter
+under 400pt), tips 38 by 62 turned to their angle with slot 1 at twelve o'clock, a 1.5px `--line-2` hairline
+circle 22px inside the radius that the tips sit on like the plastic ring of a real wheel. An empty slot is a
+`--fill` tip with its number and no foil; a filled one is the stack's composite tip; a draft shows an ink dot
+at the stem; `?hl` puts the foil ring on matching tips and dims the rest to 55 percent. The hub holds the
+count only, with "of 20" as a footnote under it. Tapping a tip lifts it (`scale 1.08`) before the sheet rises.
+Below the ring: "Swatches", a grouped list of the filled slots (number, composite tip at `tip-m`, summary,
+date only when it differs from the row above), and a quiet row at the foot: Tag and QR code, Rename, Archive.
 
-**Bottom sheet.** Opaque surface, top radius 24, a 36×5 grabber in `--line` 8pt from the top, title row with a text "Cancel" at the right, sticky footer with the material and the primary button, padding to the home indicator. Motion in section 7.
+**The ring at small sizes** (`_mini_ring.html`) is the same markup and CSS with other values of `--ring`,
+`--slot-h` and `--rail`: 200px on Home (radius 78, tips 20 by 32), 72px in the Wheels list (radius 28, tips
+9 by 14). Tips only, not tappable, never wider than their pitch.
 
-**Wishlist checkout box.** A tinted card (`--accent-tint`, radius 18): a 3-segment pill control for priority, the total in the stat style, "Open in Holo Taco checkout" primary, "Copy the list" tertiary, and the copyable names as a plain caption list with no border. Summary line above becomes prose: "4 shades, $61.00. 3 are in stock now for $46.00."
+## 6. Components
 
-**Home.** Large title with the 28px logo mark; search; a shelf: horizontal scroll of recent bottles as 72×96 crops with names under them; one numbers row (bottles, shades owned, on the wishlist) set as stat numbers over captions with hairlines, no boxes; a grouped list (surface, radius 18) of shortcuts with chevrons; footer "Signed in as Dev. Sign out".
+**Buttons.** Primary: `--primary` fill, 50pt, radius 12, 17/600, one per view. Secondary: `--fill`, ink text.
+Text: ink 600 on nothing, a `--fill` wash while pressed. Icon buttons are 44 by 44 with an `aria-label`. The
+heart on a shade page is an icon button beside "Add bottle": ink on `--fill`, `--heart` when wished.
+Press scales to .96 (150ms, `:not(:disabled)`); hover colours only under `@media (hover: hover)`.
 
-**Shade detail.** Image strip runs edge to edge, images 3:4 at 70vw, radius 18, snap, first image aligned to the gutter. Then title, a subhead row with price and any status, actions (Add bottle primary two-thirds, heart secondary one-third), bottles grouped list, chip rows for finish, colour, collection, and "Swatched on" rows linking to the wheel with `?hl=`.
+**Inputs and chips.** `--surface` with a `--line-2` border and radius 10; focus is a 2px ink outline. Chips
+(`.pick` checkboxes, `a.chip`) are outlined, 44pt tall, radius 10; selected is `--primary` with
+`--primary-on`. The segmented control is the one pill: a `--fill` track, the selected segment `--primary`.
+The search field is `--fill` with the camera button inside it; it is sticky and turns to material when stuck.
 
-**Empty states.** A 64px nail-tip outline stroked in foil, a headline, one line, one button. "No bottles yet. Scan the code under a bottle or add it from its shade page."
+**Rows.** A shade row is the tip at `tip-m`, then a grid: the name (17/600, one line, ellipsis) with a pink
+heart right after it when wished, the price at the trailing edge, and under them the status word (`--bad` or
+`--warn`, 600) with the finishes in `--ink-2`, and "×N" as a footnote under the price when owned. Hairlines
+start under the title, not under the tip. Bottle rows (`_bottle_card.html`) are plain rows of a group: P
+code, a footnote of when and how much, and a level glyph (a small bottle filled to the level in the shade's
+own colour) with its word, then a chevron; the row opens the edit sheet. Wishlist rows, slot rows and the
+Wheels list follow the same grid: tip or ring, name, trailing facts.
 
-## 5. The swatch wheel
+**Home.** The icon tile (36px, radius 9, a `--mat` ring so plum does not vanish into plum) and "Polished" as
+the large title; the search field; the most recently touched wheel as a 200px ring with "Holos, 13 of 20 ›"
+under it (the whole block is the link; with no wheel an unpainted ring and "No wheels yet, make one ›");
+"Recent bottles" as a shelf of `tip-l` with names under; one quiet line of links ("9 bottles, 8 shades, 6
+wished"); a grouped list of Browse all shades, Toppers, New and in stock, More. With no bottles the shelf is
+one line and one button, "Scan a bottle".
 
-A ring, because her wheel is a ring. Container `aspect-ratio: 1; width: min(100% , 360px)`; each slot `position: absolute` at the centre with `transform: rotate(calc(var(--i) * 18deg)) translateY(calc(-1 * var(--ring)))`, slot 1 at twelve o'clock, clockwise. `--ring` is 132px at 390pt (scales with viewport width minus gutters). The tip is 34×56 with `border-radius: 50% 50% 38% 38% / 62% 62% 30% 30%`, free edge outward; the button around it is 44×64 so the hit areas tile the ring at 42pt pitch. The hub (about 150px) holds the wheel name and "12 of 20 swatched".
+**Shades.** Title with a "+" , the search field and a filter button with a count badge, "372 shades", then
+rows. The filter panel is a sheet-like drop-down: segmented controls for Kind, Status and Mine, outlined
+chips for Finish and Colour, two selects, and a sticky bar with "Clear all" and the one filled "Show N
+shades".
 
-Filled tip: one SVG drawing of the whole stack (`/tips/stack/<id>.svg`, 102×168, `object-fit: cover`), never a photo: the colour of the polish with the look of its finish (creme gloss, jelly depth, shimmer dust, glitter stars, flakie chips, magnetic cat-eye, holographic sweeps, thermal gradient), topper over base the way it is painted, so a flakie topper over black is flakes on black. Mini tips (24×32), builder layer tips (32×44) and the shade-page preview use the single-shade drawing (`/tips/shade/<id>.svg`). Details in DESIGN.md section 9. Empty slot: the number in `--ink-2` on `--fill` with a 1.5px foil edge. Draft: an 8px accent dot at the stem. Highlight (`?hl`): matching tips get a 3px foil ring and the rest drop to 55 percent opacity. Below the ring, a plain list of filled slots with number, the summary in Fraunces and three 24×32 mini tips, so the stack can be read without squinting; both the ring and the list open the builder.
+**Shade detail.** The strip of the brand's photos runs edge to edge (3:4, 70vw, radius 16, snap). Under it
+`tip-l` beside the title, and on the line under the title the price, "Owned ×2" in ink 600 and the status
+word. "Add bottle" is the one filled action, the heart sits beside it. Then "Bottles" (a group), a quiet list
+of Finish, Colour and Collections (a 13px label over outlined chips), "Swatched on" rows led by the stack's
+tip, a closed "Tip colour" disclosure, and the store link and SKU as footnotes.
 
-```
-          (1)(2)
-      (20)      (3)
-    (19)  Holos   (4)
-   (18)  12 of 20  (5)
-    ...            ...
-```
+**Lookup.** The camera is first: a 4:3 viewfinder (radius 16) with a "Scan the barcode" button on an idle tile
+until the camera runs, a caption "Point at the barcode under the bottle", one field "Type the digits, a P code,
+or a name", "Take a photo instead" as a text action, the result, and a "Learned codes" row. A result is a
+group with the bottle photo (72 by 96) beside the shade's own `tip-l`, then the name, finishes and price.
 
-Section 9 of DESIGN.md changes from "4-column grid" to "ring plus list" in the same commit.
+**Sheets** (`<dialog>`): opaque `--surface`, top radius 20, a 36 by 5 grabber, a title row with a text
+"Cancel", a sticky footer with the translucent material and the one filled button, padding to the home
+indicator. Secondary actions are quiet text at the foot (`.sheet-quiet`), red only where the action destroys.
 
-## 6. The layer-stack builder
+**Empty states.** One line and one action; where a drawing helps it is the thing that will fill the space (the
+unpainted ring on Home and in Wheels, a nail outline in `--line-2` elsewhere), never foil.
 
-Sheet at `max-height: 92dvh`. Header: wheel name, "Slot 12" caption, Cancel. The live summary sits directly under it in Fraunces 19 and is the hero of the screen; it rerenders out of band as today. Layers are a vertical stack with a left rail: each row shows the layer label (Base, 2nd, Top) in caption, a 32×44 mini tip with that layer's crop, and the name; the rail draws a 2px line through the tips so the list reads as one painted nail, bottom to top. Controls go on a second line so everything stays 44pt on 390: a −/count/+ stepper as a pill (108pt wide), up and down icon buttons, remove at the trailing edge. Templates are a horizontal row of tinted pills: Over black, Copy from…, Same as last. Then the search field with the camera button, an Owned / Toppers / All segmented control, and compact result rows (40×52 thumbs) with a trailing "+" so adding is one obvious tap. Name and note live under a disclosure above a sticky Save.
+## 7. The layer-stack builder
 
-```
-Holos, slot 12                               Cancel
-One-Coat Black + Spirit Fingers ×2 + Flakie Holo Taco
-Base ▐▓▌ One-Coat Black
-     ( − 1 + )           ↑   ↓          ×
-2nd  ▐▓▌ Spirit Fingers
-     ( − 2 + )           ↑   ↓          ×
-Top  ▐▓▌ Flakie Holo Taco
-     ( − 1 + )           ↑   ↓          ×
-[Over black] [Copy from…] [Same as last]
-[🔍 Search shades or a P code            📷]
-(Owned)(Toppers)(All)
-▓ Absolutely Cooked                          +
-▓ Acid Drip                                  +
-Name and note ▾
-[ Save swatch ]
-```
+A sheet at `max-height: 92dvh`. Its head is the stack's composite tip (`tip-xl`) beside "Slot 3", the wheel name
+as a caption and Cancel, with the summary under them as body text; every layer edit appends the new
+composite over the old one and fades it in once loaded. Layers are a list on a 2px rail through their
+tips: label (Base, 2nd, Top), name, an iOS-style hairline stepper for coats, move arrows from three layers on,
+remove. Shortcuts (Over black, Copy from…, Same as last) are outlined chips that wrap. Then the search field
+with the camera button, an Owned / Toppers / All segmented control, result rows with a trailing "+", a
+disclosure for name and note, and the sticky "Save swatch".
 
-## 7. Motion
+## 8. Motion
 
-Four moments, all CSS, all on `transform` and `opacity`:
-- Sheet open: `translateY(100%)` to 0 over 380ms `cubic-bezier(.22,.9,.32,1)` (a critically damped spring near response 0.35), scrim fades 240ms. Close over 240ms with the mirrored curve `cubic-bezier(.68,0,.78,.1)`. Implemented with `@starting-style` and `transition-behavior: allow-discrete` on `dialog[open]` and `::backdrop`; browsers without it just show the sheet.
-- Layer added: the server marks the newest row `is-new`; it enters with opacity 0 and `translateY(-6px)` over 240ms, same curve.
-- Save: the out-of-band slot tile gets `is-saved`, and a foil ring sweeps once around the tip over 700ms, then settles to the normal state.
-- Press: buttons `scale(.97)` over 100ms on `:active`; rows fill with `--fill` on `:active` with no delay; `-webkit-tap-highlight-color: transparent`.
+Four moments, on `transform`, `scale` and `opacity`:
+- Sheet: `translateY(100%)` to 0 over 380ms `cubic-bezier(.22,.9,.32,1)`, back over 240ms with
+  `cubic-bezier(.68,0,.78,.1)`, the scrim fading with it (`@starting-style`, `allow-discrete`).
+- Press: `scale(.96)` over 150ms ease-out; rows wash to `--fill` at once.
+- A ring tip lifts to 1.08 before the sheet rises; a saved slot gets one foil sweep (700ms).
+- A new builder tip fades in over the old one; the "+" of the Wheels list turns to ×.
+Under `prefers-reduced-motion` there is no scale, slide or turn; the sheet fades over 150ms and the save ring
+shows still for a second. Transitions name their properties (never `all`).
 
-Under `prefers-reduced-motion`: every transform is removed and each moment becomes a 150ms opacity change; the save ring shows static for one second and fades.
+## 9. Copy
 
-## 8. Copy and voice
+Sentence case everywhere. Buttons name the result and keep their name ("Add bottle", "Save swatch"). Errors
+say what and how ("Coats must be 1 to 5."). Empty states are one line and one verb. Counts are plain
+("13 of 20, 2 drafts", "9 bottles"). Section headings are nouns she would say: Bottles, Swatches, Swatched on.
+"Wished" and "Owned ×2" are the two words for what she has and wants.
 
-Sentence case everywhere, no caps labels, no middle dots, no spaced dashes. Buttons name the result and keep their name: "Add bottle" then "Bottle added", "Save swatch" then "Swatch saved". Errors say what and how: "Coats must be 1 to 5." Empty states are one line and one verb. Loading ends with "…". Numbers keep a non-breaking space before units. Section headings are nouns the user would say: Bottles, Finish, Colour, Swatched on.
+## 10. Checklist (390 by 844, light and dark)
 
-## 9. Implementation order and checklist
+No lilac or pink fill anywhere except the heart. One filled button per screen. No serif glyph, no webfont
+request. Every list row shows a tip; no bottle photo outside the shade strip and the lookup result. Empty
+slots on the ring carry no foil; the `?hl` ring is visible in both modes. The hub number is tabular and
+centred. Chips are outlined and 44pt; the stepper is a hairline. The sheet clears the home indicator. The tab
+bar's active tab is ink, not pink. Nested radii are concentric (16, 3 padding, 12). Dark surfaces carry the
+ring, not a shadow. The reduced-motion run shows no sliding. The largest Dynamic Type size does not clip a
+row name. No console error, no request that leaves the server except Shopify's image CDN.
 
-1. Tokens, fonts and type scale; tab bar and large titles; remove the top bar. This alone changes the app's identity.
-2. Thumbnail crop in `thumb`, mat rings, new row layout, status and chips demoted.
-3. Buttons, segmented controls, inputs, badges.
-4. Sheet: grabber, radius, scrim, motion, sticky footer.
-5. Shade detail strip and sections. 6. Home shelf and numbers; wishlist box. 7. Logo and icon sprite. 8. Wheel ring and builder (stages 6 and 7 of PLAN.md), with the DESIGN.md edit.
-
-Screenshot checklist at 390×844, light and dark: thumbnails show bottles, not backdrops; no element shares a radius with a different tier; no bordered card except the sheet and grouped lists; nothing is green unless it is a success; no caps, no middle dots; every tappable thing measures 44pt; one serif role per screen (names and titles only); the foil appears only on tips; the sheet clears the home indicator; the `?hl` ring is visible in both modes; the reduced-motion run shows no sliding.
-
-## 10. Logo
+## 11. Logo
 
 Revised the same day after the first build read as a jelly bean at 180px: a bare capsule with a
 semicircle cap has no nail cues. The mark is now **a nail painted in holographic foil, overhanging a
@@ -151,10 +215,3 @@ stylised fingertip, on plum**. The source of truth is `src/polished/static/icons
 - Maskable 512: every meaningful part is inside the 80 percent safe circle (farthest point, the
   sparkle tip, is 37.7 units from the centre); the finger bleeds off the bottom by design.
 - No filters, no `<style>`, path data repeated instead of `<use>` so every rasteriser agrees.
-
-## Risks
-
-- Fraunces is a serif; if the implementer drifts the palette warm it becomes the generic editorial look. The pearl and plum tokens are the guard.
-- A 20-slot ring at 42pt pitch is at the edge of the 44pt guideline; the list below is the safety net and must ship with the ring.
-- `@starting-style` on dialogs needs iOS 17.5 or later; older devices get no sheet motion, which is acceptable.
-- Shopify `crop=center` behaviour on this CDN should be verified on one real image URL before building rows around it.

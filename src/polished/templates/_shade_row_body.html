@@ -1,16 +1,12 @@
-{# The inside of a shade row: painted tip, name, finishes and price, then only what is news
-   (sold out, retiring, added by hand, owned, on the wishlist). #}
+{# The inside of a shade row: painted tip, then the name (with the pink heart when it is wished
+   for) and the price on one line, and under it the status word, the finishes and the "×2" of
+   bottles owned. Colour is the tip's job: a status word is the only text colour in a row. #}
 {% from "_icons.html" import icon with context %}
 {% from "_tip.html" import tip %}
-  {% if ctx == 'result' and shade.hero_image_url %}<img class="thumb" src="{{ shade.hero_image_url|thumb(96, 128) }}" srcset="{{ shade.hero_image_url|thumb(96, 128) }} 2x, {{ shade.hero_image_url|thumb(144, 192) }} 3x" width="48" height="64" alt="" loading="lazy" decoding="async">{% elif ctx == 'result' %}<span class="thumb thumb-empty" aria-hidden="true"></span>{% else %}{{ tip(shade, "m") }}{% endif %}
-  <span class="row-body">
-    <span class="row-title">{{ shade.title }}</span>
-    <span class="row-sub"><span>{{ ((["topper"] if shade.is_topper else []) + shade.finishes[:3])|words }}</span>{% if shade.price_cents is not none %}<span class="price">{{ shade.price_cents|money }}</span>{% endif %}</span>
-    {% if shade.status is none or shade.status.key != 'available' or shade.owned_count or shade.wishlisted %}
-    <span class="row-flags">
-      {% if shade.status is none %}<span class="status status-manual">Added by hand</span>{% elif shade.status.key != 'available' %}<span class="status status-{{ shade.status.key }}">{{ shade.status.label }}</span>{% endif %}
-      {% if shade.owned_count %}<span class="pill">Owned ×{{ shade.owned_count }}</span>{% endif %}
-      {% if shade.wishlisted %}<span class="heart" role="img" aria-label="On the wishlist">{{ icon("heart") }}</span>{% endif %}
-    </span>
-    {% endif %}
+  {{ tip(shade, "m") }}
+  <span class="row-body row-shade">
+    <span class="row-title">{{ shade.title }}{% if shade.wishlisted %}<span class="heart" role="img" aria-label="On the wishlist">{{ icon("heart") }}</span>{% endif %}</span>
+    <span class="row-end price">{% if shade.price_cents is not none %}{{ shade.price_cents|money }}{% endif %}</span>
+    <span class="row-sub">{% if shade.status is none %}<span class="status status-manual">Added by hand</span>{% elif shade.status.key != 'available' %}<span class="status status-{{ shade.status.key }}">{{ shade.status.label }}</span>{% endif %}<span class="row-finish">{{ ((["topper"] if shade.is_topper else []) + shade.finishes[:3])|words }}</span></span>
+    <span class="row-end footnote">{% if shade.owned_count %}<span aria-label="Owned ×{{ shade.owned_count }}" role="img">×{{ shade.owned_count }}</span>{% endif %}</span>
   </span>

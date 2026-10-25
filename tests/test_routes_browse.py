@@ -94,8 +94,10 @@ def test_filter_form_keeps_the_current_choices(seeded):
         'value="trap"',
     ):
         assert fragment in html
-    assert '<details class="filter-toggle" open>' in html
-    assert '<details class="filter-toggle">' in client.get("/shades").text
+    # The panel stays shut over the results; the badge on its button counts the active filters.
+    assert '<details class="filter-toggle">' in html
+    assert re.search(r'<span id="filter-count" class="badge">\d+</span>', html)
+    assert re.search(r'<span id="filter-count" class="badge"></span>', client.get("/shades").text)
 
 
 def test_load_more_continues_the_same_search_on_the_next_page(tmp_path):
@@ -125,7 +127,7 @@ def test_detail_shows_price_status_images_and_the_shop_link(seeded):
     assert response.status_code == 200
     assert "Rest In Peach" in html and "Retiring soon" in html
     assert "$13.50" in html and "$16.50" in html and "Sale" in html
-    assert html.count("<img") == 3  # two photos and the tip preview
+    assert html.count("<img") == 4  # two photos, the tip beside the title, the tip in Tip colour
     assert 'href="https://holotaco.com/products/rest-in-peach"' in html
     assert 'rel="noopener noreferrer"' in html
     assert "/shades?finish=creme" in html
@@ -204,6 +206,66 @@ def test_rows_show_tip_title_finish_chips_and_status(seeded):
     assert "Jam Session" in html and ">Holographic<" in html
     assert 'class="status status-sold_out">Sold out, retiring<' in html
     assert "$15.50" in html
+
+
+def test_a_row_puts_the_heart_after_the_name_and_the_owned_count_under_the_price(seeded):
+    client, conn = seeded
+    shade = shade_id(conn, "jam-session")
+    client.post(f"/shades/{shade}/wishlist")
+    client.post(f"/shades/{shade}/bottles", data={"state": "full"})
+    client.post(f"/shades/{shade}/bottles", data={"state": "half"})
+    html = client.get("/shades", params={"q": "jam session"}).text
+    row = re.search(r'<li class="shade-row">.*?</li>', html, re.S).group(0)
+    title = re.search(r'<span class="row-title">(.*?)</span></span>', row, re.S).group(1)
+    assert title.startswith("Jam Session") and 'aria-label="On the wishlist"' in title
+    assert row.index('class="row-end price"') < row.index('class="row-sub"')
+    assert re.search(
+        r'class="row-end footnote"><span aria-label="Owned ×2" role="img">×2</span>', row
+    )
+    assert 'class="pill"' not in row and "row-flags" not in row
+    sub = re.search(
+        r'<span class="row-sub">(.*?)</span></span>\s*<span class="row-end footnote"', row, re.S
+    )
+    assert sub.group(1).startswith('<span class="status status-sold_out">Sold out, retiring</span>')
+
+
+def test_the_shades_page_filter_panel_ends_in_one_filled_button_that_counts(seeded):
+    client, _ = seeded
+    html = client.get("/shades").text
+    panel = html[html.index('class="filter-panel"') :]
+    assert re.search(
+        r'<button type="button" id="filter-show" class="btn" data-close-details>Show 12 shades</button>',
+        panel,
+    )
+    assert panel.count('class="btn"') == 1 and "Clear all" in panel  # the other buttons are text
+    narrowed = client.get("/shades", params={"kind": "topper"}, headers=HX).text
+    assert re.search(
+        r'<button type="button" id="filter-show"[^>]*hx-swap-oob="true">Show \d+ shades?</button>',
+        narrowed,
+    )
+
+
+def test_the_detail_head_pairs_the_tip_with_the_title_and_the_facets_are_a_quiet_list(seeded):
+    client, conn = seeded
+    shade = shade_id(conn, "jam-session")
+    client.post(f"/shades/{shade}/bottles", data={"state": "full"})
+    html = client.get(f"/shades/{shade}").text
+    head = re.search(r'<div class="detail-head">.*?</div>\s*</div>', html, re.S).group(0)
+    assert head.index(f"/tips/shade/{shade}.svg") < head.index("<h1")
+    assert "$15.50" in head and "Owned ×1" in head and "Sold out, retiring" in head
+    facets = re.search(r'<dl class="facets">.*?</dl>', html, re.S).group(0)
+    assert re.findall(r"<dt>(\w+)</dt>", facets) == ["Finish", "Colour", "Collections"]
+    assert 'class="section-title">Finish' not in html
+    assert '<details class="tip-colour-box">' in html and html.index("tip-colour-box") > html.index(
+        "facets"
+    )
+
+
+def test_the_tip_colour_form_opens_by_itself_on_an_error(seeded):
+    client, conn = seeded
+    shade = shade_id(conn, "jam-session")
+    bad = client.post(f"/shades/{shade}/tip-colour", data={"hex": "nope"})
+    assert bad.status_code == 422 and '<details class="tip-colour-box" open>' in bad.text
 
 
 def test_home_has_a_sticky_search_that_waits_200ms(seeded):

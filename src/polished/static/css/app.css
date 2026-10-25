@@ -1,5 +1,5 @@
-/* polished: the swatch book (docs/advice/fable-swatch-book-2026-10-25.md; docs/VISUAL.md is the
-   look it replaces). Every shade is a painted tip on a quiet board: the chrome is ink and board,
+/* polished: the swatch book (docs/VISUAL.md; the direction is docs/advice/fable-swatch-book-2026-10-25.md).
+   Every shade is a painted tip on a quiet board: the chrome is ink and board,
    the colour comes from the tips, pink means one thing, wanted. Mobile first, light and dark.
    Contents: tokens, base, chrome (tab bar, titles, back link), controls, lists and rows, shade
    page, home, bottles, sheet, wishlist, lookup and scanner, status pages, wheels and the ring,
@@ -31,6 +31,7 @@
   --material: rgb(246 242 245 / 0.78);
   --material-edge: rgb(38 19 34 / 0.08);
   --sheet-shadow: 0 -12px 48px rgb(38 19 34 / 0.22);
+  --panel-shadow: 0 16px 48px rgb(38 19 34 / 0.2), var(--ring-edge);
   --sheet-material: rgb(253 251 252 / 0.82);
   --foil: conic-gradient(from 200deg, #ffb3c7, #ffe29a, #b7f5c8, #9fd8ff, #d3b4ff, #ffb3c7);
 
@@ -75,6 +76,7 @@
     --material: rgb(22 11 20 / 0.72);
     --material-edge: rgb(255 255 255 / 0.1);
     --sheet-shadow: 0 -12px 48px rgb(0 0 0 / 0.5);
+    --panel-shadow: 0 0 0 1px oklch(1 0 0 / 0.12);
     --sheet-material: rgb(32 19 29 / 0.82);
   }
 }
@@ -110,7 +112,7 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-body:has(dialog[open]) {
+body:has(dialog.sheet[open]) {
   overflow: hidden;
 }
 
@@ -300,6 +302,11 @@ h3 {
   margin-right: -10px;
 }
 
+/* The + of the wheels list is a <details> summary under the title, pulled up into its row. */
+.page-head.has-add {
+  padding-right: var(--tap);
+}
+
 .title {
   overflow-wrap: anywhere;
   font-size: 2.125rem;
@@ -314,14 +321,16 @@ h3 {
   gap: 12px;
 }
 
+/* The icon is plum: on the dark board it needs the mat ring to read as a tile. */
 .title-brand img {
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
+  width: 36px;
+  height: 36px;
+  border-radius: 9px;
+  outline: 1px solid var(--mat);
+  outline-offset: -1px;
 }
 
 .title-detail {
-  margin-top: 16px;
   font-size: 1.75rem;
   line-height: 2.125rem;
 }
@@ -809,8 +818,7 @@ a.chip:not(.is-on):active {
 .tip-m::after,
 .tip-l::after,
 .tip-xl::after,
-.tip-art::after,
-.tip-preview::after {
+.tip-art::after {
   content: "";
   position: absolute;
   inset: 0;
@@ -831,10 +839,6 @@ a.chip:not(.is-on):active {
   object-fit: cover;
   outline: 1px solid var(--mat);
   outline-offset: -1px;
-}
-
-.thumb-empty {
-  display: block;
 }
 
 .row-body {
@@ -864,6 +868,63 @@ a.chip:not(.is-on):active {
   color: var(--ink-2);
   font-size: 0.9375rem;
   line-height: 1.25rem;
+}
+
+/* A shade row: the name and the price on one line, the status word and finishes under the name,
+   the "×2" of bottles owned under the price at the trailing edge. */
+.row-shade {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: 12px;
+  align-items: baseline;
+}
+
+.row-shade .row-title {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.row-shade .row-title .heart {
+  margin-left: 6px;
+  vertical-align: -1px;
+}
+
+.row-shade .row-sub {
+  justify-content: flex-start;
+  gap: 8px;
+  min-width: 0;
+}
+
+.row-shade .row-finish {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.row-shade .status {
+  flex: none;
+  font-weight: 600;
+}
+
+.row-end {
+  justify-self: end;
+  color: var(--ink-2);
+  font-size: 0.9375rem;
+  line-height: 1.25rem;
+}
+
+.row-end.price {
+  color: var(--ink);
+  font-size: 1.0625rem;
+  line-height: 1.375rem;
+}
+
+.row-end.footnote {
+  font-size: 0.8125rem;
+  font-variant-numeric: tabular-nums;
 }
 
 .row-sub > span:first-child {
@@ -1010,6 +1071,10 @@ a.chip:not(.is-on):active {
   text-decoration: none;
 }
 
+.group-link-tip {
+  min-height: 64px;
+}
+
 .group-link .icon {
   margin-left: auto;
   color: var(--ink-3);
@@ -1144,7 +1209,8 @@ a.chip:not(.is-on):active {
   overscroll-behavior: contain;
   border-radius: var(--r-group);
   background: var(--surface);
-  box-shadow: 0 16px 48px rgb(38 19 34 / 0.2), var(--ring-edge);
+  border: 1px solid transparent;
+  box-shadow: var(--panel-shadow);
 }
 
 .filter-panel .pick span {
@@ -1159,10 +1225,21 @@ a.chip:not(.is-on):active {
   padding: 0 8px;
 }
 
+/* Clear all and the one filled button stay in view at the foot of the scrolling panel. */
 .filter-actions {
+  position: sticky;
+  bottom: -8px;
   display: flex;
-  justify-content: flex-end;
-  padding-bottom: 4px;
+  align-items: center;
+  gap: 8px;
+  margin: 0 -16px;
+  padding: 12px 16px;
+  background: var(--surface);
+  box-shadow: 0 -1px 0 var(--line);
+}
+
+.filter-actions .btn:not(.btn-text) {
+  flex: 1;
 }
 
 /* 7. Shade page */
@@ -1195,6 +1272,18 @@ a.chip:not(.is-on):active {
   scroll-snap-align: start;
 }
 
+/* The app's own painted tip beside the title, next to the brand's photos above. */
+.detail-head {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.detail-title {
+  min-width: 0;
+}
+
 .detail-meta {
   display: flex;
   flex-wrap: wrap;
@@ -1214,6 +1303,34 @@ a.chip:not(.is-on):active {
 
 .detail-meta s {
   font-variant-numeric: tabular-nums;
+}
+
+.detail-meta .owned {
+  color: var(--ink);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.detail-meta .status {
+  font-weight: 600;
+}
+
+/* Finish, Colour and Collections: a quiet label and outlined chips on the same row. */
+.facets {
+  margin: 16px 0 0;
+}
+
+.facets dt {
+  margin-top: 16px;
+  padding-bottom: 2px;
+  color: var(--ink-2);
+  font-size: 0.8125rem;
+  line-height: 1.125rem;
+  font-weight: 500;
+}
+
+.facets dd {
+  margin: 0;
 }
 
 .actions {
@@ -1296,66 +1413,83 @@ a.chip:not(.is-on):active {
   overflow-wrap: anywhere;
 }
 
-.stats {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  margin: 24px 0 0;
-  box-shadow: inset 0 1px 0 var(--line), inset 0 -1px 0 var(--line);
-}
-
-.stat {
+/* The wheel Home opens on: its ring at 200px, tips only, and one line under it. The whole block
+   is the link. */
+.home-wheel {
   display: flex;
   flex-direction: column;
-  min-height: 4.75rem;
-  padding: 14px 0 12px;
-  color: var(--ink);
+  align-items: center;
+  gap: 4px;
+  margin: 16px calc(-1 * var(--gutter)) 0;
+  padding: 8px var(--gutter) 0;
+  color: inherit;
   text-decoration: none;
 }
 
-.stat + .stat {
-  padding-left: 16px;
-  box-shadow: inset 1px 0 0 var(--line);
-}
-
-.stat strong {
-  font-size: 1.75rem;
-  line-height: 2.125rem;
-  font-weight: 700;
-  letter-spacing: -0.02em;
+.home-wheel-line {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--tap);
+  color: var(--ink-2);
+  font-size: 1.0625rem;
+  line-height: 1.375rem;
   font-variant-numeric: tabular-nums;
 }
 
-.stat span {
+.home-wheel-line strong {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.home-wheel-line .icon {
+  margin-left: 2px;
+  color: var(--ink-3);
+}
+
+.home-wheel:active .home-wheel-line {
+  color: var(--ink);
+}
+
+/* Counts as one quiet line of links. */
+.stats-line {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: 0.75ch;
+  margin: 8px 0 0;
   color: var(--ink-2);
-  font-size: 0.8125rem;
-  line-height: 1.125rem;
-  font-weight: 500;
+  font-size: 0.9375rem;
+  line-height: 1.25rem;
+  font-variant-numeric: tabular-nums;
 }
 
-.stat:active {
-  background: var(--fill);
+.stats-line a {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--tap);
+  color: var(--ink);
+  font-weight: 600;
+  text-decoration: none;
 }
 
-.home-scan {
-  margin-top: 24px;
+.stats-line a:not(:last-child)::after {
+  content: ",";
+  color: var(--ink-2);
+  font-weight: 400;
 }
 
 .home-links {
+  margin-top: 16px;
+}
+
+.more-account {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
   margin-top: 24px;
 }
 
-.foot {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0 4px;
-  margin-top: 16px;
-  color: var(--ink-2);
-  font-size: 0.9375rem;
-}
-
-.foot form {
-  display: inline;
+.more-account p {
+  padding: 0 4px;
 }
 
 /* 9. Bottles: a head per shade (tip and name), then one grouped list of plain rows. The level is a
@@ -1994,41 +2128,68 @@ a.chip:not(.is-on):active {
   color: var(--ink-2);
 }
 
-/* 12. Lookup and scanner */
-.scan-actions {
+/* 12. Lookup and scanner: the camera comes first. A 4:3 viewfinder with the idle tile under it;
+   the scanner <dialog> is laid over the tile (non-modal) while the camera runs. */
+.viewfinder {
+  position: relative;
+  aspect-ratio: 4 / 3;
+  margin: 8px 0 0;
+  overflow: hidden;
+  border-radius: 16px;
+  background: var(--fill);
+}
+
+.viewfinder-idle {
+  position: absolute;
+  inset: 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  margin: 8px 0 20px;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  color: var(--ink-2);
 }
 
-.scan-actions .btn:first-child {
-  min-height: 64px;
+.viewfinder-idle .icon {
+  width: 2.5rem;
+  height: 2.5rem;
+  stroke-width: 1.5;
 }
 
-.scan-actions {
+.viewfinder:has(.scanner[open]) .viewfinder-idle {
+  visibility: hidden;
+}
+
+.scan-caption {
+  margin: 12px 0 0;
+  color: var(--ink-2);
+  font-size: 0.9375rem;
+  line-height: 1.25rem;
+  text-align: center;
+}
+
+#scan-note {
+  margin: 12px 0 0;
+}
+
+.lookup-form {
+  margin: 16px 0 0;
+}
+
+.scan-photo-row {
   position: relative;
+  display: flex;
+  justify-content: center;
+  margin-top: 4px;
 }
 
-.scan-actions .visually-hidden {
+.scan-photo-row .visually-hidden {
   top: 0;
   left: 0;
 }
 
 .scan-photo {
   cursor: pointer;
-}
-
-.lookup-form {
-  margin-bottom: 16px;
-}
-
-.lookup-form label {
-  text-wrap: balance;
-}
-
-.lookup-form .field {
-  margin: 0;
 }
 
 .result {
@@ -2044,6 +2205,34 @@ a.chip:not(.is-on):active {
 
 .result .actions {
   margin-top: 12px;
+}
+
+/* The shade a code resolved to: the bottle photo and the app's own tip side by side. */
+.result-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 13px;
+  border-radius: var(--r-row);
+  color: inherit;
+  text-decoration: none;
+}
+
+.result-card:active {
+  background: var(--fill);
+}
+
+.result-card > .icon {
+  color: var(--ink-3);
+}
+
+.result-card .thumb {
+  width: 72px;
+  height: 96px;
+}
+
+.result-card .price {
+  color: var(--ink-2);
 }
 
 .result .group-title {
@@ -2085,12 +2274,12 @@ a.chip:not(.is-on):active {
 }
 
 .scanner[open] {
-  display: block;
-  position: fixed;
+  position: absolute;
   inset: 0;
+  display: block;
   width: 100%;
   max-width: none;
-  height: 100dvh;
+  height: 100%;
   max-height: none;
   margin: 0;
   padding: 0;
@@ -2098,10 +2287,6 @@ a.chip:not(.is-on):active {
   overflow: hidden;
   background: #000;
   color: #fff;
-}
-
-.scanner::backdrop {
-  background: #000;
 }
 
 .scanner video {
@@ -2114,11 +2299,11 @@ a.chip:not(.is-on):active {
   position: absolute;
   top: 50%;
   left: 50%;
-  width: 84%;
-  height: 34%;
+  width: 80%;
+  height: 40%;
   transform: translate(-50%, -50%);
   border: 2px solid rgb(255 255 255 / 0.92);
-  border-radius: 22px;
+  border-radius: 12px;
   box-shadow: 0 0 0 100vmax rgb(0 0 0 / 0.52);
   pointer-events: none;
   transition: border-color 150ms ease-out, background-color 150ms ease-out;
@@ -2129,33 +2314,8 @@ a.chip:not(.is-on):active {
   background: rgb(95 207 149 / 0.28);
 }
 
-.scanner-status {
-  position: absolute;
-  left: 50%;
-  bottom: calc(6.25rem + env(safe-area-inset-bottom));
-  width: max-content;
-  max-width: calc(100% - 32px);
-  margin: 0;
-  padding: 8px 16px;
-  border-radius: 999px;
-  background: rgb(18 12 22 / 0.62);
-  -webkit-backdrop-filter: blur(20px) saturate(1.6);
-  backdrop-filter: blur(20px) saturate(1.6);
-  transform: translateX(-50%);
-  text-align: center;
-  font-size: 0.9375rem;
-  line-height: 1.25rem;
-  font-weight: 600;
-}
-
-.scanner-bar {
-  position: absolute;
-  right: 0;
-  bottom: 0;
-  left: 0;
-  display: flex;
-  justify-content: center;
-  padding: 16px 16px calc(16px + env(safe-area-inset-bottom));
+.scanner:focus {
+  outline: 0;
 }
 
 .scanner :focus-visible {
@@ -2163,9 +2323,16 @@ a.chip:not(.is-on):active {
 }
 
 .scanner-close {
-  min-width: 10rem;
-  background: rgb(255 255 255 / 0.92);
-  color: #261322;
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  min-height: var(--tap);
+  padding: 0 16px;
+  background: rgb(18 12 22 / 0.62);
+  -webkit-backdrop-filter: blur(20px) saturate(1.6);
+  backdrop-filter: blur(20px) saturate(1.6);
+  color: #fff;
+  font-size: 0.9375rem;
 }
 
 /* 13. Sync and status pages */
@@ -2247,6 +2414,7 @@ a.chip:not(.is-on):active {
 .ring {
   --ring: 150px;
   --slot-h: 62px;
+  --rail: 22px;
   position: relative;
   width: min(100%, 390px);
   aspect-ratio: 1;
@@ -2267,12 +2435,35 @@ a.chip:not(.is-on):active {
   position: absolute;
   top: 50%;
   left: 50%;
-  width: calc(2 * (var(--ring) - 22px));
-  height: calc(2 * (var(--ring) - 22px));
+  width: calc(2 * (var(--ring) - var(--rail)));
+  height: calc(2 * (var(--ring) - var(--rail)));
   border: 1.5px solid var(--line-2);
   border-radius: 50%;
   transform: translate(-50%, -50%);
   pointer-events: none;
+}
+
+/* The same ring at a small size, tips only: Home (200px) and a wheel's row in the list (72px).
+   Radius, tip height and the rail follow the big ring's proportions. */
+.ring-home {
+  --ring: 78px;
+  --slot-h: 32px;
+  --rail: 11px;
+  width: 200px;
+  margin: 0 auto;
+}
+
+.ring-mini {
+  --ring: 28px;
+  --slot-h: 14px;
+  --rail: 5px;
+  flex: none;
+  width: 72px;
+  margin: 0;
+}
+
+.ring-mini::before {
+  border-width: 1px;
 }
 
 .hub {
@@ -2335,8 +2526,8 @@ a.chip:not(.is-on):active {
 /* An empty slot is a --fill tip with its number and no foil; a filled one is the painted stack. */
 .tip {
   position: relative;
-  width: 38px;
-  height: 62px;
+  width: min(calc(var(--slot-h) * 0.613), calc(2 * pi * var(--ring) / var(--n) - 2px));
+  height: var(--slot-h);
   isolation: isolate;
   transition: scale 150ms ease-out;
 }
@@ -2401,32 +2592,47 @@ a.chip:not(.is-on):active {
   object-fit: cover;
 }
 
+/* The tip colour is a quiet disclosure at the foot of the shade page: the current tip and where
+   its colour came from, and the colour field behind a tap. */
+.tip-colour-box {
+  margin-top: 32px;
+}
+
+.tip-colour-summary {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 52px;
+  list-style: none;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.tip-colour-summary::-webkit-details-marker {
+  display: none;
+}
+
+.tip-colour-summary .icon {
+  margin-left: auto;
+  color: var(--ink-3);
+  transition: rotate 200ms var(--ease-out);
+}
+
+.tip-colour-box[open] .tip-colour-summary .icon {
+  rotate: 90deg;
+}
+
+.tip-colour-label {
+  display: flex;
+  flex-direction: column;
+}
+
 .tip-colour {
   display: grid;
-  grid-template-columns: auto 1fr auto;
+  grid-template-columns: 1fr auto;
   gap: 12px 14px;
   align-items: center;
-  padding: 14px 16px;
-  border: 1px solid transparent;
-  border-radius: var(--r-group);
-  background: var(--surface);
-  box-shadow: var(--ring-edge);
-}
-
-.tip-preview {
-  position: relative;
-  width: 34px;
-  height: 56px;
-  overflow: hidden;
-  border-radius: var(--r-tip);
-  background: var(--fill);
-}
-
-.tip-preview img {
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
+  padding: 4px 0 0 40px;
 }
 
 .tip-colour-body {
@@ -2576,30 +2782,21 @@ input.tip-input {
   font-variant-numeric: tabular-nums;
 }
 
-.wheel-actions .rename-form {
+/* This wheel: Tag and QR, Rename, Archive as one quiet row at the foot of the page. */
+.wheel-foot {
   display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 4px 6px 13px;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0 8px;
+  margin-top: 32px;
+  padding-top: 8px;
+  box-shadow: inset 0 1px 0 var(--line);
 }
 
-.rename-status {
-  margin: 0;
-  padding: 0 13px;
+.wheel-foot .btn-text {
   color: var(--ink-2);
-  font-size: 0.8125rem;
-  line-height: 1.125rem;
-}
-
-.rename-status:not(:empty) {
-  padding-bottom: 8px;
-}
-
-.group-button {
-  width: 100%;
-  min-height: 52px;
-  padding: 0 13px;
-  justify-content: flex-start;
+  font-size: 0.9375rem;
+  font-weight: 600;
 }
 
 .banner {
@@ -2618,14 +2815,19 @@ input.tip-input {
   margin: 0 0 8px;
 }
 
-/* The wheel list: a mini ring in front of each name. */
+/* The wheels list: the + is a <details> summary that sits in the title row, and opens the
+   create form under it. */
 .new-wheel-box {
-  margin: 0 0 16px;
+  margin: calc(-1 * (3.25rem + 0.5rem)) 0 16px;
 }
 
 .new-wheel-box summary {
   display: flex;
-  width: 100%;
+  width: var(--tap);
+  margin: 0 -10px 8px auto;
+  height: 3.25rem;
+  align-items: center;
+  justify-content: center;
   list-style: none;
   cursor: pointer;
 }
@@ -2634,15 +2836,23 @@ input.tip-input {
   display: none;
 }
 
+.new-wheel-box summary .icon {
+  transition: rotate 200ms var(--ease-out);
+}
+
+.new-wheel-box[open] summary .icon {
+  rotate: 45deg;
+}
+
 .new-wheel {
-  padding-top: 16px;
+  padding-top: 8px;
 }
 
 .wheel-row {
   display: flex;
   align-items: center;
   gap: 12px;
-  min-height: 68px;
+  min-height: 92px;
   padding: 10px 13px;
   border-radius: var(--r-row);
   color: inherit;
@@ -2656,29 +2866,6 @@ input.tip-input {
 .wheel-row > .icon {
   flex: none;
   color: var(--ink-3);
-}
-
-.mini-ring {
-  position: relative;
-  flex: none;
-  width: 44px;
-  height: 44px;
-}
-
-.mini-dot {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 5px;
-  height: 5px;
-  margin: -2.5px 0 0 -2.5px;
-  border-radius: 50%;
-  background: var(--line);
-  transform: rotate(calc(360deg / var(--n) * var(--i))) translateY(-17px);
-}
-
-.mini-dot.is-filled {
-  background: var(--ink);
 }
 
 .count-chip {
@@ -3123,7 +3310,7 @@ input.tip-input {
   --w: 28.5px;
 }
 
-/* 16. The layer-stack builder (VISUAL 6, 7): a sticky head with the live summary, the layers on
+/* 16. The layer-stack builder (VISUAL 7): a sticky head with the live summary, the layers on
    a rail, shortcut pills, search with compact results, name and note, a sticky Save. */
 .builder-head {
   display: flow-root;
@@ -3714,6 +3901,11 @@ span.layer-btn {
   *::before,
   *::after {
     scroll-behavior: auto !important;
+  }
+
+  .new-wheel-box summary .icon,
+  .tip-colour-summary .icon {
+    transition: none;
   }
 
   .btn,

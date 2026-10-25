@@ -49,8 +49,8 @@ kill $(cat /tmp/polished.pid)
 `/lookup` reads a bottle's barcode with the phone camera (zxing-wasm, in the page, no cloud) or
 from a photo, and resolves a typed barcode, P code or name. A barcode is learned once (scan, pick
 the shade) and then matches; a P code is only ever a suggestion. Catalog barcodes are not used.
-The camera needs https (or `localhost`); on a plain-http address the page says so and the photo
-button and the typed field still work.
+The camera needs https (or `localhost`); on a plain-http address the page says so and "Take a photo instead"
+and the typed field still work.
 
 A headless-browser smoke test (not part of `pytest -q`) decodes a generated barcode through the
 photo input and a fake camera. With the server running on a fresh throwaway database (the
@@ -106,7 +106,8 @@ There is no webfont: the UI is set in the system font (SF Pro on an iPhone).
 
 ## Look and icons
 
-`docs/VISUAL.md` is the spec for how the app looks; all of it lives in `static/css/app.css` as
+`docs/VISUAL.md` is the spec for how the app looks ("the swatch book": a quiet board in ink and plum,
+every shade a painted nail tip, pink only for the heart); all of it lives in `static/css/app.css` as
 tokens and components, with light and dark from the system setting. The logo is two hand-drawn
 SVGs in `static/icons/` (`logo.svg`, `favicon.svg`); after editing one, redraw the PNGs
 (apple-touch, PWA, maskable, favicon fallback) with Chromium:

@@ -1,0 +1,18 @@
+{# The shade a code resolved to: its bottle photo from the catalog (when it has one) next to the
+   app's own painted tip, then the name, finishes and price. Opens the shade. #}
+{% from "_icons.html" import icon with context %}
+{% from "_tip.html" import tip %}
+<ul class="group result-card-group">
+  <li>
+    <a class="result-card" href="/shades/{{ shade.id }}">
+      {% if shade.hero_image_url %}<img class="thumb" src="{{ shade.hero_image_url|thumb(96, 128) }}" srcset="{{ shade.hero_image_url|thumb(96, 128) }} 2x, {{ shade.hero_image_url|thumb(144, 192) }} 3x" width="72" height="96" alt="{{ shade.title }}, bottle photo" decoding="async">{% endif %}
+      {{ tip(shade, "l", false) }}
+      <span class="row-body">
+        <span class="row-title">{{ shade.title }}</span>
+        <span class="row-sub"><span class="row-finish">{{ ((["topper"] if shade.is_topper else []) + shade.finishes[:3])|words }}</span></span>
+        {% if shade.price_cents is not none %}<span class="price subhead">{{ shade.price_cents|money }}</span>{% endif %}
+      </span>
+      {{ icon("chevron-right") }}
+    </a>
+  </li>
+</ul>

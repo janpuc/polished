@@ -1,10 +1,10 @@
-// The barcode scanner (DESIGN 7.3): camera into a full-screen <dialog>, decoded continuously with
-// the vendored zxing-wasm (UPC-A, EAN-13 and EAN-8 only), plus a still-photo fallback and the
+// The barcode scanner (DESIGN 7.3): camera into a viewfinder on the page (a non-modal <dialog>
+// laid over the idle tile), decoded continuously with the vendored zxing-wasm (UPC-A, EAN-13 and EAN-8 only), plus a still-photo fallback and the
 // typed field on the page. A code is handed to /lookup/resolve; the server normalises it.
 //
 // iPhone Safari has no BarcodeDetector, so zxing-wasm is the real path; the native detector is
 // used for video frames only where a browser has it. The camera is stopped the moment a code is
-// accepted, when the dialog closes (Esc, Close) and when the page is hidden.
+// accepted, when the viewfinder closes (Esc, Close) and when the page is hidden.
 const ZXING_URL = "/static/vendor/zxing-wasm/reader/index.js";
 const WASM_URL = "/static/vendor/zxing-wasm/zxing_reader.wasm";
 const FORMATS = ["EAN13", "UPCA", "EAN8"];
@@ -117,7 +117,7 @@ function closeScanner() {
 }
 
 // The part of the video frame under the framing guide, in video pixels. The video fills the
-// dialog with object-fit: cover, so the guide's box is mapped through that scaling.
+// viewfinder with object-fit: cover, so the guide's box is mapped through that scaling.
 function guideCrop() {
   const box = video.getBoundingClientRect();
   const frame = guide.getBoundingClientRect();
@@ -218,7 +218,8 @@ async function openScanner() {
   video.srcObject = stream;
   dialog.classList.remove("is-hit");
   status.textContent = STATUS_DEFAULT;
-  dialog.showModal();
+  dialog.show();
+  dialog.focus(); // show() would focus Close and draw its ring on a scan that opens at load
   video.play().catch(() => {});
   try {
     await decoder;
@@ -278,7 +279,14 @@ if (dialog && video && guide && status) {
     if (event.target.closest("[data-scan-open]")) openScanner();
     else if (event.target.closest("[data-scan-close]")) closeScanner();
   });
-  dialog.addEventListener("close", stopCamera); // Esc, Close and a finished scan all end up here
+  dialog.addEventListener("close", () => {
+    // Close and a finished scan end up here
+    stopCamera();
+    status.textContent = STATUS_DEFAULT;
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && dialog.open) closeScanner(); // a non-modal dialog ignores Esc
+  });
   document.addEventListener("visibilitychange", () => {
     if (document.hidden) closeScanner();
   });

@@ -19,7 +19,7 @@
              enterkeyhint="search">
       <a class="btn btn-icon" href="/lookup?scan=1" aria-label="Scan a bottle">{{ icon("camera") }}</a>
     </div>
-    <details class="filter-toggle"{% if query.filter_count() %} open{% endif %}>
+    <details class="filter-toggle">
       <summary aria-label="Filters">{{ icon("sliders") }}<span id="filter-count" class="badge">{% if query.filter_count() %}{{ query.filter_count() }}{% endif %}</span></summary>
       <div class="filter-panel">
         <fieldset>
@@ -83,7 +83,10 @@
           </select>
         </div>
         <noscript><button type="submit" class="btn btn-block">Apply</button></noscript>
-        <div class="filter-actions"><a class="btn btn-text" href="/shades">Clear all</a></div>
+        <div class="filter-actions">
+          <a class="btn btn-text" href="/shades">Clear all</a>
+          {% include "_filter_show.html" %}
+        </div>
       </div>
     </details>
   </div>

@@ -1,0 +1,4 @@
+{# The filter panel's one filled button: it closes the panel and says how many shades the
+   filters leave. The list updates as the filters change, so this button only needs to dismiss;
+   it is swapped out of band with the count. #}
+<button type="button" id="filter-show" class="btn" data-close-details{% if oob %} hx-swap-oob="true"{% endif %}>Show {{ result.total }} shade{{ '' if result.total == 1 else 's' }}</button>

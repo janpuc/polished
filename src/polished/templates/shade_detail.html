@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% from "_icons.html" import icon with context %}
+{% from "_tip.html" import tip, stack %}
 {% set tab = "shades" %}
 {% block title %}{{ shade.title }} | Polished{% endblock %}
 {% block scripts %}<script type="module" src="/static/js/sheet.js?v={{ version }}"></script>{% endblock %}
@@ -12,55 +13,65 @@
   {% endfor %}
 </div>
 {% endif %}
-<h1 class="title title-detail">{{ shade.title }}</h1>
-<p class="detail-meta">
-  {% if shade.price_cents is not none %}
-  <span class="price">{{ shade.price_cents|money }}</span>
-  {% if shade.on_sale %}<s>{{ shade.compare_at_cents|money }}</s> <span class="pill">Sale</span>{% endif %}
-  {% endif %}
-  {% if shade.status is none %}<span class="status status-manual">Added by hand</span>{% elif shade.status.key != 'available' %}<span class="status status-{{ shade.status.key }}">{{ shade.status.label }}</span>{% endif %}
-  {% include "_owned_pill.html" %}
-</p>
+<div class="detail-head">
+  {{ tip(shade, "l", false) }}
+  <div class="detail-title">
+    <h1 class="title title-detail">{{ shade.title }}</h1>
+    <p class="detail-meta">
+      {% if shade.price_cents is not none %}
+      <span class="price">{{ shade.price_cents|money }}</span>
+      {% if shade.on_sale %}<s>{{ shade.compare_at_cents|money }}</s> <span class="pill">Sale</span>{% endif %}
+      {% endif %}
+      {% include "_owned_pill.html" %}
+      {% if shade.status is none %}<span class="status status-manual">Added by hand</span>{% elif shade.status.key != 'available' %}<span class="status status-{{ shade.status.key }}">{{ shade.status.label }}</span>{% endif %}
+    </p>
+  </div>
+</div>
 {% include "_shade_actions.html" %}
 {% include "_bottles.html" %}
 {% set kinds = (["Topper"] if shade.is_topper else []) + (["Base coat"] if shade.kind == 'basecoat' else []) %}
-{% if kinds or shade.tags.finish %}
-<h2 class="section-title">Finish</h2>
-<p class="chips">
-  {% for text in kinds %}<span class="chip chip-static">{{ text }}</span>{% endfor %}
-  {% for finish in shade.tags.finish %}<a class="chip" href="/shades?finish={{ finish|urlencode }}">{{ finish|label }}</a>{% endfor %}
-</p>
+{% if kinds or shade.tags.finish or shade.tags.color or shade.tags.collection %}
+<dl class="facets">
+  {% if kinds or shade.tags.finish %}
+  <dt>Finish</dt>
+  <dd class="chips">
+    {% for text in kinds %}<span class="chip chip-static">{{ text }}</span>{% endfor %}
+    {% for finish in shade.tags.finish %}<a class="chip" href="/shades?finish={{ finish|urlencode }}">{{ finish|label }}</a>{% endfor %}
+  </dd>
+  {% endif %}
+  {% if shade.tags.color %}
+  <dt>Colour</dt>
+  <dd class="chips">{% for value in shade.tags.color %}<a class="chip" href="/shades?color={{ value|urlencode }}">{{ value|label }}</a>{% endfor %}</dd>
+  {% endif %}
+  {% if shade.tags.collection %}
+  <dt>Collections</dt>
+  <dd class="chips">{% for value in shade.tags.collection %}<a class="chip" href="/shades?collection={{ value|urlencode }}">{{ value|label }}</a>{% endfor %}</dd>
+  {% endif %}
+</dl>
 {% endif %}
-{% if shade.tags.color %}
-<h2 class="section-title">Colour</h2>
-<p class="chips">{% for value in shade.tags.color %}<a class="chip" href="/shades?color={{ value|urlencode }}">{{ value|label }}</a>{% endfor %}</p>
-{% endif %}
-{% if shade.tags.collection %}
-<h2 class="section-title">Collections</h2>
-<p class="chips">{% for value in shade.tags.collection %}<a class="chip" href="/shades?collection={{ value|urlencode }}">{{ value|label }}</a>{% endfor %}</p>
-{% endif %}
-<h2 class="section-title">Tip colour</h2>
-<form class="tip-colour" method="post" action="/shades/{{ shade.id }}/tip-colour">
-  <span class="tip-preview" aria-hidden="true"><img src="{{ tip_shade_url(shade) }}" width="34" height="56" alt=""></span>
-  <span class="tip-colour-body">
-    <label class="tip-colour-title" for="tip-hex">Colour of the nail tip</label>
-    <span class="caption muted">{% if shade.swatch_override_hex %}Your colour.{% elif shade.swatch_hex %}Read from the photos.{% else %}Not read yet.{% endif %} The finish comes from the tags.</span>
-    {% if tip_error %}<span class="field-error" role="alert">{{ tip_error }}</span>{% endif %}
-  </span>
-  <input id="tip-hex" class="tip-input" type="color" name="hex" value="{{ tip_hex(shade) }}">
-  <span class="tip-colour-actions">
-    <button type="submit" class="btn btn-secondary">Save</button>
-    {% if shade.swatch_override_hex %}<button type="submit" name="reset" value="1" class="btn btn-text">Reset</button>{% endif %}
-  </span>
-</form>
 {% if swatched_on %}
 <h2 class="section-title">Swatched on</h2>
 <ul class="group">
   {% for spot in swatched_on %}
-  <li><a class="group-link" href="/w/{{ spot.slug }}?hl={{ shade.id }}#slot-{{ spot.position }}">{{ spot.name }}, slot {{ spot.position }}{{ icon("chevron-right") }}</a></li>
+  <li><a class="group-link group-link-tip" href="/w/{{ spot.slug }}?hl={{ shade.id }}#slot-{{ spot.position }}">{{ stack(spot.stack_id, spot.layers, "s") }}{{ spot.name }}, slot {{ spot.position }}{{ icon("chevron-right") }}</a></li>
   {% endfor %}
 </ul>
 {% endif %}
+<details class="tip-colour-box"{% if tip_error %} open{% endif %}>
+  <summary class="tip-colour-summary">{{ tip(shade, "s", false) }}<span class="tip-colour-label">Tip colour<span class="footnote muted">{% if shade.swatch_override_hex %}Your colour{% elif shade.swatch_hex %}Read from the photos{% else %}Not read yet{% endif %}</span></span>{{ icon("chevron-right") }}</summary>
+  <form class="tip-colour" method="post" action="/shades/{{ shade.id }}/tip-colour">
+    <span class="tip-colour-body">
+      <label class="tip-colour-title" for="tip-hex">Colour of the nail tip</label>
+      <span class="caption muted">The finish comes from the tags.</span>
+      {% if tip_error %}<span class="field-error" role="alert">{{ tip_error }}</span>{% endif %}
+    </span>
+    <input id="tip-hex" class="tip-input" type="color" name="hex" value="{{ tip_hex(shade) }}">
+    <span class="tip-colour-actions">
+      <button type="submit" class="btn btn-secondary">Save</button>
+      {% if shade.swatch_override_hex %}<button type="submit" name="reset" value="1" class="btn btn-text">Reset</button>{% endif %}
+    </span>
+  </form>
+</details>
 {% if shade.handle and not (shade.status and shade.status.key == 'missing') %}
 <ul class="group home-links">
   <li><a class="group-link" href="{{ store_url }}/products/{{ shade.handle|urlencode }}" target="_blank" rel="noopener noreferrer">View on holotaco.com{{ icon("external") }}</a></li>

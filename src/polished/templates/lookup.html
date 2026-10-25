@@ -11,28 +11,28 @@
 <header class="page-head">
   <h1 class="title">Scan a bottle</h1>
 </header>
-<div class="scan-actions">
-  <button type="button" class="btn" data-scan-open>{{ icon("camera") }}Scan the barcode</button>
-  <label class="btn btn-text scan-photo" for="scan-photo">Take a photo of the barcode</label>
-  <input id="scan-photo" class="visually-hidden" type="file" accept="image/*" capture="environment">
+<div class="viewfinder">
+  <div class="viewfinder-idle">
+    {{ icon("camera") }}
+    <button type="button" class="btn" data-scan-open>Scan the barcode</button>
+  </div>
+  <dialog id="scanner" class="scanner" aria-label="Barcode scanner" tabindex="-1" data-autoscan="{{ 1 if autoscan else 0 }}">
+    <video id="scanner-video" playsinline muted></video>
+    <div class="scanner-guide" aria-hidden="true"></div>
+    <button type="button" class="btn scanner-close" data-scan-close>Close</button>
+  </dialog>
 </div>
+<p id="scanner-status" class="scan-caption" role="status">Point at the barcode under the bottle</p>
 <p id="scan-note" class="notice" role="status" hidden></p>
 <form class="lookup-form" action="/lookup" method="get" role="search">
-  <div class="field">
-    <label for="lookup-q">Or type the digits under the barcode, a P code, or a name</label>
-    <input id="lookup-q" type="search" name="q" value="{{ q }}" inputmode="search" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="search" placeholder="810170284120, 259 or Spirit Fingers…"
-           hx-get="/lookup/resolve" hx-vals='{"via": "typed"}' hx-trigger="input changed delay:300ms, search" hx-target="#lookup-result" hx-sync="this:replace">
-  </div>
+  <input id="lookup-q" type="search" name="q" value="{{ q }}" inputmode="search" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="search" aria-label="Barcode digits, P code or shade name" placeholder="Type the digits, a P code, or a name"
+         hx-get="/lookup/resolve" hx-vals='{"via": "typed"}' hx-trigger="input changed delay:300ms, search" hx-target="#lookup-result" hx-sync="this:replace">
 </form>
+<div class="scan-photo-row">
+  <label class="btn btn-text scan-photo" for="scan-photo">Take a photo instead</label>
+  <input id="scan-photo" class="visually-hidden" type="file" accept="image/*" capture="environment">
+</div>
 <div id="lookup-result" aria-live="polite">{% if r %}{% include "_lookup_result.html" %}{% endif %}</div>
-<dialog id="scanner" class="scanner" aria-label="Barcode scanner" data-autoscan="{{ 1 if autoscan else 0 }}">
-  <video id="scanner-video" playsinline muted></video>
-  <div class="scanner-guide" aria-hidden="true"></div>
-  <p id="scanner-status" class="scanner-status" role="status">Point the camera at the barcode</p>
-  <div class="scanner-bar">
-    <button type="button" class="btn scanner-close" data-scan-close>Close</button>
-  </div>
-</dialog>
 <ul class="group home-links">
   <li><a class="group-link" href="/identifiers">Learned codes{{ icon("chevron-right") }}</a></li>
 </ul>

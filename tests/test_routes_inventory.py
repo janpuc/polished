@@ -333,23 +333,39 @@ def test_the_owned_filter_lists_only_owned_shades(seeded):
 def test_home_shows_counts_and_recent_bottles(seeded):
     client, conn = seeded
     html = client.get("/").text
-    assert (
-        re.search(r"<strong>0</strong><span>bottles</span>", html) and "Recent bottles" not in html
-    )
+    assert "bottles</a>" not in html and "Recent bottles" not in html  # nothing to count yet
+    assert "No bottles yet" in html and 'href="/lookup?scan=1"' in html
     make_bottle(client, conn, "thirst-trap", printed_code="259")
     make_bottle(client, conn, "thirst-trap")
     make_bottle(client, conn, "peely-base", state="half")
     client.post(f"/shades/{sid(conn, 'rest-in-peach')}/wishlist")
     html = client.get("/").text
-    assert "<strong>3</strong><span>bottles</span>" in html
-    assert "<strong>2</strong><span>shades owned</span>" in html
-    assert "<strong>1</strong><span>on the wishlist</span>" in html
-    assert "Recent bottles" in html
+    line = re.search(r'<p class="stats-line">(.*?)</p>', html, re.S).group(1)
+    assert re.findall(r'<a href="([^"]+)">([^<]+)</a>', line) == [
+        ("/bottles", "3 bottles"),
+        ("/shades?owned=owned", "2 shades"),
+        ("/wishlist", "1 wished"),
+    ]
+    assert "Recent bottles" in html and "No bottles yet" not in html
     assert re.findall(r'class="shelf-title">([^<]+)<', html)[:3] == [
         "Peely Base",
         "Thirst Trap",
         "Thirst Trap",
     ]
+
+
+def test_home_groups_the_browse_links_and_keeps_the_rest_on_more(seeded):
+    client, _ = seeded
+    html = client.get("/").text
+    for href in ("/shades", "/shades?kind=topper", "/more"):
+        assert f'class="group-link" href="{href}"' in html
+    for kept_out in ("/shades/new", "/sync", "/identifiers", "Sign out"):
+        assert kept_out not in html
+    more = client.get("/more")
+    assert more.status_code == 200
+    for href in ("/shades/new", "/sync", "/identifiers"):
+        assert f'class="group-link" href="{href}"' in more.text
+    assert "Signed in as Dev" in more.text and "Sign out" in more.text
 
 
 # Wishlist

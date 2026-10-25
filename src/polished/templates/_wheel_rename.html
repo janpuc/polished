@@ -1,0 +1,17 @@
+{# The rename sheet, swapped into #sheet-body. A saved name swaps the title out of band
+   (_wheel_name.html) and closes the sheet; an empty one comes back into #rename-status. #}
+<form class="sheet-form" method="post" action="/wheels/{{ wheel.id }}" hx-post="/wheels/{{ wheel.id }}" hx-swap="none">
+  <div class="grabber" aria-hidden="true"></div>
+  <header class="sheet-head">
+    <h2 tabindex="-1" autofocus>Rename wheel</h2>
+    <button type="button" class="btn btn-text" data-sheet-close>Cancel</button>
+  </header>
+  <div class="field">
+    <label for="rename">Name</label>
+    <input id="rename" name="name" value="{{ wheel.name }}" maxlength="60" required autocomplete="off" enterkeyhint="done">
+    <p id="rename-status" class="field-error" role="alert"></p>
+  </div>
+  <div class="sheet-actions">
+    <button type="submit" class="btn btn-block">Save name</button>
+  </div>
+</form>

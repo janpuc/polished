@@ -1,11 +1,12 @@
 {% extends "base.html" %}
 {% from "_icons.html" import icon with context %}
 {% from "_tip.html" import tip %}
+{% from "_mini_ring.html" import mini_ring %}
 {% set tab = "home" %}
 {% block title %}Polished{% endblock %}
 {% block content %}
 <header class="page-head">
-  <h1 class="title title-brand"><img src="/static/icons/favicon.svg" width="32" height="32" alt="">Polished</h1>
+  <h1 class="title title-brand"><img src="/static/icons/favicon.svg" width="36" height="36" alt="">Polished</h1>
 </header>
 <div class="sentinel" aria-hidden="true"></div>
 <form class="search-bar" action="/shades" method="get" role="search">
@@ -20,6 +21,17 @@
   </div>
 </form>
 <div id="search-results" aria-live="polite"></div>
+{% if wheel %}
+<a class="home-wheel" href="/w/{{ wheel.slug }}">
+  {{ mini_ring(tiles, wheel.slot_count, "home") }}
+  <span class="home-wheel-line"><strong>{{ wheel.name }}</strong>, {{ wheel.filled }} of {{ wheel.slot_count }}{{ icon("chevron-right", "icon-sm") }}</span>
+</a>
+{% else %}
+<a class="home-wheel" href="/wheels">
+  {{ mini_ring(tiles, 12, "home") }}
+  <span class="home-wheel-line"><strong>No wheels yet</strong>, make one{{ icon("chevron-right", "icon-sm") }}</span>
+</a>
+{% endif %}
 {% if recent %}
 <h2 class="section-title">Recent bottles</h2>
 <ul class="shelf">
@@ -30,32 +42,24 @@
   </a></li>
   {% endfor %}
 </ul>
-{% endif %}
-<div class="stats">
-  <a class="stat" href="/bottles"><strong>{{ counts.bottles }}</strong><span>bottle{{ '' if counts.bottles == 1 else 's' }}</span></a>
-  <a class="stat" href="/shades?owned=owned"><strong>{{ counts.shades }}</strong><span>shade{{ '' if counts.shades == 1 else 's' }} owned</span></a>
-  <a class="stat" href="/wishlist"><strong>{{ wishlist.count }}</strong><span>on the wishlist</span></a>
-</div>
-{% if recent %}
-<a class="btn btn-block home-scan" href="/lookup?scan=1">{{ icon("camera") }}Scan a bottle</a>
 {% else %}
 <div class="empty-state">
-  <div class="nail-glyph" aria-hidden="true"></div>
   <h2>No bottles yet</h2>
-  <p>Scan the code under a bottle or add it from its shade page.</p>
+  <p>Scan the code under a bottle, or add one from its shade page.</p>
   <a class="btn" href="/lookup?scan=1">{{ icon("camera") }}Scan a bottle</a>
 </div>
+{% endif %}
+{% if counts.bottles or counts.shades or wishlist.count %}
+<p class="stats-line">
+  <a href="/bottles">{{ counts.bottles }} bottle{{ '' if counts.bottles == 1 else 's' }}</a>
+  <a href="/shades?owned=owned">{{ counts.shades }} shade{{ '' if counts.shades == 1 else 's' }}</a>
+  <a href="/wishlist">{{ wishlist.count }} wished</a>
+</p>
 {% endif %}
 <ul class="group home-links">
   <li><a class="group-link" href="/shades">Browse all shades{{ icon("chevron-right") }}</a></li>
   <li><a class="group-link" href="/shades?kind=topper">Toppers{{ icon("chevron-right") }}</a></li>
   <li><a class="group-link" href="/shades?status=buyable&amp;sort=newest">New and in stock{{ icon("chevron-right") }}</a></li>
-  <li><a class="group-link" href="/shades/new">Add a shade by hand{{ icon("chevron-right") }}</a></li>
-  <li><a class="group-link" href="/sync">Catalog sync{{ icon("chevron-right") }}</a></li>
+  <li><a class="group-link" href="/more">More{{ icon("chevron-right") }}</a></li>
 </ul>
-{% if user %}
-<div class="foot">Signed in as {{ user.name }}.
-  <form method="post" action="/auth/logout"><button type="submit" class="btn btn-text">Sign out</button></form>
-</div>
-{% endif %}
 {% endblock %}

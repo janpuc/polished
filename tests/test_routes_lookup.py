@@ -53,6 +53,40 @@ def test_the_lookup_page_has_the_scanner_the_photo_fallback_and_the_field(seeded
     assert 'data-autoscan="1"' in client.get("/lookup?scan=1").text
 
 
+def test_the_viewfinder_comes_first_then_one_field_and_the_photo_fallback(seeded):
+    client, _ = seeded
+    html = client.get("/lookup?scan=1").text
+    order = [
+        html.index(marker)
+        for marker in (
+            'class="viewfinder"',
+            "Point at the barcode under the bottle",
+            'placeholder="Type the digits, a P code, or a name"',
+            "Take a photo instead",
+            'id="lookup-result"',
+            "Learned codes",
+        )
+    ]
+    assert order == sorted(order)
+    assert html.count('name="q"') == 1 and html.count("<button") == 2  # open and close the camera
+    assert '<dialog id="scanner"' in html and 'id="scanner-status"' in html
+    assert 'class="scanner-bar"' not in html
+
+
+def test_the_result_card_pairs_the_bottle_photo_with_the_shades_own_tip(seeded):
+    client, conn = seeded
+    shade = sid(conn, "Thirst Trap")
+    learn(client, shade)
+    card = client.get("/lookup/resolve", params={"q": UPC, "via": "scan"}).text
+    card = re.search(r'<a class="result-card".*?</a>', card, re.S).group(0)
+    assert f'href="/shades/{shade}"' in card
+    assert re.search(r'<img class="thumb" src="https://cdn\.shopify\.com/[^"]+"', card)
+    assert re.search(
+        rf'<span class="tip-l" aria-hidden="true"><img src="/tips/shade/{shade}\.svg', card
+    )
+    assert card.index('class="thumb"') < card.index('class="tip-l"')
+
+
 def test_a_code_in_the_query_resolves_without_javascript(seeded):
     client, _ = seeded
     html = client.get(f"/lookup?q={UPC}").text
