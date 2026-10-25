@@ -22,15 +22,3 @@ zxing-wasm/ (reader build; MIT, see zxing-wasm/LICENSE)
   fetched: 2026-10-25 with scripts/vendor.sh
   note: the wasm is loaded from /static/vendor/zxing-wasm/ by a locateFile override in
         static/js/scanner.js; the package's default CDN location is never used.
-
-fonts/fraunces-latin.woff2 (Fraunces, SIL Open Font License 1.1, see fonts/OFL.txt)
-  version: the google/fonts build of Fraunces 1.000 (upstream: https://github.com/undercasetype/Fraunces)
-  source:  https://raw.githubusercontent.com/google/fonts/4024282d9b0cffcdb8e3024560862746178d741f/ofl/fraunces/Fraunces%5BSOFT%2CWONK%2Copsz%2Cwght%5D.ttf
-           (sha256 177ff6c0f14e5550a3c624247cd1189611d4eb65d000b14944c63d967958abbb)
-  license: https://raw.githubusercontent.com/google/fonts/4024282d9b0cffcdb8e3024560862746178d741f/ofl/fraunces/OFL.txt
-           (sha256 bdf4c22802eaf804f998195871c6b8938aac2ac14b2d78a8bd66a6f1eced833b)
-  derived: scripts/make_fonts.sh pins WONK=0 and cuts the axes to wght 500:600, opsz 18:40, SOFT 0:100
-           with fonttools varLib.instancer, then subsets to Latin (Basic Latin, Latin-1, curly quotes,
-           dashes, ellipsis, minus, multiplication sign) with pyftsubset, flavor woff2.
-  sha256:  3fcbd115726289913c3c11c586c790a6ee21c3fcbb793a0e71177a619a85fedd (the woff2 as committed;
-           a rebuild may differ by tool version, the inputs above are what is pinned)

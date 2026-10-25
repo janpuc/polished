@@ -257,5 +257,6 @@ def test_a_filled_tip_is_the_stack_drawing_and_never_a_photo(client, catalog):
     assert f'src="/tips/stack/{stack_id}.svg?v=' in tile
     assert "cdn.shopify.com" not in tile and "is-bottle" not in page and "tip-bands" not in page
     slot_list = re.search(r'id="slot-list".*', page, re.S).group(0)
-    assert slot_list.count("/tips/shade/") == 2 and "cdn.shopify.com" not in slot_list
+    assert f'src="/tips/stack/{stack_id}.svg?v=' in slot_list  # the composite tip, one per row
+    assert '<span class="tip-m"' in slot_list and "cdn.shopify.com" not in slot_list
     assert ">1<" in page and "of 20 swatched" in page  # the hub shows the count, not the name twice

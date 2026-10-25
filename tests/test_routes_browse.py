@@ -190,11 +190,17 @@ def test_search_rejects_a_context_this_stage_does_not_have(seeded):
     assert client.get("/search", params={"q": "x", "ctx": "stack"}).status_code == 422
 
 
-def test_rows_show_thumbnail_title_finish_chips_and_status(seeded):
+def test_rows_show_tip_title_finish_chips_and_status(seeded):
     client, _ = seeded
     html = client.get("/shades", params={"q": "jam session"}).text
-    assert "width=96&amp;height=128&amp;crop=center" in html and 'loading="lazy"' in html
-    assert "width=144&amp;height=192&amp;crop=center 3x" in html
+    row = re.search(r'<li class="shade-row">.*?</li>', html, re.S).group(0)
+    assert re.search(
+        r'<span class="tip-m" aria-hidden="true"><img src="/tips/shade/\d+\.svg\?v=\w+"', row
+    )
+    assert 'width="40" height="66"' in row and 'loading="lazy"' in row
+    assert (
+        "cdn.shopify.com" not in row
+    )  # a bottle photo is for the shade page and the lookup result
     assert "Jam Session" in html and ">Holographic<" in html
     assert 'class="status status-sold_out">Sold out, retiring<' in html
     assert "$15.50" in html

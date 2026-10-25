@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% from "_icons.html" import icon with context %}
+{% from "_tip.html" import tip %}
 {% set tab = "bottles" %}
 {% block title %}Bottle history | Polished{% endblock %}
 {% block content %}
@@ -19,7 +20,7 @@
       {% for bottle in month.rows %}
       <li>
         <a class="row-link history-row{% if bottle.archived or bottle.state == 'empty' %} is-past{% endif %}" href="/shades/{{ bottle.shade_id }}">
-          {% if bottle.hero_image_url %}<img class="thumb thumb-sm" src="{{ bottle.hero_image_url|thumb(72, 96) }}" srcset="{{ bottle.hero_image_url|thumb(72, 96) }} 2x, {{ bottle.hero_image_url|thumb(108, 144) }} 3x" width="36" height="48" alt="" loading="lazy" decoding="async">{% else %}<span class="thumb thumb-sm thumb-empty" aria-hidden="true"></span>{% endif %}
+          {{ tip(bottle, "m") }}
           <span class="row-body">
             <span class="row-title">{{ bottle.title }}</span>
             <span class="row-sub">

@@ -1,9 +1,10 @@
 {# Bottles grouped by shade: the body of #bottle-groups, with the level chips out of band. #}
+{% from "_tip.html" import tip %}
 {% if is_partial %}{% include "_bottle_filters.html" %}{% endif %}
 {% for group in groups %}
 <section class="bottle-group">
   <a class="group-head" href="/shades/{{ group.shade_id }}">
-    {% if group.hero_image_url %}<img class="thumb thumb-sm" src="{{ group.hero_image_url|thumb(72, 96) }}" srcset="{{ group.hero_image_url|thumb(72, 96) }} 2x, {{ group.hero_image_url|thumb(108, 144) }} 3x" width="36" height="48" alt="" loading="lazy" decoding="async">{% else %}<span class="thumb thumb-sm thumb-empty" aria-hidden="true"></span>{% endif %}
+    {{ tip(group.tip, "m") }}
     <span class="row-title">{{ group.title }}</span>
   </a>
   <div class="group">

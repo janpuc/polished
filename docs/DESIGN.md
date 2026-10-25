@@ -80,9 +80,8 @@ iPhone Safari / PWA ──https──> Cloudflare tunnel ──> envoy-external 
   is stuck under the status bar. No bundler, no Node.
 - **Vendored static assets** in `static/vendor/`: `htmx.min.js` and `zxing-wasm/` (reader build:
   `reader/index.js` and `share.js` as shipped, plus `zxing_reader.wasm`). Versions recorded in `static/vendor/VERSIONS.txt`, fetched by `scripts/vendor.sh` (a developer step);
-  Renovate cannot update vendored files, so a refresh is a manual stage. The one font, Fraunces
-  (OFL), lives in `static/fonts/fraunces-latin.woff2` with its licence; its source, hashes and the
-  subsetting recipe are in `VERSIONS.txt` and `scripts/make_fonts.sh`.
+  Renovate cannot update vendored files, so a refresh is a manual stage. There is no webfont: the UI
+  is set in the system font (`system-ui`).
 - **SQLite** through stdlib `sqlite3`: WAL, `foreign_keys=on`, `busy_timeout=5000`, one
   connection per request (FastAPI sync route functions run in the threadpool) and one for the
   sync task. One uvicorn worker only: the scheduler and the DB assume a single process.
@@ -131,7 +130,7 @@ routes/              home.py shades.py bottles.py wishlist.py lookup.py wheels.p
 templates/           base.html (tab bar, sheet), pages, partials (leading underscore: _shade_row.html …),
                      _icons.html (the `icon()` macro for the sprite)
 static/              css/app.css (tokens and every component, docs/VISUAL.md), js/, vendor/,
-                     fonts/ (Fraunces), icons/ (ui.svg sprite, nail-tip.svg mask, logo.svg,
+                     icons/ (ui.svg sprite, nail-tip.svg mask, logo.svg,
                      favicon.svg and the PNGs scripts/make_icons.py draws from them)
 ```
 
@@ -163,7 +162,7 @@ with CSS.
 templates: `base.html` carries the five-tab bar (Home, Shades, Bottles, Wheels, Wishlist; a page sets
 `{% set tab = "shades" %}` and a page without a tab, such as the offline and sign-in pages, gets no
 bar), a skip link and the shared `<dialog id="sheet">`; each page opens with a large title
-(`.title`, Fraunces) and, below the top level, a back link row. Icons are `{{ icon("name") }}`, a
+(`.title`, 34 pt bold) and, below the top level, a back link row. Icons are `{{ icon("name") }}`, a
 `<use>` of `static/icons/ui.svg?v=<version>`. The CSP allows no inline style, so all styling is
 classes in `app.css`; nothing sets a `style` attribute.
 
@@ -562,10 +561,10 @@ the first colour instead. On the 2026-10-25 snapshot: 372 of 372 shades, 223 wit
   The form sits in a `<details>` next to the sticky search field; the panel drops down over the
   list. A change or 200 ms of typing sends the form with `hx-get`, the fragment (rows, Load more
   and the two counts as out-of-band spans) replaces `#shade-list`, and `hx-push-url` keeps the URL.
-- A shade row (`_shade_row.html`, one line, class `shade-row`) shows the hero thumbnail, title,
-  up to three finish chips (plus "Topper"), the status label, the price, an "owned ×N" badge
-  when `shade_status.owned_count` is above 0 and a ♥ when the shade is wishlisted; it opens the
-  shade.
+- A shade row (`_shade_row.html`, one line, class `shade-row`) shows the painted tip (`_tip.html`,
+  40 by 66; the lookup result keeps the bottle photo), title, up to three finishes (plus "Topper"),
+  the status label, the price, an "owned ×N" badge when `shade_status.owned_count` is above 0 and
+  a ♥ when the shade is wishlisted; it opens the shade.
 - The detail page shows the images (every `images[]` entry of the product's stored feed JSON) in
   a horizontally scrolling, scroll-snapped strip, the status, price (with the compare-at price and
   a "Sale" chip when `price < compare_at`), finish, colour and collection chips that link back to
@@ -735,9 +734,12 @@ auth gate → routes.
   rearranging is a database edit, renaming never invalidates a tag.
 - **Wheel page `/w/<slug>`** (the canonical page; `/wheels` links to it): the ring plus the list
   of docs/VISUAL.md 5, replacing the 4-column grid. The ring is slots 1..20 as nail tips around a
-  hub, a filled tip shows the whole stack as one drawing (`/tips/stack/<id>.svg`, below), the hub shows the filled count ("13") over "of 20 swatched" (the title above it already names the wheel), and a 12-slot ring is drawn at radius 112px, an empty slot shows its number inside a foil edge,
-  a slot with an open draft shows a "draft" dot; below it a plain list of the filled slots reads
-  each stack without squinting. Tapping a tip or a list row opens the stack builder (section 10). `?hl=<shade_id>` highlights every slot whose stack contains that shade
+  hub, a filled tip shows the whole stack as one drawing (`/tips/stack/<id>.svg`, below), the hub shows the filled count ("13") over "of 20" (the title above it already names the wheel), the
+  ring has one radius (150px, the full width of a 390pt phone; it shrinks to fit below 400pt) for any
+  slot count, a 1.5px hairline circle runs through the stems of the tips like the plastic ring of a real
+  wheel, an empty slot is a `--fill` tip with its number and no foil (foil is for `?hl` and the save
+  sweep only), a slot with an open draft shows a "draft" dot; below it a plain list of the filled
+  slots (the composite tip, name and date) reads each stack without squinting. Tapping a tip or a list row opens the stack builder (section 10). `?hl=<shade_id>` highlights every slot whose stack contains that shade
   and scrolls to the first (`#slot-12`), which is what "Swatched on" links on the shade page use.
 - **Nail tips are drawn, never photographed (`tips.py`, `routes/tips.py`).** A tip, a mini tip, a
   builder layer tip and the preview on the shade page are an `<img>` of a 102×168 SVG that CSS
@@ -878,7 +880,7 @@ Operations on a stack id are refused (409) unless the stack is a draft that some
   colour; the page's two `theme-color` metas follow the colour scheme.
 - `GET /sw.js` is served from the root so its scope is `/`, with `Cache-Control: no-cache`. It
   has three jobs: precache `/offline`, `app.css`, `htmx.min.js`, `register-sw.js`, `chrome.js`, the
-  icon sprite, the Fraunces file, `favicon.svg`, and the 32, 180 and 192 px icons into
+  icon sprite, `favicon.svg`, and the 32, 180 and 192 px icons into
   `polished-static-<version>`; serve `/static/*` cache-first (templates append `?v=<version>`,
   so a release changes the URLs); answer a failed navigation with `/offline`. It never caches
   HTML, partials, API responses or cross-origin requests, never touches non-GET requests, and
@@ -1185,9 +1187,8 @@ carry the shade page's action bar as an out-of-band copy when `ctx=shade`, becau
     The top bar is gone for a bottom tab bar of five tabs (the old deviation 31, which added
     Bottles and Wishlist to the top bar, is superseded). Sign out moved to the Home footer.
     Tab labels are 11 px (VISUAL.md says caption size, 13 px: five labels at 13 px leave no air on
-    a 390 pt screen). Fraunces carries titles and shade names only; `opsz` follows the size (34 for
-    page titles, 28 for the shade title, 24 for row names) instead of one fixed 24, and the subset
-    keeps `wght` 500 to 600, `opsz` 18 to 40 and `SOFT` 0 to 100 (70 KB; `WONK` is pinned off).
+    a 390 pt screen). (Superseded by the swatch-book overhaul: no webfont, the UI is SF Pro through `system-ui`;
+    see docs/advice/fable-swatch-book-2026-10-25.md until VISUAL.md is rewritten.)
 42. **Presentation copy changed, behaviour did not.** Middle dots, spaced dashes and `+` prefixes
     are gone from copy ("Added Spirit Fingers with P259.", "New barcode 0810170284120. Which shade
     is it?"); "owned ×2" is the pill "Owned ×2"; the heart toggle is an icon with `aria-pressed` and
@@ -1347,6 +1348,35 @@ carry the shade page's action bar as an out-of-band copy when `ctx=shade`, becau
 79. **Tip colour override instead of a photo picker:** the shade page has a colour input, not an image sheet;
     `swatch_override_hex` replaces `swatch_hex` and drops `swatch_hex2`; the sync never writes it. Effective
     colour order: override, `swatch_hex`, neutral (`#c9bfc0`).
+80. **The swatch book, run 1: tokens, controls, tips, ring** (Jan: "a bit ugly ... it should be beautiful",
+    `docs/advice/fable-swatch-book-2026-10-25.md`; VISUAL.md is rewritten after run 2 and its colours,
+    Fraunces and pill controls no longer apply). What changed and where it departs from the advice:
+    - No webfont: Fraunces, its OFL file, the preload, the precache entry, the `VERSIONS.txt` entry,
+      `scripts/make_fonts.sh` and the Dockerfile's font self-check are gone (the self-check now asserts
+      `static/icons/ui.svg`). The type scale is roles (large title 34, sheet and shade title 28,
+      section 22, headline and buttons 17, subhead 15, footnote 13, caption 12, hub number 44); the
+      earlier 14 and 19 px sizes went into the scale. Tab labels are 12 (the advice) and no longer 11.
+    - Tokens are the advice's table in hex; `--heart-text` was dropped because nothing needs pink text:
+      the heart icon is the only pink (the wishlist counts on Home and in the wishlist group heads are ink).
+      The prefers-contrast block still overrides `--line`, `--line-2` and `--mat` for both schemes.
+    - One filled action per view is `--primary`; the segmented control and the on chip are `--primary`
+      with `--primary-on` text; stepper, chips, inputs and the secondary button follow the advice. The
+      shade page's wishlist control is the heart icon button (`.btn-heart`, 50 pt, `--fill`, the heart
+      pink and filled when on) beside "Add bottle"; its accessible name carries the state.
+    - Tips replace bottle photos in every list (`_tip.html`, sizes s 28x46, m 40x66, l 56x92, xl 72x118).
+      The shade rows, the Home shelf, the bottle groups, the history rows, the wishlist rows, the bought
+      sheet and the builder's picker and layers use the shade's tip; the wheel page's slot list and the
+      builder's "Copy from" list use the stack's composite tip. `.mini-tips` is gone. The bottle photo
+      stays on the shade page strip and the lookup result (`ctx == 'result'`).
+    - The ring has a 150px radius at full width, a hairline circle, tips 38x62, empties without foil,
+      and a hub that holds only the number and "of N". `_slot_swap.html` swaps `#hub-name` (the number)
+      and `#hub-count` ("of N"); rename no longer touches the hub.
+    - Two defects found by the screenshots are fixed here: the number on an empty tip no longer widens
+      the page on a 12-slot ring (a 7px horizontal scroll that pushed the tab bar off the screen), and the
+      hidden file input of the lookup page no longer sits past the right edge (same symptom, 408px).
+    - Left for run 2 (advice section 4): the Home restructure, the wheel list's mini rings, the level glyph
+      and Archive inside the bottle sheet, the wishlist head and row controls, the builder's composite
+      head, lookup camera-first, the shade page's tip beside the title.
 
 ## 15. Home-ops manifests
 

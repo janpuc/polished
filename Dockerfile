@@ -37,11 +37,11 @@ ENV PATH="/opt/venv/bin:$PATH" \
     POLISHED_DB_PATH=/data/polished.db
 
 # Fail at build time, not in the pod: the package imports from the venv copy (not a source
-# tree), its bundled migrations apply to a throwaway database, and the static files (fonts,
-# icons, the zxing wasm) are in the package.
+# tree), its bundled migrations apply to a throwaway database, and the static files (icons,
+# the zxing wasm) are in the package.
 RUN python -c "import polished.server; from polished.migrate import migrate; print('migrations', migrate('/tmp/selfcheck.db'))" \
  && test -s /opt/venv/lib/python3.12/site-packages/polished/static/vendor/zxing-wasm/zxing_reader.wasm \
- && test -s /opt/venv/lib/python3.12/site-packages/polished/static/fonts/fraunces-latin.woff2 \
+ && test -s /opt/venv/lib/python3.12/site-packages/polished/static/icons/ui.svg \
  && rm -f /tmp/selfcheck.db*
 
 WORKDIR /app

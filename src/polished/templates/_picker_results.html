@@ -2,10 +2,11 @@
    shades, owned first. Tapping a row adds it as the next layer. `picker` is routes/_builder.py
    picker(). #}
 {% from "_icons.html" import icon with context %}
+{% from "_tip.html" import tip %}
 {% macro pick_row(shade) %}
 <li class="pick-item">
   <button type="button" class="pick-add" hx-post="/stacks/{{ picker.stack_id }}/layers" hx-vals='{{ {"shade_id": shade.id}|tojson }}' aria-label="Add {{ shade.title }}">
-    {% if shade.hero_image_url %}<img class="thumb thumb-pick" src="{{ shade.hero_image_url|thumb(80, 104) }}" srcset="{{ shade.hero_image_url|thumb(80, 104) }} 2x, {{ shade.hero_image_url|thumb(120, 156) }} 3x" width="40" height="52" alt="" loading="lazy" decoding="async">{% else %}<span class="thumb thumb-pick thumb-empty" aria-hidden="true"></span>{% endif %}
+    {{ tip(shade, "s") }}
     <span class="row-body">
       <span class="row-title">{{ shade.title }}</span>
       <span class="row-sub"><span>{{ ((["topper"] if shade.is_topper else []) + shade.finishes[:3])|words }}</span>{% if shade.owned_count and picker.scope != 'owned' %}<span class="pill">Owned ×{{ shade.owned_count }}</span>{% endif %}{% if shade.wishlisted %}<span class="heart" role="img" aria-label="On the wishlist">{{ icon("heart", "icon-sm") }}</span>{% endif %}</span>

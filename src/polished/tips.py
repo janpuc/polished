@@ -50,17 +50,22 @@ class TipShade:
 
 
 def tip_shade(row) -> TipShade:
-    """From a row with TIP_FIELDS and `shade_id` (and `coats` for a layer). The override replaces
-    the colour and with it the second colour."""
+    """From a row with TIP_FIELDS and `shade_id` or `id` (and `coats` for a layer); `finishes` is
+    the comma-joined string of TIP_FIELDS or the list a shade list row carries. The override
+    replaces the colour and with it the second colour."""
     override = row["swatch_override_hex"]
+    keys = row.keys()
+    finishes = row["finishes"] or ()
+    if isinstance(finishes, str):
+        finishes = finishes.split(",")
     return TipShade(
-        id=row["shade_id"],
+        id=row["shade_id"] if "shade_id" in keys else row["id"],
         hex=override or row["swatch_hex"] or NEUTRAL_HEX,
         hex2=None if override else row["swatch_hex2"],
-        finishes=frozenset((row["finishes"] or "").split(",")) - {""},
+        finishes=frozenset(finishes) - {""},
         topper=bool(row["is_topper"]),
         clear=row["kind"] in CLEAR_KINDS,
-        coats=row["coats"] if "coats" in row.keys() else 1,  # noqa: SIM118 (sqlite3.Row: keys())
+        coats=row["coats"] if "coats" in keys else 1,
     )
 
 
@@ -70,7 +75,8 @@ def revision(shades: list[TipShade]) -> str:
 
 
 def shade_url(row) -> str:
-    return f"/tips/shade/{row['shade_id']}.svg?v={revision([tip_shade(row)])}"
+    drawn = tip_shade(row)
+    return f"/tips/shade/{drawn.id}.svg?v={revision([drawn])}"
 
 
 def stack_url(stack_id: int, layers: list) -> str:

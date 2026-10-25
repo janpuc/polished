@@ -1,79 +1,81 @@
-/* polished: docs/VISUAL.md is the spec for everything here. Mobile first, light and dark.
+/* polished: the swatch book (docs/advice/fable-swatch-book-2026-10-25.md; docs/VISUAL.md is the
+   look it replaces). Every shade is a painted tip on a quiet board: the chrome is ink and board,
+   the colour comes from the tips, pink means one thing, wanted. Mobile first, light and dark.
    Contents: tokens, base, chrome (tab bar, titles, back link), controls, lists and rows, shade
-   page, home, bottles, sheet, wishlist, lookup and scanner, status pages, motion preferences. */
-
-@font-face {
-  font-family: "Fraunces";
-  src: url("../fonts/fraunces-latin.woff2") format("woff2");
-  font-weight: 500 600;
-  font-style: normal;
-  font-display: swap;
-}
+   page, home, bottles, sheet, wishlist, lookup and scanner, status pages, wheels and the ring,
+   the builder, motion preferences. */
 
 /* 1. Tokens */
 :root {
   color-scheme: light dark;
 
-  --bg: #faf7fb;
-  --surface: #fff;
-  --fill: #f1eaf3;
-  --lift: #fff;
-  --ink: #1f1526;
-  --ink-2: #6f6277;
-  --line: #e7deea;
-  --accent: #a8246f;
-  --accent-on: #fff;
-  --accent-tint: rgb(168 36 111 / 0.12);
-  --ok: #1e7a4c;
-  --warn: #9a5a00;
-  --bad: #b3261e;
-  --bad-tint: rgb(179 38 30 / 0.1);
-  --mat: rgb(31 21 38 / 0.1);
-  --scrim: rgb(31 21 38 / 0.45);
-  --material: rgb(250 247 251 / 0.78);
-  --material-edge: rgb(31 21 38 / 0.08);
-  --sheet-shadow: 0 -12px 48px rgb(31 21 38 / 0.22);
-  --sheet-material: rgb(255 255 255 / 0.82);
+  --bg: #f6f2f5;
+  --surface: #fdfbfc;
+  --fill: #ece5ea;
+  --fill-2: #e3dbe1;
+  --line: #ddd5db;
+  --line-2: #c5bac2;
+  --ink: #261322;
+  --ink-2: #6b5666;
+  --ink-3: #8c7a87;
+  --primary: #381531;
+  --primary-on: #fff;
+  --heart: #d83486;
+  --ok: #007840;
+  --warn: #975800;
+  --bad: #be222a;
+  --mat: oklch(0 0 0 / 0.1);
+  --ring-edge: 0 0 0 1px oklch(0 0 0 / 0.06);
+  --gloss: oklch(1 0 0 / 0.3);
+  --scrim: rgb(38 19 34 / 0.45);
+  --material: rgb(246 242 245 / 0.78);
+  --material-edge: rgb(38 19 34 / 0.08);
+  --sheet-shadow: 0 -12px 48px rgb(38 19 34 / 0.22);
+  --sheet-material: rgb(253 251 252 / 0.82);
   --foil: conic-gradient(from 200deg, #ffb3c7, #ffe29a, #b7f5c8, #9fd8ff, #d3b4ff, #ffb3c7);
 
   --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  --serif: "Fraunces", "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
 
   --gutter: 16px;
   --tap: 44px;
   --tabbar: 49px;
   --measure: 40rem;
-  --r-thumb: 10px;
+  --r-input: 10px;
+  --r-button: 12px;
+  --r-group: 16px;
+  --r-inset: 4px;
   --r-row: 12px;
-  --r-control: 14px;
-  --r-group: 18px;
-  --r-sheet: 24px;
+  --r-sheet: 20px;
+  --r-tip: 50% 50% 38% 38% / 62% 62% 30% 30%;
   --ease-out: cubic-bezier(0.22, 0.9, 0.32, 1);
   --ease-in: cubic-bezier(0.68, 0, 0.78, 0.1);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #120c16;
-    --surface: #1b1320;
-    --fill: #261c2b;
-    --lift: #3a2d41;
-    --ink: #f4ecf5;
-    --ink-2: #afa2b5;
-    --line: #33283a;
-    --accent: #f06bb0;
-    --accent-on: #1a0f1f;
-    --accent-tint: rgb(240 107 176 / 0.16);
-    --ok: #5fcf95;
-    --warn: #f0b05a;
-    --bad: #ff8a80;
-    --bad-tint: rgb(255 138 128 / 0.14);
-    --mat: rgb(255 255 255 / 0.12);
+    --bg: #160b14;
+    --surface: #20131d;
+    --fill: #30212c;
+    --fill-2: #3a2b36;
+    --line: #372834;
+    --line-2: #4d3c49;
+    --ink: #f7eff5;
+    --ink-2: #b7a4b2;
+    --ink-3: #92808d;
+    --primary: #f7eff5;
+    --primary-on: #280c23;
+    --heart: #ff77b4;
+    --ok: #61da92;
+    --warn: #f9b64f;
+    --bad: #ff7f7f;
+    --mat: oklch(1 0 0 / 0.1);
+    --ring-edge: 0 0 0 1px oklch(1 0 0 / 0.08);
+    --gloss: oklch(1 0 0 / 0.18);
     --scrim: rgb(0 0 0 / 0.6);
-    --material: rgb(18 12 22 / 0.72);
+    --material: rgb(22 11 20 / 0.72);
     --material-edge: rgb(255 255 255 / 0.1);
     --sheet-shadow: 0 -12px 48px rgb(0 0 0 / 0.5);
-    --sheet-material: rgb(27 19 32 / 0.82);
+    --sheet-material: rgb(32 19 29 / 0.82);
   }
 }
 
@@ -104,6 +106,7 @@ body {
   background: var(--bg);
   color: var(--ink);
   font: 400 1.0625rem/1.3 var(--sans);
+  font-optical-sizing: auto;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -131,7 +134,10 @@ select {
 }
 
 a {
-  color: var(--accent);
+  color: inherit;
+  text-decoration-color: var(--line-2);
+  text-decoration-thickness: from-font;
+  text-underline-offset: 3px;
 }
 
 p {
@@ -147,12 +153,12 @@ h3 {
 }
 
 :focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--ink);
   outline-offset: 2px;
 }
 
 ::selection {
-  background: var(--accent-tint);
+  background: var(--fill-2);
 }
 
 .muted {
@@ -160,10 +166,14 @@ h3 {
 }
 
 .caption {
-  font-size: 0.8125rem;
+  font-size: 0.75rem;
   line-height: 1rem;
   font-weight: 500;
-  letter-spacing: 0.01em;
+}
+
+.footnote {
+  font-size: 0.8125rem;
+  line-height: 1.125rem;
 }
 
 .subhead {
@@ -189,9 +199,9 @@ h3 {
   left: 8px;
   z-index: 50;
   padding: 12px 16px;
-  border-radius: var(--r-control);
+  border-radius: var(--r-button);
   background: var(--surface);
-  color: var(--accent);
+  color: var(--ink);
   font-weight: 600;
   text-decoration: none;
   transform: translateY(-200%);
@@ -248,29 +258,33 @@ h3 {
   gap: 2px;
   min-height: var(--tabbar);
   color: var(--ink-2);
-  font-size: 0.6875rem;
-  line-height: 0.8125rem;
+  font-size: 12px;
+  line-height: 16px;
   font-weight: 500;
-  letter-spacing: 0.01em;
   text-decoration: none;
 }
 
+/* The tab bar is chrome: like UIKit's it keeps its size when the text size grows. */
 .tab .icon {
-  width: 1.5rem;
-  height: 1.5rem;
+  width: 24px;
+  height: 24px;
 }
 
+/* The active tab is ink with the filled icon variant, never a colour. */
 .tab[aria-current="page"] {
-  color: var(--accent);
+  color: var(--ink);
 }
 
 .tab[aria-current="page"] .icon {
-  fill: color-mix(in srgb, currentColor 16%, transparent);
-  stroke-width: 2;
+  fill: currentColor;
+}
+
+.tab .icon {
+  transition: scale 150ms ease-out;
 }
 
 .tab:active .icon {
-  transform: scale(0.92);
+  scale: 0.96;
 }
 
 .page-head {
@@ -287,12 +301,11 @@ h3 {
 }
 
 .title {
-  font-family: var(--serif);
+  overflow-wrap: anywhere;
   font-size: 2.125rem;
-  line-height: 2.375rem;
-  font-weight: 600;
-  letter-spacing: -0.015em;
-  font-variation-settings: "SOFT" 50, "opsz" 34;
+  line-height: 2.5625rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
 }
 
 .title-brand {
@@ -310,9 +323,7 @@ h3 {
 .title-detail {
   margin-top: 16px;
   font-size: 1.75rem;
-  line-height: 2rem;
-  letter-spacing: -0.01em;
-  font-variation-settings: "SOFT" 50, "opsz" 28;
+  line-height: 2.125rem;
 }
 
 .back {
@@ -322,14 +333,14 @@ h3 {
   min-height: var(--tap);
   margin: 0 0 0 -8px;
   padding: 0 8px;
-  font-weight: 500;
+  font-weight: 600;
   text-decoration: none;
 }
 
 .section-title {
-  margin: 1.75rem 0 0.25rem;
-  font-size: 1.25rem;
-  line-height: 1.5625rem;
+  margin: 2rem 0 0.75rem;
+  font-size: 1.375rem;
+  line-height: 1.75rem;
   font-weight: 600;
   letter-spacing: -0.01em;
 }
@@ -349,7 +360,9 @@ h3 {
   line-height: 1.25rem;
 }
 
-/* 4. Controls: buttons, segmented controls, chips, inputs, badges */
+/* 4. Controls: buttons, segmented controls, chips, inputs, badges.
+   One filled action per view (--primary, the cap of a Holo Taco bottle); everything else is
+   --fill with ink or plain ink text. Selected is --primary fill with --primary-on text. */
 button {
   font: inherit;
   color: inherit;
@@ -363,43 +376,41 @@ button {
   min-height: 50px;
   padding: 0 20px;
   border: 0;
-  border-radius: var(--r-control);
-  background: var(--accent);
-  color: var(--accent-on);
-  font: 600 1.0625rem/1.25rem var(--sans);
+  border-radius: var(--r-button);
+  background: var(--primary);
+  color: var(--primary-on);
+  font: 600 1.0625rem/1.375rem var(--sans);
   text-align: center;
   text-decoration: none;
   cursor: pointer;
-  transition: transform 100ms ease-out, opacity 150ms ease-out;
+  transition-property: scale, opacity, background-color;
+  transition-duration: 150ms;
+  transition-timing-function: ease-out;
 }
 
-.btn:active {
-  transform: scale(0.97);
+.btn:not(:disabled):active {
+  scale: 0.96;
 }
 
 .btn-secondary {
-  background: var(--accent-tint);
-  color: var(--accent);
+  background: var(--fill);
+  color: var(--ink);
 }
 
 .btn-text {
   min-height: var(--tap);
   padding: 0 10px;
   background: none;
-  color: var(--accent);
-  border-radius: 12px;
+  color: var(--ink);
+  border-radius: var(--r-button);
 }
 
-.btn-text:active {
-  background: var(--accent-tint);
+.btn-text:not(:disabled):active {
+  background: var(--fill);
 }
 
 .btn-danger {
   color: var(--bad);
-}
-
-.btn-danger:active {
-  background: var(--bad-tint);
 }
 
 .btn-block {
@@ -422,13 +433,15 @@ button {
 
 @media (hover: hover) {
   .btn:not(:disabled):hover {
-    filter: brightness(1.06);
+    background-color: color-mix(in oklab, var(--primary) 88%, var(--bg));
   }
 
-  .btn-text:hover,
-  .btn-secondary:hover {
-    filter: none;
-    background: var(--accent-tint);
+  .btn-secondary:not(:disabled):hover {
+    background-color: var(--fill-2);
+  }
+
+  .btn-text:not(:disabled):hover {
+    background-color: var(--fill);
   }
 }
 
@@ -437,18 +450,19 @@ button {
   opacity: 0.7;
 }
 
-/* Text inputs: filled, no border, an accent ring on focus. */
+/* Text inputs: --surface on the board, a --line-2 border, an ink ring on focus. */
 input:not([type="radio"], [type="checkbox"]),
 select,
 textarea {
   width: 100%;
   min-height: 3rem;
   padding: 0 14px;
-  border: 0;
-  border-radius: var(--r-control);
-  background: var(--fill);
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-input);
+  background: var(--surface);
   color: var(--ink);
   font: inherit;
+  caret-color: var(--ink);
 }
 
 textarea {
@@ -466,7 +480,7 @@ textarea::placeholder {
 input:focus-visible,
 select:focus-visible,
 textarea:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--ink);
   outline-offset: 0;
 }
 
@@ -489,9 +503,8 @@ input[type="date"] {
   padding: 0 2px;
   color: var(--ink-2);
   font-size: 0.8125rem;
-  line-height: 1rem;
+  line-height: 1.125rem;
   font-weight: 500;
-  letter-spacing: 0.01em;
 }
 
 .field-error {
@@ -512,8 +525,8 @@ fieldset {
   margin-bottom: 6px;
 }
 
-/* A choice is a hidden input over a styled span. Radios sit in a segmented track, checkboxes are
-   pills. Each is 44pt tall; the 4px transparent border keeps the visible pill at 36. */
+/* A choice is a hidden input over a styled span. Radios sit in a segmented track, checkboxes
+   are outlined chips. Each is 44pt tall. */
 .pick {
   position: relative;
   display: inline-flex;
@@ -537,50 +550,57 @@ fieldset {
   justify-content: center;
   min-height: var(--tap);
   padding: 0 14px;
-  border: 4px solid transparent;
-  border-inline-width: 0;
-  border-radius: 999px;
-  background: var(--fill);
-  background-clip: padding-box;
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-input);
+  background: transparent;
   color: var(--ink);
   font-size: 0.9375rem;
   line-height: 1.25rem;
   font-weight: 500;
   text-decoration: none;
   white-space: nowrap;
-  transition: background-color 120ms ease-out, color 120ms ease-out;
+  transition-property: background-color, color, border-color;
+  transition-duration: 150ms;
+  transition-timing-function: ease-out;
 }
 
-.pick input:checked + span {
-  background-color: var(--accent-tint);
-  background-clip: padding-box;
-  color: var(--accent);
+.pick input:checked + span,
+a.chip.is-on {
+  border-color: var(--primary);
+  background-color: var(--primary);
+  color: var(--primary-on);
+}
+
+a.chip.is-on {
+  font-weight: 600;
 }
 
 .pick input:focus-visible + span {
-  outline: 2px solid var(--accent);
-  outline-offset: 0;
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
 }
 
-.pick input:active + span,
-a.chip:active {
-  background-color: var(--accent-tint);
+.pick input:not(:checked):active + span,
+a.chip:not(.is-on):active {
+  background-color: var(--fill);
 }
 
 .chips {
   display: flex;
   flex-wrap: wrap;
-  gap: 0 8px;
+  gap: 8px;
   margin: 0;
-}
-
-a.chip:hover,
-.pick:hover span {
-  color: var(--accent);
 }
 
 .chip-static {
   color: var(--ink-2);
+}
+
+@media (hover: hover) {
+  .pick input:not(:checked):hover + span,
+  a.chip:not(.is-on):hover {
+    background-color: var(--fill);
+  }
 }
 
 .segmented {
@@ -621,6 +641,8 @@ a.chip:hover,
   display: flex;
   align-items: center;
   justify-content: center;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .segmented a {
@@ -630,15 +652,15 @@ a.chip:hover,
 .segmented .pick input:checked + span,
 .segmented button[aria-pressed="true"],
 .segmented a[aria-current="page"] {
-  background: var(--lift);
+  border-color: transparent;
+  background: var(--primary);
   background-clip: padding-box;
-  box-shadow: 0 1px 2px rgb(31 21 38 / 0.08);
-  color: var(--ink);
+  color: var(--primary-on);
   font-weight: 600;
 }
 
-.segmented .pick:hover span {
-  color: var(--ink);
+.segmented .pick input:not(:checked):active + span {
+  background-color: var(--fill-2);
 }
 
 .segmented-fit {
@@ -659,8 +681,8 @@ a.chip:hover,
   height: 1.375rem;
   padding: 0 6px;
   border-radius: 999px;
-  background: var(--accent);
-  color: var(--accent-on);
+  background: var(--primary);
+  color: var(--primary-on);
   font-size: 0.8125rem;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
@@ -670,28 +692,26 @@ a.chip:hover,
   display: inline-flex;
   align-items: center;
   padding: 2px 8px;
-  border-radius: 999px;
+  border-radius: 6px;
   background: var(--fill);
   color: var(--ink);
   font-size: 0.8125rem;
   line-height: 1rem;
   font-weight: 600;
-  letter-spacing: 0.01em;
   white-space: nowrap;
 }
 
+/* A note is plain text, not a tinted box. */
 .notice {
   margin: 0 0 16px;
-  padding: 12px 16px;
-  border-radius: var(--r-control);
-  background: var(--accent-tint);
+  color: var(--ink-2);
   font-size: 0.9375rem;
   line-height: 1.25rem;
 }
 
 .notice-error {
-  background: var(--bad-tint);
   color: var(--bad);
+  font-weight: 500;
 }
 
 /* 5. Lists and rows */
@@ -705,12 +725,13 @@ a.chip:hover,
   position: relative;
 }
 
+/* The hairline starts under the title: the tip (40) and the gap (12). */
 .shade-row::after {
   content: "";
   position: absolute;
   right: 0;
   bottom: 0;
-  left: 60px;
+  left: 52px;
   height: 1px;
   background: var(--line);
 }
@@ -720,7 +741,7 @@ a.chip:hover,
   align-items: center;
   gap: 12px;
   width: calc(100% + 2 * var(--gutter));
-  min-height: 88px;
+  min-height: 72px;
   margin: 0 calc(-1 * var(--gutter));
   padding: 12px var(--gutter);
   border: 0;
@@ -739,12 +760,73 @@ a.chip:hover,
   outline-offset: -2px;
 }
 
+/* A painted nail tip (_tip.html): its own shape, a 1px mat, a gloss. Four sizes. */
+.tip-s,
+.tip-m,
+.tip-l,
+.tip-xl {
+  position: relative;
+  flex: none;
+  display: block;
+  overflow: hidden;
+  border-radius: var(--r-tip);
+  background: var(--fill);
+}
+
+.tip-s {
+  width: 28px;
+  height: 46px;
+}
+
+.tip-m {
+  width: 40px;
+  height: 66px;
+}
+
+.tip-l {
+  width: 56px;
+  height: 92px;
+}
+
+.tip-xl {
+  width: 72px;
+  height: 118px;
+}
+
+.tip-s img,
+.tip-m img,
+.tip-l img,
+.tip-xl img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* The mat, then the gloss: a soft sheen from the top left and a 1px highlight at the bottom
+   right. Every tip in the app (rows, ring, builder) gets this same finish. */
+.tip-s::after,
+.tip-m::after,
+.tip-l::after,
+.tip-xl::after,
+.tip-art::after,
+.tip-preview::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(125deg, var(--gloss), transparent 42%);
+  box-shadow: inset 0 0 0 1px var(--mat), inset -1px -1px 1px var(--gloss);
+  pointer-events: none;
+}
+
+/* A bottle photo, kept only where the bottle itself is the point: the lookup result. */
 .thumb {
   flex: none;
   display: block;
   width: 48px;
   height: 64px;
-  border-radius: var(--r-row);
+  border-radius: 10px;
   background: var(--fill);
   object-fit: cover;
   outline: 1px solid var(--mat);
@@ -753,12 +835,6 @@ a.chip:hover,
 
 .thumb-empty {
   display: block;
-}
-
-.thumb-sm {
-  width: 36px;
-  height: 48px;
-  border-radius: var(--r-thumb);
 }
 
 .row-body {
@@ -774,11 +850,9 @@ a.chip:hover,
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
-  font-family: var(--serif);
-  font-size: 1.1875rem;
-  line-height: 1.4375rem;
-  font-weight: 500;
-  font-variation-settings: "SOFT" 50, "opsz" 24;
+  font-size: 1.0625rem;
+  line-height: 1.375rem;
+  font-weight: 600;
   overflow-wrap: anywhere;
 }
 
@@ -810,9 +884,8 @@ a.chip:hover,
   gap: 8px;
   margin-top: 2px;
   font-size: 0.8125rem;
-  line-height: 1rem;
+  line-height: 1.125rem;
   font-weight: 500;
-  letter-spacing: 0.01em;
 }
 
 .row-flags .pill {
@@ -821,7 +894,7 @@ a.chip:hover,
 
 .heart {
   display: inline-flex;
-  color: var(--accent);
+  color: var(--heart);
 }
 
 .heart .icon {
@@ -860,7 +933,7 @@ a.chip:hover,
   display: inline-flex;
   align-items: center;
   min-height: var(--tap);
-  font-weight: 500;
+  font-weight: 600;
   text-decoration: none;
 }
 
@@ -876,8 +949,8 @@ a.chip:hover,
 
 .empty-state h2,
 .empty-state .empty-title {
-  font-size: 1.25rem;
-  line-height: 1.5625rem;
+  font-size: 1.375rem;
+  line-height: 1.75rem;
   font-weight: 600;
   letter-spacing: -0.01em;
 }
@@ -897,27 +970,32 @@ a.chip:hover,
   padding: 24px 0;
 }
 
+/* A nail outline in a neutral line: the foil belongs to tips, not to chrome. */
 .nail-glyph {
   width: 64px;
   height: 64px;
   margin-bottom: 4px;
-  background: var(--foil);
+  background: var(--line-2);
   -webkit-mask: url("../icons/nail-tip.svg") center / contain no-repeat;
   mask: url("../icons/nail-tip.svg") center / contain no-repeat;
 }
 
-/* A grouped list: a surface with hairlines between its rows. */
+/* A grouped list: --surface on the board with the shadow-border ring (a transparent border keeps
+   the edge in forced-colors mode) and hairlines between rows. Concentric: the group is 16, its
+   border and padding add up to 4, a row is 12. */
 .group {
   margin: 0;
-  padding: 0;
+  padding: 3px;
   overflow: hidden;
+  border: 1px solid transparent;
   border-radius: var(--r-group);
   background: var(--surface);
+  box-shadow: var(--ring-edge);
   list-style: none;
 }
 
 .group > * + * {
-  box-shadow: inset 0 1px 0 var(--line);
+  background: linear-gradient(var(--line), var(--line)) center top / calc(100% - 24px) 1px no-repeat;
 }
 
 .group-link {
@@ -925,7 +1003,8 @@ a.chip:hover,
   align-items: center;
   gap: 12px;
   min-height: 52px;
-  padding: 0 16px;
+  padding: 0 13px;
+  border-radius: var(--r-row);
   color: var(--ink);
   font-weight: 500;
   text-decoration: none;
@@ -933,7 +1012,7 @@ a.chip:hover,
 
 .group-link .icon {
   margin-left: auto;
-  color: var(--ink-2);
+  color: var(--ink-3);
 }
 
 .group-link:active {
@@ -978,7 +1057,7 @@ a.chip:hover,
   min-width: 0;
   display: flex;
   align-items: center;
-  border-radius: var(--r-control);
+  border-radius: var(--r-input);
   background: var(--fill);
 }
 
@@ -992,7 +1071,8 @@ a.chip:hover,
 .search-field input[type="search"] {
   -webkit-appearance: none;
   appearance: none;
-  padding: 0 4px 0 42px;
+  padding: 0 4px 0 calc(1.5rem + 18px);
+  border: 0;
   background: transparent;
 }
 
@@ -1006,7 +1086,7 @@ a.chip:hover,
 }
 
 .search-field:focus-within {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--ink);
   outline-offset: -2px;
 }
 
@@ -1014,11 +1094,11 @@ a.chip:hover,
   flex: none;
   margin-right: 2px;
   background: none;
-  color: var(--accent);
+  color: var(--ink);
 }
 
-.search-field .btn-icon:active {
-  background: var(--accent-tint);
+.search-field .btn-icon:not(:disabled):active {
+  background: var(--fill-2);
 }
 
 .filter-toggle {
@@ -1033,16 +1113,20 @@ a.chip:hover,
   min-width: 3rem;
   height: 3rem;
   padding: 0 12px;
-  border-radius: var(--r-control);
+  border-radius: var(--r-input);
   background: var(--fill);
   color: var(--ink);
   list-style: none;
   cursor: pointer;
+  transition: scale 150ms ease-out;
+}
+
+.filter-toggle summary:active {
+  scale: 0.96;
 }
 
 .filter-toggle[open] summary {
-  background: var(--accent-tint);
-  color: var(--accent);
+  background: var(--fill-2);
 }
 
 .filter-toggle summary::-webkit-details-marker {
@@ -1060,7 +1144,7 @@ a.chip:hover,
   overscroll-behavior: contain;
   border-radius: var(--r-group);
   background: var(--surface);
-  box-shadow: 0 16px 48px rgb(31 21 38 / 0.2), 0 0 0 1px var(--mat);
+  box-shadow: 0 16px 48px rgb(38 19 34 / 0.2), var(--ring-edge);
 }
 
 .filter-panel .pick span {
@@ -1073,7 +1157,6 @@ a.chip:hover,
 
 .filter-panel .segmented .pick span {
   padding: 0 8px;
-  font-size: 0.875rem;
 }
 
 .filter-actions {
@@ -1151,6 +1234,18 @@ a.chip:hover,
   flex: 2;
 }
 
+/* The heart is an icon button beside the one filled action: --fill with the ink heart, pink
+   only when the shade is on the wishlist. */
+.btn-heart {
+  flex: none;
+  width: 50px;
+  padding: 0;
+}
+
+.btn-heart.is-on {
+  color: var(--heart);
+}
+
 .actions-wrap {
   flex-wrap: wrap;
 }
@@ -1178,18 +1273,16 @@ a.chip:hover,
 }
 
 .shelf-item {
-  display: block;
+  display: flex;
   flex: none;
-  width: 72px;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: 80px;
   color: var(--ink);
+  text-align: center;
   text-decoration: none;
   scroll-snap-align: start;
-}
-
-.shelf-item .thumb {
-  width: 72px;
-  height: 96px;
-  margin-bottom: 6px;
 }
 
 .shelf-item .shelf-title {
@@ -1198,7 +1291,7 @@ a.chip:hover,
   -webkit-box-orient: vertical;
   overflow: hidden;
   font-size: 0.8125rem;
-  line-height: 1rem;
+  line-height: 1.125rem;
   font-weight: 500;
   overflow-wrap: anywhere;
 }
@@ -1226,18 +1319,17 @@ a.chip:hover,
 
 .stat strong {
   font-size: 1.75rem;
-  line-height: 2rem;
-  font-weight: 600;
-  letter-spacing: -0.01em;
+  line-height: 2.125rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
 }
 
 .stat span {
   color: var(--ink-2);
   font-size: 0.8125rem;
-  line-height: 1rem;
+  line-height: 1.125rem;
   font-weight: 500;
-  letter-spacing: 0.01em;
 }
 
 .stat:active {
@@ -1270,7 +1362,7 @@ a.chip:hover,
 .chip-scroll {
   display: flex;
   gap: 8px;
-  margin: 8px calc(-1 * var(--gutter)) 0;
+  margin: 12px calc(-1 * var(--gutter)) 0;
   padding: 0 var(--gutter);
   overflow-x: auto;
   scrollbar-width: none;
@@ -1284,22 +1376,15 @@ a.chip:hover,
   flex: none;
 }
 
-a.chip.is-on {
-  background-color: var(--accent-tint);
-  background-clip: padding-box;
-  color: var(--accent);
-  font-weight: 600;
-}
-
 .bottle-group {
-  margin-top: 28px;
+  margin-top: 24px;
 }
 
 .group-head {
   display: flex;
   align-items: center;
   gap: 12px;
-  min-height: 56px;
+  min-height: 66px;
   margin-bottom: 8px;
   color: inherit;
   text-decoration: none;
@@ -1310,7 +1395,7 @@ a.chip.is-on {
 }
 
 .bottle {
-  padding: 8px 16px 14px;
+  padding: 8px 13px 14px;
 }
 
 .bottle.is-archived .bottle-code,
@@ -1320,17 +1405,18 @@ a.chip.is-on {
 
 .bottle-head {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
+  gap: 0 8px;
   min-height: var(--tap);
 }
 
 .bottle-code {
-  flex: 1;
+  flex: 1 1 6rem;
+  min-width: 0;
   font-size: 1.0625rem;
   line-height: 1.375rem;
   font-weight: 600;
-  letter-spacing: 0.02em;
 }
 
 .pill-level {
@@ -1374,14 +1460,14 @@ a.chip.is-on {
 }
 
 .bottles-section {
-  margin-top: 28px;
+  margin-top: 32px;
 }
 
 .bottles-past .section-title {
   color: var(--ink-2);
   font-size: 1.0625rem;
   line-height: 1.375rem;
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .bottles-section .section-title {
@@ -1444,7 +1530,7 @@ a.chip.is-on {
   height: 5px;
   margin: 8px auto 0;
   border-radius: 999px;
-  background: var(--line);
+  background: var(--line-2);
 }
 
 .sheet-head {
@@ -1462,22 +1548,20 @@ a.chip.is-on {
 .sheet-head h2 {
   min-width: 0;
   padding-top: 6px;
-  font-size: 1.375rem;
-  line-height: 1.75rem;
-  font-weight: 600;
-  letter-spacing: -0.01em;
+  font-size: 1.75rem;
+  line-height: 2.125rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
 }
 
 .sheet-sub {
   display: block;
   margin-top: 2px;
   color: var(--ink-2);
-  font-family: var(--serif);
-  font-size: 1.0625rem;
-  line-height: 1.375rem;
-  font-weight: 500;
+  font-size: 0.9375rem;
+  line-height: 1.25rem;
+  font-weight: 400;
   letter-spacing: 0;
-  font-variation-settings: "SOFT" 50, "opsz" 24;
 }
 
 .sheet-head .btn-text {
@@ -1494,7 +1578,7 @@ a.chip.is-on {
   align-items: center;
   gap: 4px;
   min-height: var(--tap);
-  color: var(--accent);
+  color: var(--ink);
   font-weight: 600;
   list-style: none;
   cursor: pointer;
@@ -1550,18 +1634,10 @@ a.chip.is-on {
   flex-direction: column;
   gap: 12px;
   margin-bottom: 8px;
-  padding: 16px;
-  border-radius: var(--r-group);
-  background: var(--accent-tint);
-}
-
-.cart-box .segmented {
-  background: color-mix(in srgb, var(--accent) 10%, transparent);
 }
 
 .cart-box .segmented .pick span {
   padding: 0 4px;
-  font-size: 0.875rem;
 }
 
 .cart-total {
@@ -1571,9 +1647,9 @@ a.chip.is-on {
 
 .cart-total strong {
   font-size: 1.75rem;
-  line-height: 2rem;
-  font-weight: 600;
-  letter-spacing: -0.01em;
+  line-height: 2.125rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
 }
 
@@ -1586,7 +1662,7 @@ a.chip.is-on {
 .cart-hint {
   color: var(--ink-2);
   font-size: 0.8125rem;
-  line-height: 1rem;
+  line-height: 1.125rem;
 }
 
 .cart-actions {
@@ -1599,6 +1675,7 @@ a.chip.is-on {
 .cart-list {
   min-height: 0;
   padding: 0;
+  border: 0;
   border-radius: 0;
   background: transparent;
   color: var(--ink-2);
@@ -1611,13 +1688,9 @@ a.chip.is-on {
   outline-offset: 4px;
 }
 
-.wish-group .section-title {
-  margin-top: 28px;
-}
-
 .wish-group .section-title span {
   color: var(--ink-2);
-  font-weight: 500;
+  font-weight: 400;
   font-variant-numeric: tabular-nums;
 }
 
@@ -1631,7 +1704,7 @@ a.chip.is-on {
   position: absolute;
   right: 0;
   bottom: 0;
-  left: 60px;
+  left: 52px;
   height: 1px;
   background: var(--line);
 }
@@ -1654,7 +1727,6 @@ a.chip.is-on {
 
 .wish-controls .segmented .pick span {
   padding: 0 4px;
-  font-size: 0.875rem;
 }
 
 .wish-controls .btn-text {
@@ -1668,7 +1740,6 @@ a.chip.is-on {
 
 .wish-controls .wish-remove:active {
   color: var(--bad);
-  background: var(--bad-tint);
 }
 
 .wish-note-box {
@@ -1680,10 +1751,10 @@ a.chip.is-on {
   display: flex;
   align-items: center;
   min-height: var(--tap);
-  color: var(--accent);
+  color: var(--ink-2);
   font-size: 0.9375rem;
   line-height: 1.25rem;
-  font-weight: 600;
+  font-weight: 500;
   cursor: pointer;
   list-style: none;
 }
@@ -1708,7 +1779,7 @@ a.chip.is-on {
 }
 
 .history-year {
-  margin-top: 28px;
+  margin-top: 32px;
 }
 
 .year-line {
@@ -1724,8 +1795,9 @@ a.chip.is-on {
 
 .year-name {
   font-size: 1.75rem;
-  line-height: 2rem;
-  letter-spacing: -0.01em;
+  line-height: 2.125rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
 }
 
 .year-note {
@@ -1798,7 +1870,7 @@ a.chip.is-on {
   width: 24px;
   height: 24px;
   margin: 0;
-  accent-color: var(--accent);
+  accent-color: var(--primary);
 }
 
 .buy-price {
@@ -1843,7 +1915,15 @@ a.chip.is-on {
 
 .scan-actions .btn:first-child {
   min-height: 64px;
-  font-size: 1.1875rem;
+}
+
+.scan-actions {
+  position: relative;
+}
+
+.scan-actions .visually-hidden {
+  top: 0;
+  left: 0;
 }
 
 .scan-photo {
@@ -1912,7 +1992,6 @@ a.chip.is-on {
 
 .code {
   font-weight: 600;
-  letter-spacing: 0.02em;
   font-variant-numeric: tabular-nums;
 }
 
@@ -1997,7 +2076,7 @@ a.chip.is-on {
 .scanner-close {
   min-width: 10rem;
   background: rgb(255 255 255 / 0.92);
-  color: #1f1526;
+  color: #261322;
 }
 
 /* 13. Sync and status pages */
@@ -2024,7 +2103,6 @@ a.chip.is-on {
 .run-status {
   font-size: 0.8125rem;
   font-weight: 600;
-  letter-spacing: 0.01em;
 }
 
 .run-ok .run-status {
@@ -2055,14 +2133,13 @@ a.chip.is-on {
 
 .status-page .title {
   font-size: 1.75rem;
-  line-height: 2rem;
-  font-variation-settings: "SOFT" 50, "opsz" 28;
+  line-height: 2.125rem;
 }
 
 .status-page p {
   max-width: 22rem;
   color: var(--ink-2);
-  font-size: 1rem;
+  font-size: 1.0625rem;
   line-height: 1.375rem;
 }
 
@@ -2077,14 +2154,36 @@ a.chip.is-on {
   border-radius: 18px;
 }
 
-/* 15. Wheels: the ring of nail tips (VISUAL 5), the wheel list, the tag page */
+/* 15. Wheels: the ring of nail tips, the wheel list, the tag page */
 .ring {
-  --ring: 136px;
-  --slot-h: 64px;
+  --ring: 150px;
+  --slot-h: 62px;
   position: relative;
-  width: min(100%, 360px);
+  width: min(100%, 390px);
   aspect-ratio: 1;
   margin: 8px auto 0;
+}
+
+/* Below 400pt the radius gives way to the gutter so the outer tips stay on the screen. */
+@media (max-width: 399px) {
+  .ring {
+    --ring: calc(50vw - var(--gutter) - var(--slot-h) / 2 - 1px);
+  }
+}
+
+/* The plastic ring of a real swatch wheel: a hairline circle through the lower part of the
+   tips, which sit on it. */
+.ring::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: calc(2 * (var(--ring) - 22px));
+  height: calc(2 * (var(--ring) - 22px));
+  border: 1.5px solid var(--line-2);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
 }
 
 .hub {
@@ -2095,27 +2194,26 @@ a.chip.is-on {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 4px;
   width: 150px;
   height: 150px;
   margin: -75px 0 0 -75px;
   text-align: center;
 }
 
+/* The hub says one thing: how many. "of 20" is a footnote under it. */
 .hub-name {
-  font-size: 1.75rem;
-  line-height: 2rem;
-  font-weight: 600;
-  letter-spacing: -0.01em;
+  font-size: 2.75rem;
+  line-height: 3rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
   font-variant-numeric: tabular-nums;
 }
 
 .hub-count {
   color: var(--ink-2);
   font-size: 0.8125rem;
-  line-height: 1rem;
-  font-weight: 500;
-  letter-spacing: 0.01em;
+  line-height: 1.125rem;
+  font-variant-numeric: tabular-nums;
 }
 
 /* A slot sits at the ring's centre, turns to its angle and moves out. Slot 1 is at twelve
@@ -2141,17 +2239,17 @@ a.chip.is-on {
 }
 
 .tip,
-.tip-art,
-.tip-mini {
-  border-radius: 50% 50% 38% 38% / 62% 62% 30% 30%;
+.tip-art {
+  border-radius: var(--r-tip);
 }
 
+/* An empty slot is a --fill tip with its number and no foil; a filled one is the painted stack. */
 .tip {
   position: relative;
-  width: 34px;
-  height: 56px;
+  width: 38px;
+  height: 62px;
   isolation: isolate;
-  transition: transform 100ms ease-out;
+  transition: scale 150ms ease-out;
 }
 
 .tip::before {
@@ -2163,29 +2261,24 @@ a.chip.is-on {
   background: var(--fill);
 }
 
-/* The foil ring behind the fill: 1.5px on an empty tip, 3px for a highlight, a sweep after a
-   save. */
+/* The foil ring behind the tip belongs to two moments only: a highlighted slot (?hl) and the
+   sweep after a save. */
 .tip::after {
   content: "";
   position: absolute;
-  inset: -1.5px;
+  inset: -3px;
   z-index: -2;
+  display: none;
   border-radius: inherit;
   background: var(--foil);
 }
 
-.slot.is-filled .tip::after {
-  display: none;
-}
-
 .slot.is-hl .tip::after {
   display: block;
-  inset: -3px;
 }
 
 .slot.is-saved .tip::after {
   display: block;
-  inset: -3px;
   animation: saved-ring 700ms var(--ease-out) both;
 }
 
@@ -2212,17 +2305,7 @@ a.chip.is-on {
   overflow: hidden;
 }
 
-.tip-art::after,
-.tip-mini::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  box-shadow: inset 0 0 0 1px var(--mat);
-}
-
-.tip-art > img,
-.tip-mini img {
+.tip-art > img {
   display: block;
   width: 100%;
   height: 100%;
@@ -2235,8 +2318,10 @@ a.chip.is-on {
   gap: 12px 14px;
   align-items: center;
   padding: 14px 16px;
+  border: 1px solid transparent;
   border-radius: var(--r-group);
   background: var(--surface);
+  box-shadow: var(--ring-edge);
 }
 
 .tip-preview {
@@ -2244,7 +2329,7 @@ a.chip.is-on {
   width: 34px;
   height: 56px;
   overflow: hidden;
-  border-radius: 50% 50% 38% 38% / 62% 62% 30% 30%;
+  border-radius: var(--r-tip);
   background: var(--fill);
 }
 
@@ -2255,14 +2340,6 @@ a.chip.is-on {
   object-fit: cover;
 }
 
-.tip-preview::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  box-shadow: inset 0 0 0 1px var(--mat);
-}
-
 .tip-colour-body {
   display: flex;
   flex-direction: column;
@@ -2271,10 +2348,9 @@ a.chip.is-on {
 }
 
 .tip-colour-title {
-  font-family: var(--serif);
   font-size: 1.0625rem;
   line-height: 1.375rem;
-  font-weight: 500;
+  font-weight: 600;
 }
 
 input.tip-input {
@@ -2318,17 +2394,21 @@ input.tip-input {
   height: 8px;
   margin-left: -4px;
   border-radius: 50%;
-  background: var(--accent);
+  background: var(--ink);
   box-shadow: 0 0 0 2px var(--bg);
 }
 
 .slot-num {
   position: absolute;
-  inset: 0;
+  top: 50%;
+  left: 50%;
   display: grid;
   place-items: center;
+  width: 38px;
+  height: var(--slot-h);
+  margin: calc(var(--slot-h) / -2) 0 0 -19px;
   color: var(--ink-2);
-  font-size: 0.8125rem;
+  font-size: 0.75rem;
   line-height: 1;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
@@ -2348,12 +2428,13 @@ input.tip-input {
   -webkit-tap-highlight-color: transparent;
 }
 
+/* Tapping a tip lifts it before the sheet rises. */
 .slot:has(.slot-hit:active) .tip {
-  transform: scale(0.92);
+  scale: 1.08;
 }
 
 .slot:has(.slot-hit:focus-visible) .tip {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--ink);
   outline-offset: 4px;
 }
 
@@ -2362,8 +2443,15 @@ input.tip-input {
 }
 
 .hl-note a {
+  position: relative;
   margin-left: 6px;
   font-weight: 600;
+}
+
+.hl-note a::after {
+  content: "";
+  position: absolute;
+  inset: -13px -6px;
 }
 
 /* The filled slots as a list. */
@@ -2373,8 +2461,9 @@ input.tip-input {
   gap: 12px;
   width: 100%;
   min-height: 56px;
-  padding: 8px 16px;
+  padding: 8px 13px;
   border: 0;
+  border-radius: var(--r-row);
   background: none;
   text-align: left;
   cursor: pointer;
@@ -2398,33 +2487,19 @@ input.tip-input {
   font-variant-numeric: tabular-nums;
 }
 
-.mini-tips {
-  display: flex;
-  flex: none;
-  gap: 4px;
-}
-
-.tip-mini {
-  position: relative;
-  width: 24px;
-  height: 32px;
-  overflow: hidden;
-  background: var(--fill);
-}
-
 .wheel-actions .rename-form {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 6px 8px 6px 16px;
+  padding: 6px 4px 6px 13px;
 }
 
 .rename-status {
   margin: 0;
-  padding: 0 16px;
+  padding: 0 13px;
   color: var(--ink-2);
   font-size: 0.8125rem;
-  line-height: 1rem;
+  line-height: 1.125rem;
 }
 
 .rename-status:not(:empty) {
@@ -2434,8 +2509,7 @@ input.tip-input {
 .group-button {
   width: 100%;
   min-height: 52px;
-  padding: 0 16px;
-  border-radius: 0;
+  padding: 0 13px;
   justify-content: flex-start;
 }
 
@@ -2480,7 +2554,8 @@ input.tip-input {
   align-items: center;
   gap: 12px;
   min-height: 68px;
-  padding: 10px 16px;
+  padding: 10px 13px;
+  border-radius: var(--r-row);
   color: inherit;
   text-decoration: none;
 }
@@ -2491,7 +2566,7 @@ input.tip-input {
 
 .wheel-row > .icon {
   flex: none;
-  color: var(--ink-2);
+  color: var(--ink-3);
 }
 
 .mini-ring {
@@ -2514,7 +2589,7 @@ input.tip-input {
 }
 
 .mini-dot.is-filled {
-  background: var(--accent);
+  background: var(--ink);
 }
 
 .count-chip {
@@ -2577,7 +2652,7 @@ input.tip-input {
   }
 
   .slot:has(.slot-hit:active) .tip {
-    transform: none;
+    scale: none;
   }
 
   .slot.is-saved .tip::after {
@@ -2598,7 +2673,7 @@ input.tip-input {
 
 /* Positions: generated for 1..40 slots (slot-pos-K sets the index, ring-n-N the count and the
    width of one slot's wedge: 2 * (R + H/2) * tan(180deg / N), capped at 96px). Keep R and H in sync
-   with --ring and --slot-h below. */
+   with --ring and --slot-h on .ring (150 and 62). */
 .slot-pos-1 {
   --i: 0;
 }
@@ -2761,7 +2836,7 @@ input.tip-input {
 
 .ring-n-1 {
   --n: 1;
-  --w: 96.0px;
+  --w: -0.0px;
 }
 
 .ring-n-2 {
@@ -2816,148 +2891,147 @@ input.tip-input {
 
 .ring-n-12 {
   --n: 12;
-  --ring: 112px;
-  --w: 77.2px;
+  --w: 96.0px;
 }
 
 .ring-n-13 {
   --n: 13;
-  --w: 82.8px;
+  --w: 89.2px;
 }
 
 .ring-n-14 {
   --n: 14;
-  --w: 76.7px;
+  --w: 82.6px;
 }
 
 .ring-n-15 {
   --n: 15;
-  --w: 71.4px;
+  --w: 76.9px;
 }
 
 .ring-n-16 {
   --n: 16;
-  --w: 66.8px;
+  --w: 72.0px;
 }
 
 .ring-n-17 {
   --n: 17;
-  --w: 62.8px;
+  --w: 67.7px;
 }
 
 .ring-n-18 {
   --n: 18;
-  --w: 59.2px;
+  --w: 63.8px;
 }
 
 .ring-n-19 {
   --n: 19;
-  --w: 56.1px;
+  --w: 60.4px;
 }
 
 .ring-n-20 {
   --n: 20;
-  --w: 53.2px;
+  --w: 57.3px;
 }
 
 .ring-n-21 {
   --n: 21;
-  --w: 50.6px;
+  --w: 54.6px;
 }
 
 .ring-n-22 {
   --n: 22;
-  --w: 48.3px;
+  --w: 52.0px;
 }
 
 .ring-n-23 {
   --n: 23;
-  --w: 46.2px;
+  --w: 49.8px;
 }
 
 .ring-n-24 {
   --n: 24;
-  --w: 44.2px;
+  --w: 47.7px;
 }
 
 .ring-n-25 {
   --n: 25;
-  --w: 42.4px;
+  --w: 45.7px;
 }
 
 .ring-n-26 {
   --n: 26;
-  --w: 40.8px;
+  --w: 44.0px;
 }
 
 .ring-n-27 {
   --n: 27;
-  --w: 39.3px;
+  --w: 42.3px;
 }
 
 .ring-n-28 {
   --n: 28;
-  --w: 37.9px;
+  --w: 40.8px;
 }
 
 .ring-n-29 {
   --n: 29;
-  --w: 36.5px;
+  --w: 39.4px;
 }
 
 .ring-n-30 {
   --n: 30;
-  --w: 35.3px;
+  --w: 38.0px;
 }
 
 .ring-n-31 {
   --n: 31;
-  --w: 34.2px;
+  --w: 36.8px;
 }
 
 .ring-n-32 {
   --n: 32;
-  --w: 33.1px;
+  --w: 35.7px;
 }
 
 .ring-n-33 {
   --n: 33;
-  --w: 32.1px;
+  --w: 34.6px;
 }
 
 .ring-n-34 {
   --n: 34;
-  --w: 31.1px;
+  --w: 33.5px;
 }
 
 .ring-n-35 {
   --n: 35;
-  --w: 30.2px;
+  --w: 32.6px;
 }
 
 .ring-n-36 {
   --n: 36;
-  --w: 29.4px;
+  --w: 31.7px;
 }
 
 .ring-n-37 {
   --n: 37;
-  --w: 28.6px;
+  --w: 30.8px;
 }
 
 .ring-n-38 {
   --n: 38;
-  --w: 27.8px;
+  --w: 30.0px;
 }
 
 .ring-n-39 {
   --n: 39;
-  --w: 27.1px;
+  --w: 29.2px;
 }
 
 .ring-n-40 {
   --n: 40;
-  --w: 26.4px;
+  --w: 28.5px;
 }
 
 /* 16. The layer-stack builder (VISUAL 6, 7): a sticky head with the live summary, the layers on
@@ -2977,12 +3051,9 @@ input.tip-input {
 }
 
 .builder .sheet-sub {
-  font-family: var(--sans);
   font-size: 0.8125rem;
-  line-height: 1rem;
+  line-height: 1.125rem;
   font-weight: 500;
-  letter-spacing: 0.01em;
-  font-variation-settings: normal;
 }
 
 .stack-summary {
@@ -2992,11 +3063,9 @@ input.tip-input {
   overflow: hidden;
   margin: 0;
   padding: 0 0 12px;
-  font-family: var(--serif);
-  font-size: 1.1875rem;
-  line-height: 1.4375rem;
-  font-weight: 500;
-  font-variation-settings: "SOFT" 50, "opsz" 24;
+  font-size: 1.0625rem;
+  line-height: 1.375rem;
+  font-weight: 600;
   overflow-wrap: anywhere;
 }
 
@@ -3063,10 +3132,9 @@ input.tip-input {
   grid-column: 1;
   grid-row: 1;
   color: var(--ink-2);
-  font-size: 0.8125rem;
+  font-size: 0.75rem;
   line-height: 1rem;
   font-weight: 500;
-  letter-spacing: 0.01em;
 }
 
 .layer-tip {
@@ -3075,26 +3143,8 @@ input.tip-input {
   grid-column: 2;
   grid-row: 1 / span 2;
   align-self: start;
-  width: 32px;
-  height: 44px;
-  overflow: hidden;
-  border-radius: 50% 50% 38% 38% / 62% 62% 30% 30%;
-  background: var(--fill);
-}
-
-.layer-tip::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  box-shadow: inset 0 0 0 1px var(--mat);
-}
-
-.layer-tip img {
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
+  display: flex;
+  justify-content: center;
 }
 
 .layer-line {
@@ -3112,9 +3162,8 @@ input.tip-input {
   flex: none;
   color: var(--ink-2);
   font-size: 0.8125rem;
-  line-height: 1rem;
+  line-height: 1.125rem;
   font-weight: 500;
-  letter-spacing: 0.01em;
 }
 
 .layer-name {
@@ -3122,11 +3171,9 @@ input.tip-input {
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
-  font-family: var(--serif);
-  font-size: 1.1875rem;
-  line-height: 1.4375rem;
-  font-weight: 500;
-  font-variation-settings: "SOFT" 50, "opsz" 24;
+  font-size: 1.0625rem;
+  line-height: 1.375rem;
+  font-weight: 600;
   overflow-wrap: anywhere;
 }
 
@@ -3138,11 +3185,13 @@ input.tip-input {
   gap: 4px;
 }
 
+/* An iOS-style stepper: one hairline-bordered control, a divider either side of the count. */
 .stepper {
   display: inline-flex;
   align-items: center;
-  border-radius: 999px;
-  background: var(--fill);
+  overflow: hidden;
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-input);
 }
 
 .step,
@@ -3154,18 +3203,24 @@ input.tip-input {
   height: var(--tap);
   padding: 0;
   border: 0;
-  border-radius: 999px;
+  border-radius: 0;
   background: none;
-  color: var(--accent);
+  color: var(--ink);
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
-  transition: transform 100ms ease-out, background-color 100ms;
+  transition-property: scale, background-color;
+  transition-duration: 150ms;
+  transition-timing-function: ease-out;
 }
 
-.step:active,
-.layer-btn:active {
-  background: var(--accent-tint);
-  transform: scale(0.94);
+.layer-btn {
+  border-radius: var(--r-button);
+}
+
+.step:not(:disabled):active,
+.layer-btn:not(:disabled):active {
+  background: var(--fill);
+  scale: 0.96;
 }
 
 .step:disabled {
@@ -3174,7 +3229,11 @@ input.tip-input {
 }
 
 .step-count {
-  min-width: 20px;
+  align-self: stretch;
+  display: grid;
+  place-items: center;
+  min-width: 36px;
+  border-inline: 1px solid var(--line-2);
   font-size: 1.0625rem;
   line-height: 1.375rem;
   font-weight: 600;
@@ -3195,9 +3254,8 @@ span.layer-btn {
   color: var(--ink-2);
 }
 
-.layer-remove:active {
+.layer-remove:not(:disabled):active {
   color: var(--bad);
-  background: var(--bad-tint);
 }
 
 /* Reordering matters from three layers on; with two, the order is one tap away by removing. */
@@ -3252,26 +3310,28 @@ span.layer-btn {
   align-items: center;
   gap: 2px;
   min-height: var(--tap);
-  padding: 0 12px;
-  border: 0;
-  border-radius: 999px;
-  background: var(--accent-tint);
-  color: var(--accent);
+  padding: 0 14px;
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-input);
+  background: transparent;
+  color: var(--ink);
   font-size: 0.9375rem;
   line-height: 1.25rem;
-  font-weight: 600;
+  font-weight: 500;
   white-space: nowrap;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
-  transition: transform 100ms ease-out;
+  transition-property: scale, background-color;
+  transition-duration: 150ms;
+  transition-timing-function: ease-out;
 }
 
-.shortcut:active {
-  transform: scale(0.97);
+.shortcut:not(:disabled):active {
+  background: var(--fill);
+  scale: 0.96;
 }
 
 .shortcut:disabled {
-  background: var(--fill);
   color: var(--ink-2);
   cursor: default;
 }
@@ -3305,7 +3365,7 @@ span.layer-btn {
   position: absolute;
   top: 0;
   right: 0;
-  left: 52px;
+  left: 40px;
   height: 1px;
   background: var(--line);
 }
@@ -3330,16 +3390,7 @@ span.layer-btn {
   background: var(--fill);
 }
 
-.thumb-pick {
-  width: 40px;
-  height: 52px;
-  border-radius: var(--r-thumb);
-}
 
-.pick-add .row-title {
-  font-size: 1.0625rem;
-  line-height: 1.3125rem;
-}
 
 .pick-add .row-sub {
   justify-content: flex-start;
@@ -3363,14 +3414,14 @@ span.layer-btn {
   place-items: center;
   width: 32px;
   height: 32px;
-  border-radius: 999px;
-  background: var(--accent-tint);
-  color: var(--accent);
-  transition: transform 100ms ease-out;
+  border-radius: var(--r-input);
+  background: var(--fill);
+  color: var(--ink);
+  transition: scale 150ms ease-out;
 }
 
 .pick-add:active .pick-plus {
-  transform: scale(0.9);
+  scale: 0.96;
 }
 
 .pick-lead {
@@ -3489,11 +3540,11 @@ span.layer-btn {
     transition: none;
   }
 
-  .step:active,
-  .layer-btn:active,
-  .shortcut:active,
+  .step:not(:disabled):active,
+  .layer-btn:not(:disabled):active,
+  .shortcut:not(:disabled):active,
   .pick-add:active .pick-plus {
-    transform: none;
+    scale: none;
   }
 }
 
@@ -3508,7 +3559,8 @@ span.layer-btn {
 @media (prefers-contrast: more) {
   :root {
     --line: #8a7d91;
-    --mat: rgb(31 21 38 / 0.5);
+    --line-2: #6b5666;
+    --mat: oklch(0 0 0 / 0.5);
   }
 
   .group {
@@ -3525,8 +3577,10 @@ span.layer-btn {
 
   .btn,
   .btn:active,
-  .tab:active .icon,
+  .tab .icon,
+  .filter-toggle summary,
   .more-fields summary .icon {
+    scale: none !important;
     transform: none !important;
     transition: none;
   }

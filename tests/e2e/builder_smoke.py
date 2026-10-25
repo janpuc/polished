@@ -146,8 +146,8 @@ def run() -> None:
         row_title = row.locator(".row-title").inner_text()
         check(" + " in row_title, f"the list row shows the summary ({row_title})")
         check(
-            page.locator("#hub-count").inner_text().startswith("1 of "),
-            "the count in the hub follows",
+            page.locator("#hub-name").inner_text() == "1",
+            "the number in the hub follows",
         )
 
         # 6. Reopen, then Cancel.

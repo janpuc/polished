@@ -236,6 +236,7 @@ def list_shades(
     rows = conn.execute(
         "select s.id, s.title, s.kind, s.source, s.hero_image_url, s.price_cents,"
         " s.compare_at_cents, s.available, s.retired, s.retiring, s.is_topper,"
+        " s.swatch_hex, s.swatch_hex2, s.swatch_override_hex,"
         f" p.missing_since, ss.owned_count, ss.wishlisted {FROM}{where} order by {order} limit ? offset ?",
         [*args, *order_args, size, (page - 1) * size],
     ).fetchall()

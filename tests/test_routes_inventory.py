@@ -681,3 +681,23 @@ def test_history_and_bought_routes_need_a_login_when_oidc_is_on(oidc_client):
     for path in ("/bottles/history", "/wishlist/bought"):
         assert oidc_client.get(path).status_code in (302, 303, 401, 403)
     assert oidc_client.post("/wishlist/bought").status_code in (302, 303, 401, 403)
+
+
+# Tips replace bottle photos in every list; the bottle photo stays on the shade page and the lookup result
+
+
+def test_lists_of_shades_show_the_painted_tip_never_a_bottle_photo(seeded):
+    client, conn = seeded
+    shade = sid(conn, "thirst-trap")
+    add_bottle(client, shade, state="half", printed_code="259", bought_on="2026-08-02")
+    client.post(f"/shades/{sid(conn, 'last-stock')}/wishlist")
+    for url in ("/", "/bottles", "/bottles/history", "/wishlist"):
+        html = client.get(url).text
+        assert re.search(
+            r'<span class="tip-(?:m|l)" aria-hidden="true"><img src="/tips/shade/\d+\.svg\?v=\w+"',
+            html,
+        ), url
+        assert 'class="thumb' not in html and "cdn.shopify.com" not in html, url
+    sheet = client.get("/wishlist/bought", headers=HX).text
+    assert 'class="tip-s"' in sheet and 'class="thumb' not in sheet
+    assert 'class="tip-m"' in client.get("/search", params={"q": "thirst", "ctx": "home"}).text

@@ -11,7 +11,6 @@ const PRECACHE = [
   `/static/js/register-sw.js${SUFFIX}`,
   `/static/js/chrome.js${SUFFIX}`,
   `/static/icons/ui.svg${SUFFIX}`,
-  "/static/fonts/fraunces-latin.woff2",
   "/static/icons/favicon.svg",
   "/static/icons/favicon-32.png",
   "/static/icons/apple-touch-icon.png",

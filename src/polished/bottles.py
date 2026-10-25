@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from datetime import date
 
 from .identifiers import normalise_printed
+from .tips import TIP_FIELDS
 
 STATES = ("full", "half", "low", "empty")
 STATE_LABELS = {"full": "Full", "half": "Half", "low": "Low", "empty": "Empty"}
@@ -16,7 +17,10 @@ NOTES_LIMIT = 500
 _PRICE = re.compile(r"\$?\s*(\d{1,4})(?:[.,](\d{1,2}))?")
 
 # bottle b join shade s: the bottle and what a card shows of its shade.
-_SELECT = "select b.*, s.title, s.hero_image_url from bottle b join shade s on s.id = b.shade_id"
+_SELECT = (
+    f"select b.*, s.title, s.hero_image_url, {TIP_FIELDS}"
+    " from bottle b join shade s on s.id = b.shade_id"
+)
 
 
 @dataclass
@@ -183,6 +187,7 @@ def list_groups(conn: sqlite3.Connection, state: str = "", archived: bool = Fals
                     "shade_id": row["shade_id"],
                     "title": row["title"],
                     "hero_image_url": row["hero_image_url"],
+                    "tip": row,
                     "bottles": [],
                 }
             )

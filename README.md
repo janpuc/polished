@@ -102,8 +102,7 @@ from the environment.
 `src/polished/static/vendor/` holds vendored browser libraries; versions and checksums are in
 `VERSIONS.txt` there. There is no build step and no Node.
 `scripts/vendor.sh` re-fetches the pinned files (htmx, zxing-wasm) and checks their sha256.
-The one font, Fraunces (SIL OFL, `static/fonts/`), is rebuilt from its pinned upstream file by
-`scripts/make_fonts.sh`.
+There is no webfont: the UI is set in the system font (SF Pro on an iPhone).
 
 ## Look and icons
 

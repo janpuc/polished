@@ -1,7 +1,8 @@
-{# The inside of a shade row: cropped thumbnail, name, finishes and price, then only what is news
+{# The inside of a shade row: painted tip, name, finishes and price, then only what is news
    (sold out, retiring, added by hand, owned, on the wishlist). #}
 {% from "_icons.html" import icon with context %}
-  {% if shade.hero_image_url %}<img class="thumb" src="{{ shade.hero_image_url|thumb(96, 128) }}" srcset="{{ shade.hero_image_url|thumb(96, 128) }} 2x, {{ shade.hero_image_url|thumb(144, 192) }} 3x" width="48" height="64" alt="" loading="lazy" decoding="async">{% else %}<span class="thumb thumb-empty" aria-hidden="true"></span>{% endif %}
+{% from "_tip.html" import tip %}
+  {% if ctx == 'result' and shade.hero_image_url %}<img class="thumb" src="{{ shade.hero_image_url|thumb(96, 128) }}" srcset="{{ shade.hero_image_url|thumb(96, 128) }} 2x, {{ shade.hero_image_url|thumb(144, 192) }} 3x" width="48" height="64" alt="" loading="lazy" decoding="async">{% elif ctx == 'result' %}<span class="thumb thumb-empty" aria-hidden="true"></span>{% else %}{{ tip(shade, "m") }}{% endif %}
   <span class="row-body">
     <span class="row-title">{{ shade.title }}</span>
     <span class="row-sub"><span>{{ ((["topper"] if shade.is_topper else []) + shade.finishes[:3])|words }}</span>{% if shade.price_cents is not none %}<span class="price">{{ shade.price_cents|money }}</span>{% endif %}</span>

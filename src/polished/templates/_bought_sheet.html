@@ -1,6 +1,7 @@
 {# The "I bought these" sheet, swapped into #sheet-body: the wishlist as checkable rows, a price
    each and one date for all. A failed validation comes back here (HX-Retarget) with the messages
    and what was typed. #}
+{% from "_tip.html" import tip %}
 <form class="sheet-form" method="post" action="/wishlist/bought" hx-post="/wishlist/bought" hx-target="#wishlist" hx-swap="outerHTML">
   <div class="grabber" aria-hidden="true"></div>
   <header class="sheet-head">
@@ -20,7 +21,7 @@
       <li class="buy-row">
         <label class="buy-pick">
           <input type="checkbox" name="item" value="{{ item.id }}"{% if item.checked %} checked{% endif %}>
-          {% if item.hero_image_url %}<img class="thumb thumb-sm" src="{{ item.hero_image_url|thumb(72, 96) }}" srcset="{{ item.hero_image_url|thumb(72, 96) }} 2x, {{ item.hero_image_url|thumb(108, 144) }} 3x" width="36" height="48" alt="" loading="lazy" decoding="async">{% else %}<span class="thumb thumb-sm thumb-empty" aria-hidden="true"></span>{% endif %}
+          {{ tip(item, "s") }}
           <span class="row-body">
             <span class="row-title">{{ item.title }}</span>
             {% if item.status is none %}<span class="row-flags"><span class="status status-manual">Added by hand</span></span>{% elif item.status.key != 'available' %}<span class="row-flags"><span class="status status-{{ item.status.key }}">{{ item.status.label }}</span></span>{% endif %}

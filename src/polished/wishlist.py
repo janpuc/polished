@@ -8,6 +8,7 @@ from datetime import date
 from . import bottles
 from .db import atomic
 from .shades import status
+from .tips import TIP_FIELDS
 
 PRIORITIES = (1, 2, 3)
 PRIORITY_LABELS = {1: "Want most", 2: "Would like", 3: "Maybe one day"}
@@ -17,7 +18,7 @@ NOTE_LIMIT = 200
 _SELECT = (
     "select w.id, w.shade_id, w.priority, w.note, w.added_on, s.title, s.hero_image_url,"
     " s.source, s.price_cents, s.available, s.retired, s.retiring, p.missing_since,"
-    " p.variant_id, ss.owned_count"
+    f" p.variant_id, ss.owned_count, {TIP_FIELDS}"
     " from wishlist_item w join shade s on s.id = w.shade_id"
     " left join product p on p.id = s.product_id"
     " join shade_status ss on ss.shade_id = s.id"

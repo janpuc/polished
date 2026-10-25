@@ -1,6 +1,7 @@
+{% from "_tip.html" import tip %}
 <li class="wish-row" id="wish-{{ item.id }}">
   <a class="row-link" href="/shades/{{ item.shade_id }}">
-    {% if item.hero_image_url %}<img class="thumb" src="{{ item.hero_image_url|thumb(96, 128) }}" srcset="{{ item.hero_image_url|thumb(96, 128) }} 2x, {{ item.hero_image_url|thumb(144, 192) }} 3x" width="48" height="64" alt="" loading="lazy" decoding="async">{% else %}<span class="thumb thumb-empty" aria-hidden="true"></span>{% endif %}
+    {{ tip(item, "m") }}
     <span class="row-body">
       <span class="row-title">{{ item.title }}</span>
       {% if item.price_cents is not none %}<span class="row-sub"><span class="price">{{ item.price_cents|money }}</span></span>{% endif %}

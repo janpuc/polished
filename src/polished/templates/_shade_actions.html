@@ -1,12 +1,12 @@
-{# The two primary actions of a shade page. Swapped as a whole (`hx-target="#shade-actions"`), or
+{# The actions of a shade page: Add bottle, and the heart. Swapped as a whole (`hx-target="#shade-actions"`), or
    out of band (`oob`) from the bottle fragments, because bottles decide whether the shade is owned. #}
 {% from "_icons.html" import icon with context %}
 <div id="shade-actions" class="actions actions-wrap"{% if oob %} hx-swap-oob="true"{% endif %}>
   <button type="button" class="btn action-primary" hx-get="/shades/{{ shade.id }}/bottles/new" hx-target="#sheet-body" hx-swap="innerHTML">{{ icon("plus") }}Add bottle</button>
   {% if wish %}
-  <button type="button" class="btn btn-secondary action-wish is-on" aria-pressed="true" aria-label="On the wishlist, tap to remove" hx-post="/wishlist/{{ wish.id }}/delete" hx-vals='{"ctx": "shade"}' hx-target="#shade-actions" hx-swap="outerHTML">{{ icon("heart", "is-filled") }}Wishlist</button>
+  <button type="button" class="btn btn-secondary btn-heart is-on" aria-pressed="true" aria-label="On the wishlist, tap to remove" hx-post="/wishlist/{{ wish.id }}/delete" hx-vals='{"ctx": "shade"}' hx-target="#shade-actions" hx-swap="outerHTML">{{ icon("heart", "is-filled") }}</button>
   {% else %}
-  <button type="button" class="btn btn-secondary action-wish" aria-pressed="false" aria-label="Add to the wishlist" hx-post="/shades/{{ shade.id }}/wishlist" hx-target="#shade-actions" hx-swap="outerHTML">{{ icon("heart") }}Wishlist</button>
+  <button type="button" class="btn btn-secondary btn-heart" aria-pressed="false" aria-label="Add to the wishlist" hx-post="/shades/{{ shade.id }}/wishlist" hx-target="#shade-actions" hx-swap="outerHTML">{{ icon("heart") }}</button>
   {% endif %}
 </div>
 {% if oob %}{% with oob_pill = true %}{% include "_owned_pill.html" %}{% endwith %}{% endif %}

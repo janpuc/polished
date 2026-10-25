@@ -110,7 +110,9 @@ def test_the_builder_flow_from_an_empty_slot_to_a_saved_swatch(client, catalog, 
     assert saved.status_code == 200
     assert saved.headers["HX-Trigger"] == "sheetClose"
     assert 'id="slot-12"' in saved.text and "is-saved" in saved.text and "is-filled" in saved.text
-    assert 'id="slot-list"' in saved.text and "1 of 20 swatched" in saved.text
+    assert 'id="slot-list"' in saved.text
+    assert 'id="hub-name" class="hub-name" hx-swap-oob="outerHTML">1<' in saved.text
+    assert 'id="hub-count" class="hub-count" hx-swap-oob="outerHTML">of 20<' in saved.text
     slot = wheels.slot_grid(catalog, wheels.get(catalog, wheel))[11]
     assert slot["filled"] and " + " in slot["summary"]
     assert slot["summary"] in saved.text

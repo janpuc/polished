@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% from "_icons.html" import icon with context %}
+{% from "_tip.html" import tip %}
 {% set tab = "home" %}
 {% block title %}Polished{% endblock %}
 {% block content %}
@@ -24,7 +25,7 @@
 <ul class="shelf">
   {% for bottle in recent %}
   <li><a class="shelf-item" href="/shades/{{ bottle.shade_id }}">
-    {% if bottle.hero_image_url %}<img class="thumb" src="{{ bottle.hero_image_url|thumb(144, 192) }}" srcset="{{ bottle.hero_image_url|thumb(144, 192) }} 2x, {{ bottle.hero_image_url|thumb(216, 288) }} 3x" width="72" height="96" alt="" loading="lazy" decoding="async">{% else %}<span class="thumb thumb-empty" aria-hidden="true"></span>{% endif %}
+    {{ tip(bottle, "l") }}
     <span class="shelf-title">{{ bottle.title }}</span>
   </a></li>
   {% endfor %}
