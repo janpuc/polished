@@ -1,14 +1,18 @@
+{% from "_icons.html" import icon with context %}
 {% if code_q %}
 <p class="more-link code-link"><a href="/lookup?q={{ code_q|urlencode }}">Look up “{{ code_q }}” as a code</a></p>
 {% endif %}
 {% if result is none %}{% elif not result.rows %}
-<p class="muted empty">Nothing matches “{{ q }}”.{% if ctx != 'learn' %} <a href="/shades/new?title={{ q|urlencode }}">Add it by hand</a>{% endif %}</p>
+<div class="empty-state empty-compact">
+  <p>Nothing matches “{{ q }}”.</p>
+  {% if ctx != 'learn' %}<a class="btn btn-text" href="/shades/new?title={{ q|urlencode }}">Add it by hand</a>{% endif %}
+</div>
 {% else %}
-<ul class="shade-list">
+<ul class="list">
   {% for shade in result.rows %}{% include "_shade_row.html" %}
   {% endfor %}
 </ul>
 {% if result.total > result.rows|length %}
-<p class="more-link">{% if ctx == 'learn' %}Showing {{ result.rows|length }} of {{ result.total }}: type more of the name.{% else %}<a href="/shades?q={{ q|urlencode }}">All {{ result.total }} matches</a>{% endif %}</p>
+<p class="more-link">{% if ctx == 'learn' %}<span class="muted">Showing {{ result.rows|length }} of {{ result.total }}. Type more of the name.</span>{% else %}<a href="/shades?q={{ q|urlencode }}">All {{ result.total }} matches</a>{% endif %}</p>
 {% endif %}
 {% endif %}

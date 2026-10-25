@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+  <!-- UI icon sprite on a 24 grid. app.css (.icon) sets the stroke, fill and caps and colours it
+       with currentColor: <svg class="icon"><use href="/static/icons/ui.svg#name"/></svg>. No style
+       element here, the CSP of a document forbids one. -->
+  <symbol id="home" viewBox="0 0 24 24">
+    <path d="M4 11.4 12 4.2l8 7.2V19a1 1 0 0 1-1 1h-4.2v-5.4H9.2V20H5a1 1 0 0 1-1-1z"/>
+  </symbol>
+  <symbol id="shades" viewBox="0 0 24 24">
+    <path d="M12 3.4c3.3 3.7 5.6 6.7 5.6 9.7a5.6 5.6 0 0 1-11.2 0c0-3 2.3-6 5.6-9.7z"/>
+    <path d="M9.2 13.4a2.9 2.9 0 0 0 2.1 2.7"/>
+  </symbol>
+  <symbol id="bottles" viewBox="0 0 24 24">
+    <rect x="9.2" y="2.8" width="5.6" height="5" rx="1.4"/>
+    <path d="M7 12.2A3.4 3.4 0 0 1 10.4 8.8h3.2A3.4 3.4 0 0 1 17 12.2v6.4a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2z"/>
+    <path d="M10 14.2h4"/>
+  </symbol>
+  <symbol id="wheels" viewBox="0 0 24 24">
+    <circle cx="12" cy="5.2" r="2.1"/>
+    <circle cx="18.1" cy="8.6" r="2.1"/>
+    <circle cx="18.1" cy="15.4" r="2.1"/>
+    <circle cx="12" cy="18.8" r="2.1"/>
+    <circle cx="5.9" cy="15.4" r="2.1"/>
+    <circle cx="5.9" cy="8.6" r="2.1"/>
+  </symbol>
+  <symbol id="heart" viewBox="0 0 24 24">
+    <path d="M12 20.2S4.4 15.6 4.4 9.9a4.3 4.3 0 0 1 7.6-2.7 4.3 4.3 0 0 1 7.6 2.7c0 5.7-7.6 10.3-7.6 10.3z"/>
+  </symbol>
+  <symbol id="search" viewBox="0 0 24 24">
+    <circle cx="10.6" cy="10.6" r="6.1"/>
+    <path d="m15.2 15.2 4.8 4.8"/>
+  </symbol>
+  <symbol id="camera" viewBox="0 0 24 24">
+    <path d="M4 8.6A1.6 1.6 0 0 1 5.6 7H8l1.3-2h5.4L16 7h2.4A1.6 1.6 0 0 1 20 8.6v8.8a1.6 1.6 0 0 1-1.6 1.6H5.6A1.6 1.6 0 0 1 4 17.4z"/>
+    <circle cx="12" cy="13" r="3.3"/>
+  </symbol>
+  <symbol id="plus" viewBox="0 0 24 24">
+    <path d="M12 5v14M5 12h14"/>
+  </symbol>
+  <symbol id="check" viewBox="0 0 24 24">
+    <path d="m5 12.6 4.4 4.4L19 7.4"/>
+  </symbol>
+  <symbol id="chevron-right" viewBox="0 0 24 24">
+    <path d="m9.5 5 7 7-7 7"/>
+  </symbol>
+  <symbol id="chevron-left" viewBox="0 0 24 24">
+    <path d="m14.5 5-7 7 7 7"/>
+  </symbol>
+  <symbol id="sliders" viewBox="0 0 24 24">
+    <path d="M4 7h9M17 7h3M4 17h3M11 17h9"/>
+    <circle cx="15" cy="7" r="2"/>
+    <circle cx="9" cy="17" r="2"/>
+  </symbol>
+  <symbol id="external" viewBox="0 0 24 24">
+    <path d="M9 5H6.4A1.4 1.4 0 0 0 5 6.4v11.2A1.4 1.4 0 0 0 6.4 19h11.2a1.4 1.4 0 0 0 1.4-1.4V15M13 5h6v6M19 5l-8 8"/>
+  </symbol>
+  <symbol id="copy" viewBox="0 0 24 24">
+    <rect x="8.6" y="8.6" width="10.4" height="10.4" rx="2"/>
+    <path d="M15.4 8.6V6.6A1.6 1.6 0 0 0 13.8 5H6.6A1.6 1.6 0 0 0 5 6.6v7.2a1.6 1.6 0 0 0 1.6 1.6h2"/>
+  </symbol>
+  <symbol id="refresh" viewBox="0 0 24 24">
+    <path d="M19.4 12a7.4 7.4 0 0 1-13.3 4.4M4.6 12a7.4 7.4 0 0 1 13.3-4.4"/>
+    <path d="M18.4 3.8v4.1h-4.1M5.6 20.2v-4.1h4.1"/>
+  </symbol>
+</svg>

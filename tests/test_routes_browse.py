@@ -115,7 +115,7 @@ def test_load_more_continues_the_same_search_on_the_next_page(tmp_path):
 def test_no_matches_says_so(seeded):
     client, _ = seeded
     html = client.get("/shades", params={"q": "zzzz"}).text
-    assert "No shades match these filters." in html and "0 shades" in html
+    assert "No shades match" in html and "0 shades" in html
 
 
 def test_detail_shows_price_status_images_and_the_shop_link(seeded):
@@ -193,7 +193,8 @@ def test_search_rejects_a_context_this_stage_does_not_have(seeded):
 def test_rows_show_thumbnail_title_finish_chips_and_status(seeded):
     client, _ = seeded
     html = client.get("/shades", params={"q": "jam session"}).text
-    assert "width=112" in html and "width=168 3x" in html and 'loading="lazy"' in html
+    assert "width=96&amp;height=128&amp;crop=center" in html and 'loading="lazy"' in html
+    assert "width=144&amp;height=192&amp;crop=center 3x" in html
     assert "Jam Session" in html and ">Holographic<" in html
     assert 'class="status status-sold_out">Sold out, retiring<' in html
     assert "$15.50" in html

@@ -1,22 +1,24 @@
 <li class="wish-row" id="wish-{{ item.id }}">
   <a class="row-link" href="/shades/{{ item.shade_id }}">
-    {% if item.hero_image_url %}<img class="thumb" src="{{ item.hero_image_url|thumb(112) }}" srcset="{{ item.hero_image_url|thumb(112) }} 2x, {{ item.hero_image_url|thumb(168) }} 3x" width="56" height="56" alt="" loading="lazy" decoding="async">{% else %}<span class="thumb thumb-empty" aria-hidden="true"></span>{% endif %}
+    {% if item.hero_image_url %}<img class="thumb" src="{{ item.hero_image_url|thumb(96, 128) }}" srcset="{{ item.hero_image_url|thumb(96, 128) }} 2x, {{ item.hero_image_url|thumb(144, 192) }} 3x" width="48" height="64" alt="" loading="lazy" decoding="async">{% else %}<span class="thumb thumb-empty" aria-hidden="true"></span>{% endif %}
     <span class="row-body">
       <span class="row-title">{{ item.title }}</span>
-      <span class="row-foot">
-        {% if item.status %}<span class="status status-{{ item.status.key }}">{{ item.status.label }}</span>{% else %}<span class="status status-manual">Added by hand</span>{% endif %}
-        {% if item.price_cents is not none %}<span class="price">{{ item.price_cents|money }}</span>{% endif %}
-        {% if item.owned_count %}<span class="owned-badge">owned ×{{ item.owned_count }}</span>{% endif %}
+      {% if item.price_cents is not none %}<span class="row-sub"><span class="price">{{ item.price_cents|money }}</span></span>{% endif %}
+      {% if item.status is none or item.status.key != 'available' or item.owned_count %}
+      <span class="row-flags">
+        {% if item.status is none %}<span class="status status-manual">Added by hand</span>{% elif item.status.key != 'available' %}<span class="status status-{{ item.status.key }}">{{ item.status.label }}</span>{% endif %}
+        {% if item.owned_count %}<span class="pill">Owned ×{{ item.owned_count }}</span>{% endif %}
       </span>
+      {% endif %}
     </span>
   </a>
   <form class="wish-controls" method="post" action="/wishlist/{{ item.id }}">
-    <div class="prio-pick" role="group" aria-label="Priority">
+    <div class="segmented" role="radiogroup" aria-label="Priority of {{ item.title }}">
       {% for p in priorities %}
-      <label class="pick"><input type="radio" name="priority" value="{{ p }}"{% if item.priority == p %} checked{% endif %} hx-post="/wishlist/{{ item.id }}" hx-include="closest form" hx-trigger="change" hx-target="#wishlist" hx-swap="outerHTML"><span>{{ p }}</span></label>
+      <label class="pick"><input type="radio" name="priority" value="{{ p }}"{% if item.priority == p %} checked{% endif %} hx-post="/wishlist/{{ item.id }}" hx-include="closest form" hx-trigger="change" hx-target="#wishlist" hx-swap="outerHTML"><span>{{ {1: "Want most", 2: "Would like", 3: "Maybe"}[p] }}</span></label>
       {% endfor %}
     </div>
-    <input class="wish-note" type="text" name="note" value="{{ item.note or '' }}" maxlength="200" placeholder="Note" aria-label="Note for {{ item.title }}" enterkeyhint="done" hx-post="/wishlist/{{ item.id }}" hx-include="closest form" hx-trigger="change" hx-swap="none">
-    <button type="button" class="link-button danger" hx-post="/wishlist/{{ item.id }}/delete" hx-vals='{"ctx": "list"}' hx-target="#wishlist" hx-swap="outerHTML">Remove</button>
+    <input class="wish-note" type="text" name="note" value="{{ item.note or '' }}" maxlength="200" autocomplete="off" placeholder="Add a note…" aria-label="Note for {{ item.title }}" enterkeyhint="done" hx-post="/wishlist/{{ item.id }}" hx-include="closest form" hx-trigger="change" hx-swap="none">
+    <button type="button" class="btn btn-text btn-danger" hx-post="/wishlist/{{ item.id }}/delete" hx-vals='{"ctx": "list"}' hx-target="#wishlist" hx-swap="outerHTML">Remove</button>
   </form>
 </li>

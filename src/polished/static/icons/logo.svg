@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="1024" height="1024">
+  <!-- The Polished mark: one nail tip, face on, in holographic foil on plum (docs/VISUAL.md 10).
+       Full-bleed square, no rounding: iOS masks it. scripts/make_icons.py rasterises this file. -->
+  <defs>
+    <radialGradient id="ground" cx="50" cy="42" r="68" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#301838"/>
+      <stop offset="1" stop-color="#1e1024"/>
+    </radialGradient>
+    <linearGradient id="foil" x1="28" y1="20" x2="72" y2="82" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffb3c7"/>
+      <stop offset="0.25" stop-color="#ffe29a"/>
+      <stop offset="0.5" stop-color="#b7f5c8"/>
+      <stop offset="0.75" stop-color="#9fd8ff"/>
+      <stop offset="1" stop-color="#d3b4ff"/>
+    </linearGradient>
+  </defs>
+  <rect width="100" height="100" fill="url(#ground)"/>
+  <path id="nail" fill="url(#foil)" d="M28 42A22 22 0 0 1 72 42C72 56 70.6 67 68.6 74.6C67 80.2 60.4 83 50 83C39.6 83 33 80.2 31.4 74.6C29.4 67 28 56 28 42Z"/>
+  <ellipse cx="41" cy="36" rx="9" ry="4.5" transform="rotate(-30 41 36)" fill="#fff" fill-opacity="0.45"/>
+  <path d="M35.9 36.9A15 15 0 0 1 64.1 36.9" fill="none" stroke="#fff" stroke-opacity="0.55" stroke-width="2" stroke-linecap="round"/>
+</svg>

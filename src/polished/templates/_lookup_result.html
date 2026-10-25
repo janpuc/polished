@@ -1,48 +1,49 @@
 {# One block per outcome of identifiers.resolve (DESIGN 7.2). `r` is the Resolution; `saved` and
    `kept_other` come from POST /identifiers. #}
+{% from "_icons.html" import icon with context %}
 {% set shade = r.shade %}
 {% if r.outcome == 'match' %}
 <section class="result result-match">
   {% if saved %}<p class="notice">Saved. {{ r.code }} is now {{ shade.title }}.</p>
   {% elif kept_other %}<p class="notice">{{ r.code }} already points at {{ shade.title }}, so that stays.</p>{% endif %}
   <p class="result-lead">{% if r.kind == 'gtin' %}Barcode {{ r.code }}{% elif r.kind == 'printed' %}{{ r.code }}{% else %}SKU {{ r.code }}{% endif %} is</p>
-  <ul class="shade-list">{% with ctx = 'result' %}{% include "_shade_row.html" %}{% endwith %}</ul>
+  <ul class="list">{% with ctx = 'result' %}{% include "_shade_row.html" %}{% endwith %}</ul>
   <div class="actions">
-    <button type="button" class="action-primary" hx-get="/shades/{{ shade.id }}/bottles/new?ctx=lookup{% if r.kind == 'printed' %}&amp;printed_code={{ r.code|urlencode }}{% endif %}" hx-target="#sheet-body" hx-swap="innerHTML">+ Add bottle</button>
+    <button type="button" class="btn action-primary" hx-get="/shades/{{ shade.id }}/bottles/new?ctx=lookup{% if r.kind == 'printed' %}&amp;printed_code={{ r.code|urlencode }}{% endif %}" hx-target="#sheet-body" hx-swap="innerHTML">{{ icon("plus") }}Add bottle</button>
     {% if r.identifier_id %}
-    <button type="button" class="action-wish" hx-post="/identifiers/{{ r.identifier_id }}/delete" hx-vals='{"ctx": "lookup"}' hx-target="#lookup-result" hx-swap="innerHTML" hx-confirm="Forget that {{ r.code }} is {{ shade.title }}?">This isn’t it</button>
+    <button type="button" class="btn btn-secondary action-wish" hx-post="/identifiers/{{ r.identifier_id }}/delete" hx-vals='{"ctx": "lookup"}' hx-target="#lookup-result" hx-swap="innerHTML" hx-confirm="Forget that {{ r.code }} is {{ shade.title }}?">This isn’t it</button>
     {% endif %}
   </div>
 </section>
 {% elif r.outcome == 'suggestion' %}
 <section class="result result-suggestion">
   <p class="result-lead">{{ r.code }} was {{ shade.title }} on a bottle you added before. A P code can differ between batches, so check the bottle.</p>
-  <ul class="shade-list">{% with ctx = 'result' %}{% include "_shade_row.html" %}{% endwith %}</ul>
+  <ul class="list">{% with ctx = 'result' %}{% include "_shade_row.html" %}{% endwith %}</ul>
   <div class="actions">
-    <button type="button" class="action-primary" hx-get="/shades/{{ shade.id }}/bottles/new?ctx=lookup&amp;printed_code={{ r.code|urlencode }}" hx-target="#sheet-body" hx-swap="innerHTML">Yes, add a bottle</button>
+    <button type="button" class="btn action-primary" hx-get="/shades/{{ shade.id }}/bottles/new?ctx=lookup&amp;printed_code={{ r.code|urlencode }}" hx-target="#sheet-body" hx-swap="innerHTML">Yes, add a bottle</button>
   </div>
-  <h2>Not that one? Pick the shade</h2>
+  <h2 class="section-title">Not that one? Pick the shade</h2>
   {% with kind = 'printed', value = r.code %}{% include "_learn_picker.html" %}{% endwith %}
 </section>
 {% elif r.outcome == 'unknown_code' %}
 <section class="result result-unknown">
-  <p class="result-lead">New barcode {{ r.code }} — which shade is it?</p>
-  <p class="muted">Pick it once and the next scan finds it.</p>
+  <p class="result-lead">New barcode {{ r.code }}. Which shade is it?</p>
+  <p class="lede">Pick it once and the next scan finds it.</p>
   {% with kind = 'gtin', value = r.code %}{% include "_learn_picker.html" %}{% endwith %}
 </section>
 {% elif r.outcome == 'unknown_printed' %}
 <section class="result result-unknown">
-  <p class="result-lead">{{ r.code }} isn’t on any bottle yet — which shade is it?</p>
-  <p class="muted">Pick the shade and the P code goes on the bottle you add.</p>
+  <p class="result-lead">{{ r.code }} isn’t on any bottle yet. Which shade is it?</p>
+  <p class="lede">Pick the shade and the P code goes on the bottle you add.</p>
   {% with kind = 'printed', value = r.code %}{% include "_learn_picker.html" %}{% endwith %}
 </section>
 {% elif r.outcome == 'invalid_code' %}
 <section class="result result-invalid" role="alert">
   {% if r.via == 'scan' %}
-  <p class="result-lead">Couldn’t read that reliably. Try again, or take a photo of the barcode.</p>
+  <p class="notice notice-error">Couldn’t read that reliably. Try again, or take a photo of the barcode.</p>
   {% else %}
-  <p class="result-lead">“{{ r.q }}” isn’t a valid barcode number.</p>
-  <p class="muted">Barcodes on bottles have 12 or 13 digits (8 on small ones) and the last digit is a check digit, so one wrong digit is caught. Check the digits against the bottle.</p>
+  <p class="notice notice-error">“{{ r.q }}” isn’t a valid barcode number.</p>
+  <p class="lede">Barcodes on bottles have 12 or 13 digits (8 on small ones) and the last digit is a check digit, so one wrong digit is caught. Check the digits against the bottle.</p>
   {% endif %}
 </section>
 {% elif r.outcome == 'results' and r.results is not none %}

@@ -102,3 +102,16 @@ from the environment.
 `src/polished/static/vendor/` holds vendored browser libraries; versions and checksums are in
 `VERSIONS.txt` there. There is no build step and no Node.
 `scripts/vendor.sh` re-fetches the pinned files (htmx, zxing-wasm) and checks their sha256.
+The one font, Fraunces (SIL OFL, `static/fonts/`), is rebuilt from its pinned upstream file by
+`scripts/make_fonts.sh`.
+
+## Look and icons
+
+`docs/VISUAL.md` is the spec for how the app looks; all of it lives in `static/css/app.css` as
+tokens and components, with light and dark from the system setting. The logo is two hand-drawn
+SVGs in `static/icons/` (`logo.svg`, `favicon.svg`); after editing one, redraw the PNGs
+(apple-touch, PWA, maskable, favicon fallback) with Chromium:
+
+```sh
+uvx --from playwright python scripts/make_icons.py
+```

@@ -1,6 +1,10 @@
 {# Typeahead that teaches a shade a code: `kind` (gtin or printed) and `value` (normalised). #}
+{% from "_icons.html" import icon with context %}
 <div class="learn-picker">
-  <input type="search" name="q" placeholder="Search shades by name" aria-label="Search shades by name" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="search"
-         hx-get="/search" hx-vals='{{ {"ctx": "learn", "kind": kind, "value": value}|tojson }}' hx-trigger="input changed delay:200ms, search" hx-target="next .learn-results" hx-sync="this:replace">
+  <div class="search-field">
+    {{ icon("search") }}
+    <input type="search" name="q" placeholder="Search shades by name…" aria-label="Search shades by name" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="search"
+           hx-get="/search" hx-vals='{{ {"ctx": "learn", "kind": kind, "value": value}|tojson }}' hx-trigger="input changed delay:200ms, search" hx-target="next .learn-results" hx-sync="this:replace">
+  </div>
   <div class="learn-results" aria-live="polite"></div>
 </div>

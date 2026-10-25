@@ -1,12 +1,15 @@
-{# The inside of a shade row: thumbnail, title, finish chips, status and price. #}
-  {% if shade.hero_image_url %}<img class="thumb" src="{{ shade.hero_image_url|thumb(112) }}" srcset="{{ shade.hero_image_url|thumb(112) }} 2x, {{ shade.hero_image_url|thumb(168) }} 3x" width="56" height="56" alt="" loading="lazy" decoding="async">{% else %}<span class="thumb thumb-empty" aria-hidden="true"></span>{% endif %}
+{# The inside of a shade row: cropped thumbnail, name, finishes and price, then only what is news
+   (sold out, retiring, added by hand, owned, on the wishlist). #}
+{% from "_icons.html" import icon with context %}
+  {% if shade.hero_image_url %}<img class="thumb" src="{{ shade.hero_image_url|thumb(96, 128) }}" srcset="{{ shade.hero_image_url|thumb(96, 128) }} 2x, {{ shade.hero_image_url|thumb(144, 192) }} 3x" width="48" height="64" alt="" loading="lazy" decoding="async">{% else %}<span class="thumb thumb-empty" aria-hidden="true"></span>{% endif %}
   <span class="row-body">
     <span class="row-title">{{ shade.title }}</span>
-    {% if shade.finishes %}<span class="chips">{% for finish in shade.finishes[:3] %}<span class="chip">{{ finish|label }}</span>{% endfor %}{% if shade.is_topper %}<span class="chip chip-topper">Topper</span>{% endif %}</span>{% elif shade.is_topper %}<span class="chips"><span class="chip chip-topper">Topper</span></span>{% endif %}
-    <span class="row-foot">
-      {% if shade.status %}<span class="status status-{{ shade.status.key }}">{{ shade.status.label }}</span>{% else %}<span class="status status-manual">Added by hand</span>{% endif %}
-      {% if shade.price_cents is not none %}<span class="price">{{ shade.price_cents|money }}</span>{% endif %}
-      {% if shade.owned_count %}<span class="owned-badge">owned ×{{ shade.owned_count }}</span>{% endif %}
-      {% if shade.wishlisted %}<span class="heart" role="img" aria-label="On the wishlist">♥</span>{% endif %}
+    <span class="row-sub"><span>{{ ((["topper"] if shade.is_topper else []) + shade.finishes[:3])|words }}</span>{% if shade.price_cents is not none %}<span class="price">{{ shade.price_cents|money }}</span>{% endif %}</span>
+    {% if shade.status is none or shade.status.key != 'available' or shade.owned_count or shade.wishlisted %}
+    <span class="row-flags">
+      {% if shade.status is none %}<span class="status status-manual">Added by hand</span>{% elif shade.status.key != 'available' %}<span class="status status-{{ shade.status.key }}">{{ shade.status.label }}</span>{% endif %}
+      {% if shade.owned_count %}<span class="pill">Owned ×{{ shade.owned_count }}</span>{% endif %}
+      {% if shade.wishlisted %}<span class="heart" role="img" aria-label="On the wishlist">{{ icon("heart") }}</span>{% endif %}
     </span>
+    {% endif %}
   </span>

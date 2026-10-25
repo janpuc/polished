@@ -1,0 +1,5 @@
+{# One icon from the sprite (static/icons/ui.svg). Import with context: the sprite URL carries the
+   release version so a new release is fetched, and the service worker precaches that URL. #}
+{% macro icon(name, class="") -%}
+<svg class="icon{% if class %} {{ class }}{% endif %}" aria-hidden="true" focusable="false"><use href="/static/icons/ui.svg?v={{ version }}#{{ name }}"/></svg>
+{%- endmacro %}

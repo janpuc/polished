@@ -1,49 +1,69 @@
 {% extends "base.html" %}
-{% block title %}Shades · Polished{% endblock %}
+{% from "_icons.html" import icon with context %}
+{% set tab = "shades" %}
+{% block title %}Shades | Polished{% endblock %}
 {% block content %}
-<h1 class="page-head">Shades <a class="head-link" href="/shades/new">Add by hand</a></h1>
+<header class="page-head">
+  <h1 class="title">Shades</h1>
+  <a class="btn btn-text btn-icon" href="/shades/new" aria-label="Add a shade by hand">{{ icon("plus") }}</a>
+</header>
+<div class="sentinel" aria-hidden="true"></div>
 <form id="shade-filters" class="search-bar" action="/shades" method="get" role="search"
       hx-get="/shades" hx-trigger="input from:#q delay:200ms, change" hx-target="#shade-list"
       hx-swap="innerHTML" hx-push-url="true" hx-sync="this:replace">
   <div class="search-row">
-    <input id="q" type="search" name="q" value="{{ query.q }}" placeholder="Search shades"
-           aria-label="Search shades" autocomplete="off" autocapitalize="off" spellcheck="false"
-           enterkeyhint="search">
+    <div class="search-field">
+      {{ icon("search") }}
+      <input id="q" type="search" name="q" value="{{ query.q }}" placeholder="Search shades…"
+             aria-label="Search shades" autocomplete="off" autocapitalize="off" spellcheck="false"
+             enterkeyhint="search">
+      <a class="btn btn-icon" href="/lookup?scan=1" aria-label="Scan a bottle">{{ icon("camera") }}</a>
+    </div>
     <details class="filter-toggle"{% if query.filter_count() %} open{% endif %}>
-      <summary>Filters <span id="filter-count" class="badge">{% if query.filter_count() %}{{ query.filter_count() }}{% endif %}</span></summary>
+      <summary aria-label="Filters">{{ icon("sliders") }}<span id="filter-count" class="badge">{% if query.filter_count() %}{{ query.filter_count() }}{% endif %}</span></summary>
       <div class="filter-panel">
         <fieldset>
-          <legend>Kind</legend>
-          <label class="pick"><input type="radio" name="kind" value=""{% if not query.kind %} checked{% endif %}><span>All</span></label>
-          {% for value, text in [("polish", "Polish"), ("topper", "Toppers"), ("base", "Base coats")] %}
-          <label class="pick"><input type="radio" name="kind" value="{{ value }}"{% if query.kind == value %} checked{% endif %}><span>{{ text }}</span></label>
-          {% endfor %}
+          <span class="legend" id="legend-kind">Kind</span>
+          <div class="segmented" role="radiogroup" aria-labelledby="legend-kind">
+            <label class="pick"><input type="radio" name="kind" value=""{% if not query.kind %} checked{% endif %}><span>All</span></label>
+            {% for value, text in [("polish", "Polish"), ("topper", "Toppers"), ("base", "Base coats")] %}
+            <label class="pick"><input type="radio" name="kind" value="{{ value }}"{% if query.kind == value %} checked{% endif %}><span>{{ text }}</span></label>
+            {% endfor %}
+          </div>
         </fieldset>
         <fieldset>
-          <legend>Status</legend>
-          <label class="pick"><input type="radio" name="status" value=""{% if not query.status %} checked{% endif %}><span>Any</span></label>
-          {% for value, text in [("buyable", "Buyable"), ("retired", "Retired"), ("sold_out", "Sold out")] %}
-          <label class="pick"><input type="radio" name="status" value="{{ value }}"{% if query.status == value %} checked{% endif %}><span>{{ text }}</span></label>
-          {% endfor %}
+          <span class="legend" id="legend-status">Status</span>
+          <div class="segmented" role="radiogroup" aria-labelledby="legend-status">
+            <label class="pick"><input type="radio" name="status" value=""{% if not query.status %} checked{% endif %}><span>Any</span></label>
+            {% for value, text in [("buyable", "Buyable"), ("retired", "Retired"), ("sold_out", "Sold out")] %}
+            <label class="pick"><input type="radio" name="status" value="{{ value }}"{% if query.status == value %} checked{% endif %}><span>{{ text }}</span></label>
+            {% endfor %}
+          </div>
         </fieldset>
         <fieldset>
-          <legend>Mine</legend>
-          <label class="pick"><input type="radio" name="owned" value=""{% if not query.owned %} checked{% endif %}><span>Any</span></label>
-          {% for value, text in [("owned", "Owned"), ("not_owned", "Not owned"), ("wishlist", "Wishlist")] %}
-          <label class="pick"><input type="radio" name="owned" value="{{ value }}"{% if query.owned == value %} checked{% endif %}><span>{{ text }}</span></label>
-          {% endfor %}
+          <span class="legend" id="legend-owned">Mine</span>
+          <div class="segmented" role="radiogroup" aria-labelledby="legend-owned">
+            <label class="pick"><input type="radio" name="owned" value=""{% if not query.owned %} checked{% endif %}><span>Any</span></label>
+            {% for value, text in [("owned", "Owned"), ("not_owned", "Not owned"), ("wishlist", "Wishlist")] %}
+            <label class="pick"><input type="radio" name="owned" value="{{ value }}"{% if query.owned == value %} checked{% endif %}><span>{{ text }}</span></label>
+            {% endfor %}
+          </div>
         </fieldset>
         <fieldset>
-          <legend>Finish</legend>
-          {% for value in facets.finish %}
-          <label class="pick"><input type="checkbox" name="finish" value="{{ value }}"{% if value in query.finish %} checked{% endif %}><span>{{ value|label }}</span></label>
-          {% endfor %}
+          <legend class="legend">Finish</legend>
+          <div class="chips">
+            {% for value in facets.finish %}
+            <label class="pick"><input type="checkbox" name="finish" value="{{ value }}"{% if value in query.finish %} checked{% endif %}><span>{{ value|label }}</span></label>
+            {% endfor %}
+          </div>
         </fieldset>
         <fieldset>
-          <legend>Colour</legend>
-          {% for value in facets.color %}
-          <label class="pick"><input type="checkbox" name="color" value="{{ value }}"{% if value in query.color %} checked{% endif %}><span>{{ value|label }}</span></label>
-          {% endfor %}
+          <legend class="legend">Colour</legend>
+          <div class="chips">
+            {% for value in facets.color %}
+            <label class="pick"><input type="checkbox" name="color" value="{{ value }}"{% if value in query.color %} checked{% endif %}><span>{{ value|label }}</span></label>
+            {% endfor %}
+          </div>
         </fieldset>
         <div class="field">
           <label for="collection">Collection</label>
@@ -62,14 +82,14 @@
             {% endfor %}
           </select>
         </div>
-        <noscript><button type="submit">Apply</button></noscript>
-        <a class="clear" href="/shades">Clear all</a>
+        <noscript><button type="submit" class="btn btn-block">Apply</button></noscript>
+        <div class="filter-actions"><a class="btn btn-text" href="/shades">Clear all</a></div>
       </div>
     </details>
   </div>
 </form>
-<p id="result-count" class="muted count" aria-live="polite">{{ result.total }} shade{{ '' if result.total == 1 else 's' }}</p>
-<ul id="shade-list" class="shade-list">
+<p id="result-count" class="count" aria-live="polite">{{ result.total }} shade{{ '' if result.total == 1 else 's' }}</p>
+<ul id="shade-list" class="list">
   {% include "_shade_rows.html" %}
 </ul>
 {% endblock %}

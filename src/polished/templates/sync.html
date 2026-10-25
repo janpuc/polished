@@ -1,6 +1,11 @@
 {% extends "base.html" %}
-{% block title %}Catalog sync · Polished{% endblock %}
+{% from "_icons.html" import icon with context %}
+{% set tab = "home" %}
+{% block title %}Catalog sync | Polished{% endblock %}
 {% block content %}
-<h1>Catalog sync</h1>
+<a class="back" href="/">{{ icon("chevron-left") }}Home</a>
+<header class="page-head">
+  <h1 class="title">Catalog sync</h1>
+</header>
 {% include "_sync_status.html" %}
 {% endblock %}

@@ -1,10 +1,10 @@
 {% extends "base.html" %}
-{% block title %}Offline · Polished{% endblock %}
-{% block topbar %}
-<header class="topbar"><span class="brand">Polished</span></header>
-{% endblock %}
+{% block title %}Offline | Polished{% endblock %}
 {% block content %}
-<h1>Polished needs a connection</h1>
-<p class="muted">Your collection lives on the server, so there is nothing to show without a network. Check your connection and try again.</p>
-<p><a class="button" href="/">Try again</a></p>
+<div class="status-page">
+  <img class="status-mark" src="/static/icons/favicon.svg" width="72" height="72" alt="">
+  <h1 class="title">Polished needs a connection</h1>
+  <p>Your collection lives on the server, so there is nothing to show without a network. Check your connection and try again.</p>
+  <a class="btn" href="/">Try again</a>
+</div>
 {% endblock %}

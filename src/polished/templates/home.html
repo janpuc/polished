@@ -1,40 +1,60 @@
 {% extends "base.html" %}
+{% from "_icons.html" import icon with context %}
+{% set tab = "home" %}
 {% block title %}Polished{% endblock %}
 {% block content %}
+<header class="page-head">
+  <h1 class="title title-brand"><img src="/static/icons/favicon.svg" width="32" height="32" alt="">Polished</h1>
+</header>
+<div class="sentinel" aria-hidden="true"></div>
 <form class="search-bar" action="/shades" method="get" role="search">
-  <input id="q" type="search" name="q" placeholder="Search {{ shade_count }} shades"
-         aria-label="Search shades" autocomplete="off" autocapitalize="off" spellcheck="false"
-         enterkeyhint="search" autofocus
-         hx-get="/search" hx-vals='{"ctx": "home"}' hx-trigger="input changed delay:200ms, search"
-         hx-target="#search-results" hx-sync="this:replace">
+  <div class="search-field">
+    {{ icon("search") }}
+    <input id="q" type="search" name="q" placeholder="Search {{ shade_count }} shades…"
+           aria-label="Search shades" autocomplete="off" autocapitalize="off" spellcheck="false"
+           enterkeyhint="search"
+           hx-get="/search" hx-vals='{"ctx": "home"}' hx-trigger="input changed delay:200ms, search"
+           hx-target="#search-results" hx-sync="this:replace">
+    <a class="btn btn-icon" href="/lookup?scan=1" aria-label="Scan a bottle">{{ icon("camera") }}</a>
+  </div>
 </form>
 <div id="search-results" aria-live="polite"></div>
-<a class="button scan-button" href="/lookup?scan=1">Scan a bottle</a>
-<div class="stats">
-  <a class="stat" href="/bottles"><strong>{{ counts.bottles }}</strong><span>bottle{{ '' if counts.bottles == 1 else 's' }}</span></a>
-  <a class="stat" href="/shades?owned=owned"><strong>{{ counts.shades }}</strong><span>shade{{ '' if counts.shades == 1 else 's' }} owned</span></a>
-  <a class="stat" href="/wishlist"><strong>{{ wishlist.count }}</strong><span>wishlist{% if wishlist.count %} · {{ wishlist.total_cents|money }}{% endif %}</span></a>
-</div>
 {% if recent %}
-<h2>Recent bottles</h2>
-<ul class="shade-list">
+<h2 class="section-title">Recent bottles</h2>
+<ul class="shelf">
   {% for bottle in recent %}
-  <li class="shade-row"><a class="row-link" href="/shades/{{ bottle.shade_id }}">
-    {% if bottle.hero_image_url %}<img class="thumb" src="{{ bottle.hero_image_url|thumb(112) }}" srcset="{{ bottle.hero_image_url|thumb(112) }} 2x, {{ bottle.hero_image_url|thumb(168) }} 3x" width="56" height="56" alt="" loading="lazy" decoding="async">{% else %}<span class="thumb thumb-empty" aria-hidden="true"></span>{% endif %}
-    <span class="row-body">
-      <span class="row-title">{{ bottle.title }}</span>
-      <span class="row-foot"><span class="state-tag state-{{ bottle.state }}">{{ bottle.state|label }}</span>{% if bottle.printed_code %}<span class="muted">{{ bottle.printed_code }}</span>{% endif %}<span class="muted">{{ bottle.created_at[:10] }}</span></span>
-    </span>
+  <li><a class="shelf-item" href="/shades/{{ bottle.shade_id }}">
+    {% if bottle.hero_image_url %}<img class="thumb" src="{{ bottle.hero_image_url|thumb(144, 192) }}" srcset="{{ bottle.hero_image_url|thumb(144, 192) }} 2x, {{ bottle.hero_image_url|thumb(216, 288) }} 3x" width="72" height="96" alt="" loading="lazy" decoding="async">{% else %}<span class="thumb thumb-empty" aria-hidden="true"></span>{% endif %}
+    <span class="shelf-title">{{ bottle.title }}</span>
   </a></li>
   {% endfor %}
 </ul>
 {% endif %}
-<ul class="links">
-  <li><a href="/shades">Browse all shades</a></li>
-  <li><a href="/shades/new">Add a shade by hand</a></li>
-  <li><a href="/shades?kind=topper">Toppers</a></li>
-  <li><a href="/shades?status=buyable&amp;sort=newest">New and in stock</a></li>
-  <li><a href="/sync">Catalog sync</a></li>
+<div class="stats">
+  <a class="stat" href="/bottles"><strong>{{ counts.bottles }}</strong><span>bottle{{ '' if counts.bottles == 1 else 's' }}</span></a>
+  <a class="stat" href="/shades?owned=owned"><strong>{{ counts.shades }}</strong><span>shade{{ '' if counts.shades == 1 else 's' }} owned</span></a>
+  <a class="stat" href="/wishlist"><strong>{{ wishlist.count }}</strong><span>on the wishlist</span></a>
+</div>
+{% if recent %}
+<a class="btn btn-block home-scan" href="/lookup?scan=1">{{ icon("camera") }}Scan a bottle</a>
+{% else %}
+<div class="empty-state">
+  <div class="nail-glyph" aria-hidden="true"></div>
+  <h2>No bottles yet</h2>
+  <p>Scan the code under a bottle or add it from its shade page.</p>
+  <a class="btn" href="/lookup?scan=1">{{ icon("camera") }}Scan a bottle</a>
+</div>
+{% endif %}
+<ul class="group home-links">
+  <li><a class="group-link" href="/shades">Browse all shades{{ icon("chevron-right") }}</a></li>
+  <li><a class="group-link" href="/shades?kind=topper">Toppers{{ icon("chevron-right") }}</a></li>
+  <li><a class="group-link" href="/shades?status=buyable&amp;sort=newest">New and in stock{{ icon("chevron-right") }}</a></li>
+  <li><a class="group-link" href="/shades/new">Add a shade by hand{{ icon("chevron-right") }}</a></li>
+  <li><a class="group-link" href="/sync">Catalog sync{{ icon("chevron-right") }}</a></li>
 </ul>
-{% if user %}<p class="muted">Signed in as {{ user.name }}.</p>{% endif %}
+{% if user %}
+<div class="foot">Signed in as {{ user.name }}.
+  <form method="post" action="/auth/logout"><button type="submit" class="btn btn-text">Sign out</button></form>
+</div>
+{% endif %}
 {% endblock %}

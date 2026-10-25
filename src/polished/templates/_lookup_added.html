@@ -1,9 +1,10 @@
 {# The bottle was saved from the lookup page: the add-bottle sheet closes and this replaces the result. #}
+{% from "_icons.html" import icon with context %}
 <section class="result result-added">
   {% if notice %}<p class="notice">{{ notice }}</p>{% endif %}
-  <p class="result-lead">Added {{ shade.title }}{% if bottle.printed_code %} · {{ bottle.printed_code }}{% endif %}.</p>
+  <p class="result-lead">Added {{ shade.title }}{% if bottle.printed_code %} with {{ bottle.printed_code }}{% endif %}.</p>
   <div class="actions">
-    <a class="button action-primary" href="/shades/{{ shade.id }}">Open the shade</a>
-    <button type="button" class="action-wish" data-scan-open>Scan another</button>
+    <a class="btn action-primary" href="/shades/{{ shade.id }}">Open the shade</a>
+    <button type="button" class="btn btn-secondary action-wish" data-scan-open>{{ icon("camera") }}Scan another</button>
   </div>
 </section>

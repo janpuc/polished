@@ -2,8 +2,12 @@
 <div id="bottles" class="bottles">
   {% if notice %}<p class="notice">{{ notice }}</p>{% endif %}
   {% if bottles %}
-  <h2>Bottles</h2>
-  {% for bottle in bottles %}{% include "_bottle_card.html" %}{% endfor %}
+  <section class="bottles-section">
+    <h2 class="section-title">Bottles</h2>
+    <div class="group">
+      {% for bottle in bottles %}{% include "_bottle_card.html" %}{% endfor %}
+    </div>
+  </section>
   {% endif %}
 </div>
 {% include "_oob_actions.html" %}

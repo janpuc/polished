@@ -1,7 +1,10 @@
 {% extends "base.html" %}
-{% block title %}Wishlist · Polished{% endblock %}
+{% set tab = "wishlist" %}
+{% block title %}Wishlist | Polished{% endblock %}
 {% block scripts %}<script type="module" src="/static/js/copy.js?v={{ version }}"></script>{% endblock %}
 {% block content %}
-<h1>Wishlist</h1>
+<header class="page-head">
+  <h1 class="title">Wishlist</h1>
+</header>
 {% include "_wishlist.html" %}
 {% endblock %}

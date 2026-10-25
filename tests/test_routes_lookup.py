@@ -56,7 +56,7 @@ def test_the_lookup_page_has_the_scanner_the_photo_fallback_and_the_field(seeded
 def test_a_code_in_the_query_resolves_without_javascript(seeded):
     client, _ = seeded
     html = client.get(f"/lookup?q={UPC}").text
-    assert f"New barcode {GTIN} — which shade is it?" in html
+    assert f"New barcode {GTIN}. Which shade is it?" in html
     assert f'value="{UPC}"' in html
 
 
@@ -80,7 +80,7 @@ def test_an_unknown_barcode_asks_which_shade_with_the_typeahead(seeded):
     client, _ = seeded
     response = client.get("/lookup/resolve", params={"q": GTIN, "via": "scan"})
     assert response.status_code == 200 and "<html" not in response.text
-    assert f"New barcode {GTIN} — which shade is it?" in response.text
+    assert f"New barcode {GTIN}. Which shade is it?" in response.text
     assert 'hx-get="/search"' in response.text
     assert (
         """hx-vals='{"ctx": "learn", "kind": "gtin", "value": "0810170284120"}'""" in response.text
@@ -133,11 +133,11 @@ def test_posting_the_code_saves_it_normalised_and_shows_the_match_with_add_bottl
     assert saved.status_code == 200 and "<html" not in saved.text
     assert stored(conn) == [("gtin", GTIN, shade)]
     assert "Saved. " in saved.text and "Spirit Fingers" in saved.text
-    assert "+ Add bottle" in saved.text
+    assert "Add bottle" in saved.text
     assert f'hx-get="/shades/{shade}/bottles/new?ctx=lookup"' in saved.text
 
     match = client.get("/lookup/resolve", params={"q": UPC, "via": "scan"})
-    assert "Spirit Fingers" in match.text and "+ Add bottle" in match.text
+    assert "Spirit Fingers" in match.text and "Add bottle" in match.text
     assert "New barcode" not in match.text and "This isn’t it" in match.text
     assert conn.execute("select use_count from shade_identifier").fetchone()[0] == 1
 
@@ -168,7 +168,7 @@ def test_this_isnt_it_forgets_the_barcode_and_asks_again(seeded):
     learn(client, sid(conn, "Spirit Fingers"))
     identifier = conn.execute("select id from shade_identifier").fetchone()[0]
     response = client.post(f"/identifiers/{identifier}/delete", data={"ctx": "lookup"})
-    assert f"New barcode {GTIN} — which shade is it?" in response.text
+    assert f"New barcode {GTIN}. Which shade is it?" in response.text
     assert stored(conn) == []
     assert client.post(f"/identifiers/{identifier}/delete").status_code == 404
 
@@ -201,7 +201,7 @@ def test_a_sku_is_a_match_without_a_forget_button(seeded):
     sku = conn.execute("select sku from shade where title = 'Spirit Fingers'").fetchone()[0]
     response = client.get("/lookup/resolve", params={"q": sku.lower()})
     assert "Spirit Fingers" in response.text and f"SKU {sku}" in response.text
-    assert "+ Add bottle" in response.text and "This isn’t it" not in response.text
+    assert "Add bottle" in response.text and "This isn’t it" not in response.text
 
 
 def test_a_name_gives_ordinary_rows_and_nothing_gives_nothing(seeded):
@@ -235,7 +235,7 @@ def test_saving_a_bottle_from_the_lookup_learns_the_code_and_shows_what_was_adde
         f"/shades/{shade}/bottles", data={"printed_code": "259", "ctx": "lookup"}
     )
     assert response.status_code == 200 and response.headers["hx-trigger"] == "sheetClose"
-    assert "Added Spirit Fingers · P259." in response.text and "data-scan-open" in response.text
+    assert "Added Spirit Fingers with P259." in response.text and "data-scan-open" in response.text
     assert stored(conn) == [("printed", "P259", shade)]
     assert conn.execute("select count(*) from bottle").fetchone()[0] == 1
 

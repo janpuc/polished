@@ -123,15 +123,15 @@ def run(photo: Path, mjpeg: Path) -> None:
         page.locator(".learn-results button.row-link").first.click()
         result.get_by_text("Saved.").wait_for()
         check(
-            result.get_by_role("button", name="+ Add bottle").is_visible(),
-            "one tap saves the barcode and offers '+ Add bottle'",
+            result.get_by_role("button", name="Add bottle").is_visible(),
+            "one tap saves the barcode and offers 'Add bottle'",
         )
         page.set_input_files("#scan-photo", str(photo))
         result.get_by_text("Saved.").wait_for(
             state="detached"
         )  # no string eval: the CSP forbids it
         check(
-            result.get_by_role("button", name="+ Add bottle").is_visible()
+            result.get_by_role("button", name="Add bottle").is_visible()
             and "New barcode" not in result.inner_text(),
             "the second photo is a match",
         )
@@ -141,7 +141,7 @@ def run(photo: Path, mjpeg: Path) -> None:
         page.locator("button[data-scan-open]").click()
         page.locator("#scanner[open]").wait_for(timeout=10000)
         page.locator("#scanner:not([open])").wait_for(state="attached", timeout=30000)
-        result.get_by_role("button", name="+ Add bottle").wait_for(timeout=10000)
+        result.get_by_role("button", name="Add bottle").wait_for(timeout=10000)
         check(True, "the live camera read the barcode and landed on the match")
         stopped = page.evaluate(
             "document.getElementById('scanner-video').srcObject === null || document.getElementById('scanner-video').srcObject.getTracks().every(t => t.readyState === 'ended')"

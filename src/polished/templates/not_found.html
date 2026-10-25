@@ -1,7 +1,11 @@
 {% extends "base.html" %}
-{% block title %}Not found · Polished{% endblock %}
+{% set tab = "shades" %}
+{% block title %}Not found | Polished{% endblock %}
 {% block content %}
-<h1>Not found</h1>
-<p class="muted">There is no shade with that number.</p>
-<p><a class="button" href="/shades">Browse shades</a></p>
+<div class="status-page">
+  <div class="nail-glyph" aria-hidden="true"></div>
+  <h1 class="title">Not found</h1>
+  <p>There is no shade with that number. It may have been removed, or the link is wrong.</p>
+  <a class="btn" href="/shades">Browse shades</a>
+</div>
 {% endblock %}

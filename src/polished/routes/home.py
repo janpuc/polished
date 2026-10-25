@@ -27,6 +27,12 @@ def home(request: Request, conn: Conn):
     return render(request, "home.html", context)
 
 
+@router.get("/wheels")
+def wheels_placeholder(request: Request):
+    """The Wheels tab until the wheel pages (DESIGN 9) exist; routes/wheels.py replaces it."""
+    return render(request, "wheels.html")
+
+
 @router.get("/search")
 def search(
     request: Request,

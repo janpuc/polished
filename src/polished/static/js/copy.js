@@ -6,16 +6,17 @@ document.addEventListener("click", async (event) => {
   const source = document.querySelector(button.dataset.copy);
   if (!source) return;
   const text = source.value ?? source.textContent;
-  const label = button.textContent;
+  const caption = button.querySelector("span") ?? button; // the icon stays; only the words change
+  const label = caption.textContent;
   try {
     await navigator.clipboard.writeText(text);
-    button.textContent = "Copied";
+    caption.textContent = "Copied";
   } catch {
     source.focus();
     source.select?.();
-    button.textContent = "Select and copy";
+    caption.textContent = "Select and copy";
   }
   setTimeout(() => {
-    button.textContent = label;
+    caption.textContent = label;
   }, 2000);
 });

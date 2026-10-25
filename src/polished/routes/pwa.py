@@ -7,8 +7,10 @@ from ..web import render, templates
 
 router = APIRouter()
 
-THEME_COLOR = "#b02a78"
-BACKGROUND_COLOR = "#fbf8fb"
+# The page's own `theme-color` metas follow the colour scheme; the manifest has one value for each.
+# The splash screen shows the icon, which sits on plum, so it gets the icon's ground.
+THEME_COLOR = "#faf7fb"
+BACKGROUND_COLOR = "#1e1024"
 # `curl -I` and browsers' freshness checks use HEAD.
 PROBEABLE = ["GET", "HEAD"]
 

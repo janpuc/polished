@@ -53,7 +53,7 @@ def test_the_sync_page_lists_the_runs_with_counts(tmp_path):
     assert "24 Oct 06:12" in html
     assert "526 products" in html
     assert "372 new" in html
-    assert "schedule" in html
+    assert "Daily sync" in html
 
 
 def test_the_status_box_polls_every_2s_only_while_a_run_is_going(tmp_path):

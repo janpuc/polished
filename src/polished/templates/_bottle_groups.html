@@ -1,12 +1,20 @@
-{# Bottles grouped by shade: the body of #bottle-groups. #}
+{# Bottles grouped by shade: the body of #bottle-groups, with the level chips out of band. #}
+{% if is_partial %}{% include "_bottle_filters.html" %}{% endif %}
 {% for group in groups %}
 <section class="bottle-group">
   <a class="group-head" href="/shades/{{ group.shade_id }}">
-    {% if group.hero_image_url %}<img class="thumb thumb-small" src="{{ group.hero_image_url|thumb(80) }}" width="40" height="40" alt="" loading="lazy" decoding="async">{% else %}<span class="thumb thumb-small thumb-empty" aria-hidden="true"></span>{% endif %}
+    {% if group.hero_image_url %}<img class="thumb thumb-sm" src="{{ group.hero_image_url|thumb(72, 96) }}" srcset="{{ group.hero_image_url|thumb(72, 96) }} 2x, {{ group.hero_image_url|thumb(108, 144) }} 3x" width="36" height="48" alt="" loading="lazy" decoding="async">{% else %}<span class="thumb thumb-sm thumb-empty" aria-hidden="true"></span>{% endif %}
     <span class="row-title">{{ group.title }}</span>
   </a>
-  {% for bottle in group.bottles %}{% include "_bottle_card.html" %}{% endfor %}
+  <div class="group">
+    {% for bottle in group.bottles %}{% include "_bottle_card.html" %}{% endfor %}
+  </div>
 </section>
 {% else %}
-<p class="empty muted">{% if archived %}No archived bottles.{% elif state %}No bottles at this level.{% else %}No bottles yet. Open a shade and tap “I have this”.{% endif %}</p>
+<div class="empty-state">
+  <div class="nail-glyph" aria-hidden="true"></div>
+  {% if archived %}<h2>No archived bottles</h2><p>Bottles you archive from their card end up here.</p>
+  {% elif state %}<h2>Nothing at this level</h2><p>No bottle is marked this way right now.</p>
+  {% else %}<h2>No bottles yet</h2><p>Scan the code under a bottle or add it from its shade page.</p><a class="btn" href="/lookup?scan=1">Scan a bottle</a>{% endif %}
+</div>
 {% endfor %}

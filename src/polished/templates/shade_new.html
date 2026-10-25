@@ -1,22 +1,28 @@
 {% extends "base.html" %}
-{% block title %}Add a shade · Polished{% endblock %}
+{% from "_icons.html" import icon with context %}
+{% set tab = "shades" %}
+{% block title %}Add a shade | Polished{% endblock %}
 {% block content %}
-<p class="back"><a href="/shades">‹ Shades</a></p>
-<h1>Add a shade by hand</h1>
-<p class="muted">For a bottle that is not in the Holo Taco catalog, such as a gift. It has no price and no stock status.</p>
+<a class="back" href="/shades">{{ icon("chevron-left") }}Shades</a>
+<header class="page-head">
+  <h1 class="title">Add a shade</h1>
+</header>
+<p class="lede">For a bottle that is not in the Holo Taco catalog, such as a gift. It has no price and no stock status.</p>
 <form class="plain-form" method="post" action="/shades">
   <div class="field">
     <label for="title">Name</label>
     <input id="title" name="title" value="{{ values.title }}" required maxlength="100" autocomplete="off" enterkeyhint="done">
     {% if errors.title %}<p class="field-error" role="alert">{{ errors.title }}</p>{% endif %}
   </div>
-  <fieldset class="state-pick">
-    <legend>Kind</legend>
-    {% for value, text in [("polish", "Polish"), ("topper", "Topper"), ("base", "Base coat")] %}
-    <label class="pick"><input type="radio" name="kind" value="{{ value }}"{% if values.kind == value %} checked{% endif %}><span>{{ text }}</span></label>
-    {% endfor %}
+  <fieldset>
+    <legend class="legend">Kind</legend>
+    <div class="segmented">
+      {% for value, text in [("polish", "Polish"), ("topper", "Topper"), ("base", "Base coat")] %}
+      <label class="pick"><input type="radio" name="kind" value="{{ value }}"{% if values.kind == value %} checked{% endif %}><span>{{ text }}</span></label>
+      {% endfor %}
+    </div>
     {% if errors.kind %}<p class="field-error" role="alert">{{ errors.kind }}</p>{% endif %}
   </fieldset>
-  <button type="submit" class="action-primary">Add shade</button>
+  <button type="submit" class="btn">Add shade</button>
 </form>
 {% endblock %}

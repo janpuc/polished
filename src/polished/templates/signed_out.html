@@ -1,6 +1,10 @@
 {% extends "base.html" %}
-{% block title %}Signed out · Polished{% endblock %}
+{% block title %}Signed out | Polished{% endblock %}
 {% block content %}
-<h1>You're signed out</h1>
-<p><a class="button" href="/auth/login">Sign in again</a></p>
+<div class="status-page">
+  <img class="status-mark" src="/static/icons/favicon.svg" width="72" height="72" alt="">
+  <h1 class="title">You’re signed out</h1>
+  <p>Sign in again to see your collection.</p>
+  <a class="btn" href="/auth/login">Sign in again</a>
+</div>
 {% endblock %}

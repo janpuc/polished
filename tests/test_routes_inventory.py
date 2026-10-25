@@ -59,7 +59,7 @@ def test_add_bottle_answers_the_same_with_htmx_and_updates_the_action_bar_out_of
     shade = sid(conn, "thirst-trap")
     response = client.post(f"/shades/{shade}/bottles", data={"printed_code": "p7"}, headers=HX)
     assert 'hx-swap-oob="true"' in response.text and 'id="shade-actions"' in response.text
-    assert "+ Add bottle" in response.text and "owned ×1" in response.text
+    assert "Add bottle" in response.text and "Owned ×1" in response.text
     assert response.headers["hx-trigger"] == "sheetClose"
 
 
@@ -125,10 +125,10 @@ def test_emptying_the_last_bottle_turns_the_shade_page_action_back_to_i_have_thi
     client, conn = seeded
     shade = sid(conn, "thirst-trap")
     bottle = make_bottle(client, conn)
-    assert "+ Add bottle" in client.get(f"/shades/{shade}").text
+    assert "Add bottle" in client.get(f"/shades/{shade}").text
     response = client.post(f"/bottles/{bottle}/state", data={"state": "empty", "ctx": "shade"})
     assert 'hx-swap-oob="true"' in response.text and "I have this" in response.text
-    assert "owned ×" not in response.text
+    assert "Owned ×" not in response.text
     on_list = client.post(f"/bottles/{bottle}/state", data={"state": "full", "ctx": "list"})
     assert "hx-swap-oob" not in on_list.text
 
@@ -199,7 +199,7 @@ def test_archive_and_restore(seeded):
     assert "I have this" in client.get(f"/shades/{shade}").text
     restored = client.post(f"/bottles/{bottle}/archive", data={"archived": "0"})
     assert "Archive" in restored.text and "Restore" not in restored.text
-    assert "+ Add bottle" in client.get(f"/shades/{shade}").text
+    assert "Add bottle" in client.get(f"/shades/{shade}").text
 
 
 def test_delete_removes_the_card_closes_the_sheet_and_updates_the_action_bar(seeded):
@@ -230,23 +230,23 @@ def test_bottles_page_is_a_full_page_or_a_fragment_and_filters(seeded):
     assert "<html" not in part.text and titles_in(part.text) == ["Thirst Trap"]
     assert titles_in(client.get("/bottles?archived=1").text) == ["Rest In Peach"]
     assert 'class="bottle ' not in client.get("/bottles?state=empty").text
-    assert "No bottles at this level." in client.get("/bottles?state=empty").text
+    assert "Nothing at this level" in client.get("/bottles?state=empty").text
 
 
 def test_the_shade_page_has_two_primary_actions_and_a_bottle_list(seeded):
     client, conn = seeded
     shade = sid(conn, "thirst-trap")
     page = client.get(f"/shades/{shade}").text
-    assert "I have this" in page and "♡ Wishlist" in page
+    assert "I have this" in page and 'aria-pressed="false"' in page
     assert f'hx-get="/shades/{shade}/bottles/new"' in page and 'hx-target="#sheet-body"' in page
     assert 'id="sheet-body"' in page and "/static/js/sheet.js" in page
-    assert "owned ×" not in page
+    assert "Owned ×" not in page
 
     make_bottle(client, conn)
     make_bottle(client, conn, state="low")
     client.post(f"/shades/{shade}/wishlist")
     page = client.get(f"/shades/{shade}").text
-    assert "+ Add bottle" in page and "owned ×2" in page and "♥ On wishlist" in page
+    assert "Add bottle" in page and "Owned ×2" in page and 'aria-pressed="true"' in page
     assert page.count('class="bottle"') == 2
 
 
@@ -257,11 +257,11 @@ def test_shade_rows_show_the_owned_badge_and_wishlist_heart(seeded):
     client.post(f"/shades/{sid(conn, 'thirst-trap')}/wishlist")
     client.post(f"/shades/{sid(conn, 'peely-base')}/wishlist")
     html = client.get("/shades", params={"q": "thirst"}).text
-    assert "owned ×2" in html and 'aria-label="On the wishlist"' in html
+    assert "Owned ×2" in html and 'aria-label="On the wishlist"' in html
     peely = client.get("/shades", params={"q": "peely"}).text
-    assert "owned ×" not in peely and 'aria-label="On the wishlist"' in peely
+    assert "Owned ×" not in peely and 'aria-label="On the wishlist"' in peely
     search = client.get("/search", params={"q": "thirst", "ctx": "home"}).text
-    assert "owned ×2" in search
+    assert "Owned ×2" in search
 
 
 def test_the_owned_filter_lists_only_owned_shades(seeded):
@@ -290,9 +290,13 @@ def test_home_shows_counts_and_recent_bottles(seeded):
     html = client.get("/").text
     assert "<strong>3</strong><span>bottles</span>" in html
     assert "<strong>2</strong><span>shades owned</span>" in html
-    assert "<strong>1</strong><span>wishlist · $13.50</span>" in html
+    assert "<strong>1</strong><span>on the wishlist</span>" in html
     assert "Recent bottles" in html
-    assert titles_in(html)[:3] == ["Peely Base", "Thirst Trap", "Thirst Trap"]
+    assert re.findall(r'class="shelf-title">([^<]+)<', html)[:3] == [
+        "Peely Base",
+        "Thirst Trap",
+        "Thirst Trap",
+    ]
 
 
 # Wishlist
@@ -303,7 +307,7 @@ def test_adding_to_the_wishlist_returns_the_button_with_the_default_priority(see
     shade = sid(conn, "thirst-trap")
     response = client.post(f"/shades/{shade}/wishlist", headers=HX)
     assert response.status_code == 200 and "<html" not in response.text
-    assert "♥ On wishlist" in response.text and 'id="shade-actions"' in response.text
+    assert 'aria-pressed="true"' in response.text and 'id="shade-actions"' in response.text
     assert conn.execute("select priority from wishlist_item").fetchone()[0] == 2
     client.post(f"/shades/{shade}/wishlist", data={"priority": "1"})
     assert conn.execute("select count(*), min(priority) from wishlist_item").fetchone()[:] == (1, 2)
@@ -328,8 +332,8 @@ def test_the_wishlist_page_shows_groups_a_total_and_the_checkout_button(seeded):
     assert "<html" in page.text
     assert page.text.index("Want most") < page.text.index("Would like")
     assert titles_in(page.text) == ["Peely Base", "Hit The Lights", "Thirst Trap"]
-    assert "<strong>3</strong> shades" in page.text and "$44.00" in page.text
-    assert "2 buyable now, $29.00" in page.text
+    assert "3 shades, $44.00." in page.text
+    assert "2 are in stock now for $29.00" in page.text
     assert "Open in Holo Taco checkout" in page.text and "Copy the list" in page.text
     assert 'target="_blank" rel="noopener"' in page.text
     assert "/static/js/copy.js" in page.text
@@ -337,7 +341,7 @@ def test_the_wishlist_page_shows_groups_a_total_and_the_checkout_button(seeded):
 
 def test_an_empty_wishlist_says_so(client):
     page = client.get("/wishlist").text
-    assert "Nothing on the wishlist yet" in page and "Open in Holo Taco checkout" not in page
+    assert "Nothing on the wishlist" in page and "Open in Holo Taco checkout" not in page
 
 
 def test_the_cart_route_returns_the_permalink_for_buyable_items_only(seeded):
@@ -353,7 +357,7 @@ def test_the_cart_route_returns_the_permalink_for_buyable_items_only(seeded):
     assert "<html" not in response.text
     links = re.findall(r"holotaco\.com/cart/[0-9:,]*", response.text)
     assert links == ["holotaco.com/cart/30936560795738:1,42093180747866:1"]
-    assert "Open in Holo Taco checkout" in response.text and "2 not buyable now" in response.text
+    assert "Open in Holo Taco checkout" in response.text and "2 not buyable" in response.text
     only_first = client.get("/wishlist/cart", params={"max_priority": 1}, headers=HX)
     assert re.findall(r"holotaco\.com/cart/[0-9:,]*", only_first.text) == [
         "holotaco.com/cart/30936560795738:1"
@@ -379,7 +383,7 @@ def test_changing_priority_moves_the_item_and_keeps_the_note(seeded):
     )
     assert response.status_code == 200 and "<html" not in response.text
     assert 'id="wishlist"' in response.text and "Maybe one day" in response.text
-    assert "Would like" not in response.text and 'value="pink!"' in response.text
+    assert 'section-title">Would like' not in response.text and 'value="pink!"' in response.text
     assert client.post(f"/wishlist/{item}", data={"priority": "7"}).status_code == 422
     assert client.post("/wishlist/9999", data={"priority": "1"}).status_code == 404
     assert (
@@ -402,7 +406,7 @@ def test_removing_from_the_list_or_from_the_shade_page(seeded):
     client.post(f"/shades/{shade}/wishlist")
     again = conn.execute("select id from wishlist_item where shade_id = ?", (shade,)).fetchone()[0]
     from_shade = client.post(f"/wishlist/{again}/delete", data={"ctx": "shade"})
-    assert "♡ Wishlist" in from_shade.text and 'id="wishlist"' not in from_shade.text
+    assert 'aria-pressed="false"' in from_shade.text and 'id="wishlist"' not in from_shade.text
     assert client.post("/wishlist/9999/delete").status_code == 404
     assert client.post(f"/wishlist/{second}/delete", headers=NO_ORIGIN).status_code == 403
     assert conn.execute("select id from wishlist_item").fetchall()[0][0] == second

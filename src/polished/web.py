@@ -1,5 +1,6 @@
 """Jinja environment, page rendering (DESIGN 3.2) and template filters."""
 
+from datetime import date
 from pathlib import Path
 
 from fastapi import Request
@@ -26,11 +27,14 @@ def money(cents: int | None) -> str:
     return f"${cents // 100}.{cents % 100:02d}"
 
 
-def thumb(url: str | None, width: int) -> str:
-    """Shopify's image CDN resizes by query parameter, so no image is ever proxied or stored."""
+def thumb(url: str | None, width: int, height: int | None = None) -> str:
+    """Shopify's image CDN resizes and crops by query parameter, so no image is ever proxied or
+    stored. With a `height` the CDN returns a true centre crop of exactly that size, which keeps
+    the bottle and discards most of the backdrop."""
     if not url:
         return ""
-    return f"{url}{'&' if '?' in url else '?'}width={width}"
+    size = f"width={width}" if height is None else f"width={width}&height={height}&crop=center"
+    return f"{url}{'&' if '?' in url else '?'}{size}"
 
 
 def label(value: str) -> str:
@@ -39,8 +43,22 @@ def label(value: str) -> str:
     return text[:1].upper() + text[1:]
 
 
+def words(values: list[str]) -> str:
+    """Tag values as one phrase: ["glitter", "rose-gold"] -> "Glitter, rose gold"."""
+    return label(", ".join(v.replace("-", " ").strip() for v in values))
+
+
+def day(value: str | None) -> str:
+    """An ISO date as people say it: "2026-10-01" -> "1 Oct 2026"; anything else unchanged."""
+    try:
+        parsed = date.fromisoformat(value or "")
+    except ValueError:
+        return value or ""
+    return f"{parsed.day} {parsed:%b %Y}"
+
+
 templates = Jinja2Templates(directory=PACKAGE_DIR / "templates", context_processors=[_context])
-templates.env.filters.update(money=money, thumb=thumb, label=label)
+templates.env.filters.update(money=money, thumb=thumb, label=label, words=words, day=day)
 
 
 def is_partial_request(request: Request) -> bool:

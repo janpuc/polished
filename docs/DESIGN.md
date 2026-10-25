@@ -75,10 +75,14 @@ iPhone Safari / PWA ──https──> Cloudflare tunnel ──> envoy-external 
   a POST that returns the re-rendered partial, so there is no client-side state to lose.
 - **JS islands** are plain ES modules under `static/js/`, loaded only on pages that need them:
   `scanner.js` (camera and zxing-wasm), `sheet.js` (opens and closes the bottom-sheet
-  `<dialog>`, refocuses the picker field), `tag.js` (copy the tag URL). No bundler, no Node.
+  `<dialog>`, refocuses the picker field), `copy.js` (copy buttons), `tag.js` (copy the tag URL),
+  and `chrome.js`, which every page loads: it turns the sticky search field into a material once it
+  is stuck under the status bar. No bundler, no Node.
 - **Vendored static assets** in `static/vendor/`: `htmx.min.js` and `zxing-wasm/` (reader build:
   `reader/index.js` and `share.js` as shipped, plus `zxing_reader.wasm`). Versions recorded in `static/vendor/VERSIONS.txt`, fetched by `scripts/vendor.sh` (a developer step);
-  Renovate cannot update vendored files, so a refresh is a manual stage.
+  Renovate cannot update vendored files, so a refresh is a manual stage. The one font, Fraunces
+  (OFL), lives in `static/fonts/fraunces-latin.woff2` with its licence; its source, hashes and the
+  subsetting recipe are in `VERSIONS.txt` and `scripts/make_fonts.sh`.
 - **SQLite** through stdlib `sqlite3`: WAL, `foreign_keys=on`, `busy_timeout=5000`, one
   connection per request (FastAPI sync route functions run in the threadpool) and one for the
   sync task. One uvicorn worker only: the scheduler and the DB assume a single process.
@@ -122,8 +126,11 @@ stacks.py            draft/commit, layers, templates, summary(), default_coats()
 wheels.py            wheel CRUD, slug generation, slot grid, tag URL, QR
 routes/              home.py shades.py bottles.py wishlist.py lookup.py wheels.py stacks.py
                      sync.py pwa.py health.py   (thin: parse, call domain function, render)
-templates/           base.html, pages, partials/ (leading underscore: _shade_row.html …)
-static/              css/app.css, js/, vendor/, icons/
+templates/           base.html (tab bar, sheet), pages, partials (leading underscore: _shade_row.html …),
+                     _icons.html (the `icon()` macro for the sprite)
+static/              css/app.css (tokens and every component, docs/VISUAL.md), js/, vendor/,
+                     fonts/ (Fraunces), icons/ (ui.svg sprite, nail-tip.svg mask, logo.svg,
+                     favicon.svg and the PNGs scripts/make_icons.py draws from them)
 ```
 
 Domain modules hold the SQL and take a connection; routes never write SQL. This keeps stage
@@ -142,8 +149,21 @@ HX-History-Restore-Request`, so Safari's back button never shows a partial.
 `render(request, page, context, status_code, partial=None)` in `web.py` implements the rule: with a
 `partial` template and an HTMX request it renders the partial, else the page. Templates see
 `is_partial`, so a fragment can carry out-of-band updates (the result and filter counts) that the
-full page already has in place. Money (`money`), thumbnail (`thumb`: `&width=` or `?width=` added
-to a Shopify image URL) and tag-value (`label`: "rose-gold" becomes "Rose gold") are Jinja filters.
+full page already has in place. Money (`money`), thumbnail (`thumb`), tag-value (`label`:
+"rose-gold" becomes "Rose gold"), phrase (`words`: a list of tag values as "Glitter, holographic")
+and date (`day`: "2026-10-01" becomes "1 Oct 2026") are Jinja filters. `thumb(url, width)` adds
+`width=` to a Shopify image URL; `thumb(url, width, height)` adds `width=`, `height=` and
+`crop=center`, which the CDN answers with a true centre crop of exactly that size (verified on
+`cdn.shopify.com`), so a row thumbnail keeps the bottle and drops the backdrop instead of zooming
+with CSS.
+
+**Look and feel.** `docs/VISUAL.md` is the spec for looks and this file wins on behaviour. In the
+templates: `base.html` carries the five-tab bar (Home, Shades, Bottles, Wheels, Wishlist; a page sets
+`{% set tab = "shades" %}` and a page without a tab, such as the offline and sign-in pages, gets no
+bar), a skip link and the shared `<dialog id="sheet">`; each page opens with a large title
+(`.title`, Fraunces) and, below the top level, a back link row. Icons are `{{ icon("name") }}`, a
+`<use>` of `static/icons/ui.svg?v=<version>`. The CSP allows no inline style, so all styling is
+classes in `app.css`; nothing sets a `style` attribute.
 
 ## 4. Data model
 
@@ -669,10 +689,11 @@ auth gate → routes.
   unique violation. URL: `https://polished.janpuc.com/w/<slug>`, short enough for any NFC tag.
 - **The tag points at the wheel, not at its slots**, and not at the name or the integer id:
   rearranging is a database edit, renaming never invalidates a tag.
-- **Wheel page `/w/<slug>`** (the canonical page; `/wheels` links to it): a 4-column grid of
-  slots 1..20. A filled slot shows its position, the stack summary and thumbnails; an empty slot
-  shows "+"; a slot with an open draft shows a "draft" dot. Tapping a tile opens the stack
-  builder (section 10). `?hl=<shade_id>` highlights every slot whose stack contains that shade
+- **Wheel page `/w/<slug>`** (the canonical page; `/wheels` links to it): the ring plus the list
+  of docs/VISUAL.md 5, replacing the 4-column grid. The ring is slots 1..20 as nail tips around a
+  hub, a filled tip shows its stack's top layer, an empty slot shows its number inside a foil edge,
+  a slot with an open draft shows a "draft" dot; below it a plain list of the filled slots reads
+  each stack without squinting. Tapping a tip or a list row opens the stack builder (section 10). `?hl=<shade_id>` highlights every slot whose stack contains that shade
   and scrolls to the first (`#slot-12`), which is what "Swatched on" links on the shade page use.
 - **Tag page `/wheels/<id>/tag`:** the full URL with a Copy button, the QR code, and the NFC
   Tools steps (Write → Add a record → URL/URI → paste → Write; Web NFC writing does not exist
@@ -742,7 +763,7 @@ keeps nothing, so a dropped connection or a backgrounded tab loses nothing.
    of section 7 and shows a `suggestion` row first.
 5. **Coats:** `−` / `+` post `delta=-1|+1`, clamped to 1..5 (`−` is disabled at 1; removal is
    `×`). **Reorder:** `↑` / `↓` post `dir=up|down`; the first row has no `↑`, the last no `↓`;
-   the swap goes through `ord = 0` as a temporary value because `(stack_id, ord)` is unique. No
+   the swap parks one layer on `ord = count + 1` as a temporary value because `(stack_id, ord)` is unique and `ord >= 1`. No
    drag and drop: it fights mobile Safari and HTMX, and with two to four layers arrows are
    faster. **Remove:** `×` deletes the layer and renumbers `ord` 1..n; no confirmation (re-adding
    is one tap).
@@ -781,10 +802,17 @@ Operations on a stack id are refused (409) unless the stack is a draft that some
   `/?source=pwa`, `scope` `/`, `display` `standalone`, background and theme colours, icons
   192 and 512 (plus a maskable 512). `<link rel="apple-touch-icon">` (180 px PNG) and the
   `apple-mobile-web-app-*` meta tags are in `base.html` because iOS ignores the manifest icons.
-  Icons are committed PNGs generated once by `scripts/make_icons.py`.
+  The mark is one holographic nail tip on plum (`static/icons/logo.svg`, docs/VISUAL.md 10). The
+  tab icon is `favicon.svg` (the nail without gloss, on a rounded plum tile; no style element and no
+  media query) with `favicon-32.png` as the fallback link. The PNGs (180 apple-touch, 192 and 512
+  rounded, 512 maskable, 32 favicon) are committed and drawn from the two SVGs by
+  `scripts/make_icons.py` with Chromium through Playwright. The manifest's `background_color` is the
+  icon's plum so the splash screen is the icon on its own ground, its `theme_color` the light page
+  colour; the page's two `theme-color` metas follow the colour scheme.
 - `GET /sw.js` is served from the root so its scope is `/`, with `Cache-Control: no-cache`. It
-  has three jobs: precache `/offline`, `app.css`, `htmx.min.js`, `register-sw.js` and the 180 and
-  192 px icons into `polished-static-<version>`; serve `/static/*` cache-first (templates append `?v=<version>`,
+  has three jobs: precache `/offline`, `app.css`, `htmx.min.js`, `register-sw.js`, `chrome.js`, the
+  icon sprite, the Fraunces file, `favicon.svg`, and the 32, 180 and 192 px icons into
+  `polished-static-<version>`; serve `/static/*` cache-first (templates append `?v=<version>`,
   so a release changes the URLs); answer a failed navigation with `/offline`. It never caches
   HTML, partials, API responses or cross-origin requests, never touches non-GET requests, and
   deletes old caches on `activate`. No offline writes, no background sync.
@@ -851,6 +879,7 @@ builds it.
 | GET | `/shades/{id}` | Detail: images, tags, price/status, product link; stage 4 adds bottles and wishlist, stage 6 "Swatched on" | full page | 3 |
 | GET | `/shades/new` | Manual shade form (gifted non-catalog bottle) | full page / P | 4 |
 | POST | `/shades` | Create manual shade (title, kind) | 302 to the shade | 4 |
+| GET | `/wheels` | The Wheels tab. A placeholder page ("Wheels are coming soon", in `routes/home.py`) until the wheel pages exist; the wheels router replaces it | full page | design |
 | GET | `/sync` | Last runs, counts, Sync now | full page | 2 |
 | POST | `/sync/run` | Start a manual run (409 running, 429 cooldown) | P status | 2 |
 | GET | `/sync/status` | Status box; polls every 2 s while running | P | 2 |
@@ -1078,6 +1107,43 @@ carry the shade page's action bar as an out-of-band copy when `ctx=shade`, becau
     collected by pytest (it needs Chromium and a server). It decodes a generated UPC-A image through
     the photo input and through Chromium's fake camera, with `BarcodeDetector` removed so zxing-wasm
     does the work as on an iPhone. How to run it is in its docstring and the README.
+
+41. **The look follows docs/VISUAL.md; where this pass chose differently, it is recorded here.**
+    The top bar is gone for a bottom tab bar of five tabs (the old deviation 31, which added
+    Bottles and Wishlist to the top bar, is superseded). Sign out moved to the Home footer.
+    Tab labels are 11 px (VISUAL.md says caption size, 13 px: five labels at 13 px leave no air on
+    a 390 pt screen). Fraunces carries titles and shade names only; `opsz` follows the size (34 for
+    page titles, 28 for the shade title, 24 for row names) instead of one fixed 24, and the subset
+    keeps `wght` 500 to 600, `opsz` 18 to 40 and `SOFT` 0 to 100 (70 KB; `WONK` is pinned off).
+42. **Presentation copy changed, behaviour did not.** Middle dots, spaced dashes and `+` prefixes
+    are gone from copy ("Added Spirit Fingers with P259.", "New barcode 0810170284120. Which shade
+    is it?"); "owned ×2" is the pill "Owned ×2"; the heart toggle is an icon with `aria-pressed` and
+    the label "Wishlist" in both states (the old "♥ On wishlist" does not fit a third of the row); the
+    wishlist summary is a sentence ("8 shades, $120.00. 3 are in stock now for $44.50."); the home
+    wishlist number no longer carries the total. Tests that asserted those strings were updated to
+    the new ones; none was weakened.
+43. **The thumbnail crops are 3:4** (48 by 64 for rows, 72 by 96 on the Home shelf, 36 by 48 in
+    the bottle groups; gallery images 480 by 640): `thumb(url, 96, 128)` for a 2x row, 3x at
+    144 by 192. VISUAL.md's example of 144 by 240 is a 3:5 crop that does not match the 48 by 64
+    box. Shade pages show finish, colour and collection as chips; rows show them as words.
+44. **The level chips of `/bottles` ride along out of band** (`_bottle_filters.html`): the old
+    chips sat outside the swapped list, so the highlighted one went stale after the first tap.
+45. **A shade with no bottle shows "I have this", one with bottles "Add bottle"** (as before), both
+    with a plus icon. The "Owned ×N" pill is part of `#shade-actions`, so every bottle fragment
+    keeps it current through the out-of-band swap.
+46. **Page titles use a vertical bar** ("Shades | Polished"), not a middle dot.
+47. **The sheet's first focus goes to its heading** (`tabindex="-1" autofocus`), not to the first
+    radio, so no focus ring appears on a tap. A sheet has no drag-to-dismiss: Cancel, the scrim and
+    Esc close it, and the grabber is decoration for now.
+48. **A layer swap parks one layer on `ord = count + 1`, not `ord = 0`** (stage 7): `stack_layer.ord` has
+    `check (ord >= 1)` (4.3), so 0 is not storable. `stacks.move` sets the moved layer to `count + 1`,
+    the neighbour to the moved layer's `ord`, then the moved layer to the neighbour's. Remove and
+    over-black renumber one row at a time, in the order that avoids the unique `(stack_id, ord)`.
+49. **Saved stacks are ordered by `updated_at` with millisecond precision** (stage 7): `stacks.save`
+    writes `strftime('%Y-%m-%dT%H:%M:%fZ')`. "Same as last" and "Copy from…" sort on it, with the
+    stack id as tiebreak.
+50. **A draft copied from a saved slot also copies the stack name** (stage 7), so editing a named
+    swatch keeps its name unless the form changes it.
 
 ## 15. Home-ops manifests
 

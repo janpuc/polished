@@ -229,7 +229,7 @@ async function openScanner() {
   }
   if (!current.active) return;
   current.hint = setTimeout(() => {
-    status.textContent = "Hold steady about 15 cm away with light on the barcode, or Close and take a photo.";
+    status.textContent = "Hold steady about 15\u00a0cm away with light on the barcode, or Close and take a photo.";
   }, HINT_AFTER_MS);
   scanLoop(current);
 }

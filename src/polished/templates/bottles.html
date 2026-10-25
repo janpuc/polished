@@ -1,15 +1,15 @@
 {% extends "base.html" %}
-{% block title %}Bottles · Polished{% endblock %}
+{% from "_icons.html" import icon with context %}
+{% set tab = "bottles" %}
+{% block title %}Bottles | Polished{% endblock %}
 {% block scripts %}<script type="module" src="/static/js/sheet.js?v={{ version }}"></script>{% endblock %}
 {% block content %}
-<h1 class="page-head">Bottles <a class="head-link" href="/lookup?scan=1">Add by scanning</a></h1>
-<p class="muted count">{{ counts.bottles }} bottle{{ '' if counts.bottles == 1 else 's' }} in {{ counts.shades }} shade{{ '' if counts.shades == 1 else 's' }}</p>
-<nav class="filter-chips" aria-label="Filter bottles">
-  {% for key, text in [("", "All")] + states.items()|list %}
-  <a class="chip-link{% if state == key %} is-on{% endif %}" href="/bottles?{% if key %}state={{ key }}{% endif %}{% if archived %}{% if key %}&amp;{% endif %}archived=1{% endif %}" hx-get="/bottles?{% if key %}state={{ key }}{% endif %}{% if archived %}{% if key %}&amp;{% endif %}archived=1{% endif %}" hx-target="#bottle-groups" hx-swap="innerHTML" hx-push-url="true">{{ text }}</a>
-  {% endfor %}
-  <a class="chip-link{% if archived %} is-on{% endif %}" href="/bottles?{% if state %}state={{ state }}&amp;{% endif %}{% if not archived %}archived=1{% endif %}" hx-get="/bottles?{% if state %}state={{ state }}&amp;{% endif %}{% if not archived %}archived=1{% endif %}" hx-target="#bottle-groups" hx-swap="innerHTML" hx-push-url="true">Archived</a>
-</nav>
+<header class="page-head">
+  <h1 class="title">Bottles</h1>
+  <a class="btn btn-text btn-icon" href="/lookup?scan=1" aria-label="Add a bottle by scanning">{{ icon("camera") }}</a>
+</header>
+<p class="count">{{ counts.bottles }} bottle{{ '' if counts.bottles == 1 else 's' }} in {{ counts.shades }} shade{{ '' if counts.shades == 1 else 's' }}</p>
+{% include "_bottle_filters.html" %}
 <div id="bottle-groups">
   {% include "_bottle_groups.html" %}
 </div>
