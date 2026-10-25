@@ -539,6 +539,8 @@ it covers 20 percent of the pixels, is more than 15 delta-E away and (bottle sho
 dark side of the glass. For toppers, which are photographed over a base, the livelier cluster is
 the first colour instead. On the 2026-10-25 snapshot: 372 of 372 shades, 223 with a second colour.
 
+**Colour sampling.** A shade's colour comes from its swatch photo (centre box) and, only when that colour looks like skin, its bottle photo (lit glass under the cap). Skin is judged in CIE LCh: single pixels in a narrow band (hue 36–75°, L ≥ 22) are dropped before clustering; the cluster colour is skin-like at hue 20–70°, chroma 5–36, L 22–72. A skin-like swatch colour is replaced by the bottle colour when the bottle's is not skin-like or differs by ΔE > 20; a nude both photos agree on stays. Very dark grey pixels are dropped as backdrop when they are under 20% of the region, so black and dark-glitter polishes keep them. Base coats and clear top coats (no glitter, flakie or holographic finish) get the fixed sheer neutral `#f1e9e6` without sampling. Five shades whose photos defeat the sampler (Gold Flake Taco, Tax Haven, Solo Mission, Pink Steel, Trophy Life) take colours checked by eye from `colour.KNOWN_COLOURS`. `python -m polished colours --recompute [--only "A,B"]` re-samples ignoring `swatch_hex_src`, at the same 0.5 s spacing, and never writes `swatch_override_hex`.
+
 ## 6. Searching and browsing
 
 - `search_text` is lowercase, accent-folded (`NFKD`, marks stripped), punctuation to spaces.
