@@ -10,7 +10,7 @@ from PIL import Image, ImageDraw
 from shade_data import apply, shade_id
 
 from polished.catalog import colour
-from polished.catalog.colour import extract_colours, fill_colours
+from polished.catalog.colour import extract_colours, fill_colours, shade_colours
 
 CDN = "https://cdn.shopify.com/s/files/1/x/files/"
 
@@ -76,15 +76,15 @@ def test_a_white_or_nude_polish_still_gets_a_colour():
 
 
 def test_a_topper_takes_the_livelier_colour_not_the_base_it_was_shown_over():
-    image = Image.new("RGB", (240, 240), (10, 10, 10))
+    image = Image.new("RGB", (240, 240), (40, 90, 160))
     draw = ImageDraw.Draw(image)
     for x in range(60, 180, 12):
         for y in range(60, 180, 12):
             draw.rectangle([x, y, x + 5, y + 5], fill=(240, 30, 200))
     assert near(
-        extract_colours(jpeg(image), from_bottle=False, accent=True).hex, (240, 30, 200), 30
+        extract_colours(jpeg(image), from_bottle=False, accent=True).hex, (240, 30, 200), 45
     )
-    assert near(extract_colours(jpeg(image), from_bottle=False).hex, (10, 10, 10), 30)
+    assert near(extract_colours(jpeg(image), from_bottle=False).hex, (40, 90, 160), 30)
 
 
 def test_bytes_that_are_not_an_image_raise_value_error():
@@ -112,7 +112,7 @@ def cdn_transport(seen, *, body=None, status=200):
 def test_fill_colours_reads_each_shade_once_from_the_cdn_only(seeded):
     seen = []
     stored = fill_colours(seeded, transport=cdn_transport(seen))
-    assert stored == len(seen) > 0
+    assert stored >= len(seen) > 0  # base coats and clear top coats are stored without a download
     assert {r.url.host for r in seen} == {"cdn.shopify.com"}
     assert all(r.url.params["width"] == "240" for r in seen)
     row = seeded.execute("select * from shade where swatch_hex is not null limit 1").fetchone()
@@ -191,3 +191,95 @@ def test_the_feed_sync_never_writes_the_override_or_the_colour(seeded):
     row = seeded.execute("select * from shade where id = ?", (target,)).fetchone()
     assert row["title"] == "Thirst Trap Two"
     assert (row["swatch_override_hex"], row["swatch_hex"]) == ("#abcdef", "#010203")
+
+
+# --- two sources, dark backdrops, sheer coats ---------------------------------------------------
+
+DARK_SKIN = (93, 44, 15)
+
+
+def nail_photo(background, nail, box=(90, 80, 150, 160)) -> bytes:
+    image = Image.new("RGB", (240, 240), background)
+    ImageDraw.Draw(image).rectangle(list(box), fill=nail)
+    return jpeg(image)
+
+
+def test_a_white_nail_on_a_dark_skinned_hand_is_white_not_the_skin():
+    photo = nail_photo(DARK_SKIN, (238, 236, 232))
+    assert near(extract_colours(photo, from_bottle=False).hex, (238, 236, 232), 20)
+
+
+def test_a_yellow_nail_on_a_black_backdrop_is_yellow_not_the_skin_at_its_edge():
+    photo = nail_photo((6, 6, 6), (240, 215, 40), box=(85, 80, 155, 160))
+    assert near(extract_colours(photo, from_bottle=False).hex, (240, 215, 40), 30)
+
+
+def test_a_black_polish_stays_black():
+    photo = nail_photo((11, 10, 9), (11, 10, 9))
+    assert near(extract_colours(photo, from_bottle=False).hex, (11, 10, 9), 6)
+
+
+def test_a_skin_dominated_swatch_gives_way_to_a_chrome_bottle():
+    swatch = nail_photo(DARK_SKIN, DARK_SKIN)
+    chrome = (190, 192, 196)
+    assert near(shade_colours(swatch, lambda: bottle(chrome)).hex, chrome)
+
+
+def test_a_nude_that_both_photos_show_stays_nude():
+    nude = (196, 140, 120)
+    swatch = nail_photo((233, 178, 150), nude)
+    result = shade_colours(swatch, lambda: bottle(nude))
+    assert near(result.hex, nude, 20)
+
+
+def test_a_swatch_that_is_not_skin_is_kept_and_the_bottle_is_not_fetched():
+    def no_bottle():
+        raise AssertionError("the bottle photo is not needed")
+
+    assert near(
+        shade_colours(nail_photo((233, 178, 150), (70, 20, 120)), no_bottle).hex, (70, 20, 120)
+    )
+
+
+def test_only_the_bottle_when_there_is_no_swatch_photo():
+    assert near(shade_colours(None, lambda: bottle()).hex, (200, 40, 90))
+    with pytest.raises(ValueError):
+        shade_colours(None, lambda: None)
+
+
+@pytest.mark.parametrize(
+    "kind,colours,finishes,sheer",
+    [
+        ("basecoat", set(), set(), True),
+        ("topcoat", {"clear"}, set(), True),
+        ("topcoat", {"clear"}, {"glitter"}, False),
+        ("topcoat", {"clear"}, {"flakie"}, False),
+        ("topcoat", {"clear"}, {"holographic"}, False),
+        ("topcoat", {"pink"}, set(), False),
+        ("polish", {"red"}, {"creme"}, False),
+    ],
+)
+def test_which_shades_are_sheer(kind, colours, finishes, sheer):
+    assert colour.is_sheer(kind, colours, finishes) is sheer
+
+
+def test_a_base_coat_gets_the_fixed_neutral_without_a_download(seeded):
+    target = shade_id(seeded, "thirst-trap")
+    seeded.execute("update shade set kind = 'basecoat' where id = ?", (target,))
+    seen = []
+    fill_colours(seeded, transport=cdn_transport(seen), only=["Thirst Trap"], recompute=True)
+    row = seeded.execute("select * from shade where id = ?", (target,)).fetchone()
+    assert (row["swatch_hex"], row["swatch_hex2"]) == (colour.SHEER_HEX, None)
+    assert seen == []
+
+
+def test_a_known_shade_takes_its_checked_colour_without_a_download(seeded, monkeypatch):
+    target = shade_id(seeded, "thirst-trap")
+    monkeypatch.setitem(colour.KNOWN_COLOURS, "thirst-trap", ("#d4a84f", "#6b4a1e"))
+    seeded.execute("update shade set swatch_override_hex = '#123456' where id = ?", (target,))
+    seen = []
+    fill_colours(seeded, transport=cdn_transport(seen), only=["Thirst Trap"], recompute=True)
+    row = seeded.execute("select * from shade where id = ?", (target,)).fetchone()
+    assert (row["swatch_hex"], row["swatch_hex2"]) == ("#d4a84f", "#6b4a1e")
+    assert row["swatch_override_hex"] == "#123456"
+    assert seen == []

@@ -1,4 +1,4 @@
-"""python -m polished migrate | serve | sync [--from-files PAGE.json ...]"""
+"""python -m polished migrate | serve | sync [--from-files PAGE.json ...] | colours [--recompute]"""
 
 import argparse
 import asyncio
@@ -7,6 +7,7 @@ import sqlite3
 import sys
 from pathlib import Path
 
+import httpx
 from pydantic import ValidationError
 
 from .config import Settings
@@ -58,6 +59,31 @@ def _sync(settings: Settings, files: list[Path] | None) -> int:
     return 0
 
 
+def _colours(
+    settings: Settings,
+    *,
+    recompute: bool,
+    only: list[str] | None,
+    transport: httpx.BaseTransport | None = None,
+) -> int:
+    from .catalog.colour import fill_colours
+
+    try:
+        conn = connect(settings.db_path)
+    except sqlite3.OperationalError as exc:
+        print(f"polished: database not ready ({exc})", file=sys.stderr)
+        return 1
+    try:
+        stored = fill_colours(conn, transport=transport, recompute=recompute, only=only)
+    except sqlite3.OperationalError as exc:
+        print(f"polished: database not ready ({exc})", file=sys.stderr)
+        return 1
+    finally:
+        conn.close()
+    print(f"colours: {stored} shade(s) read")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="polished")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -70,6 +96,15 @@ def main(argv: list[str] | None = None) -> int:
         type=Path,
         metavar="PAGE.json",
         help="apply local /products.json pages instead of fetching the shop",
+    )
+    colours = sub.add_parser("colours", help="read the polish colour of shades from their photos")
+    colours.add_argument(
+        "--recompute",
+        action="store_true",
+        help="read every shade again, whatever photo its colour came from (not the manual override)",
+    )
+    colours.add_argument(
+        "--only", metavar="TITLES", help="with --recompute: comma-separated shade titles"
     )
     args = parser.parse_args(argv)
 
@@ -86,6 +121,10 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "sync":
         return _sync(settings, args.from_files)
+
+    if args.command == "colours":
+        only = [t for t in (args.only or "").split(",") if t.strip()] or None
+        return _colours(settings, recompute=args.recompute, only=only)
 
     from .server import serve
 
