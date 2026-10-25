@@ -35,6 +35,17 @@ def transaction(conn: sqlite3.Connection) -> Iterator[sqlite3.Connection]:
     conn.execute("commit")
 
 
+@contextmanager
+def atomic(conn: sqlite3.Connection) -> Iterator[sqlite3.Connection]:
+    """transaction(), or just the caller's open transaction, so domain functions that write
+    several rows compose with a route that already holds one."""
+    if conn.in_transaction:
+        yield conn
+    else:
+        with transaction(conn):
+            yield conn
+
+
 def get_conn(request: Request) -> Iterator[sqlite3.Connection]:
     """FastAPI dependency: a connection for the length of one request."""
     conn = connect(request.app.state.settings.db_path)

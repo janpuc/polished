@@ -29,13 +29,19 @@ def names(db_path: str, kind: str) -> set[str]:
 
 def test_migrations_apply_once_and_a_second_run_applies_nothing(tmp_path):
     db = str(tmp_path / "polished.db")
-    assert migrate(db) == ["001_catalog.sql", "002_inventory.sql", "003_identifiers.sql"]
+    assert migrate(db) == [
+        "001_catalog.sql",
+        "002_inventory.sql",
+        "003_identifiers.sql",
+        "004_wheels_stacks.sql",
+    ]
     assert migrate(db) == []
     conn = sqlite3.connect(db)
     assert conn.execute("select version, name from schema_version").fetchall() == [
         (1, "001_catalog.sql"),
         (2, "002_inventory.sql"),
         (3, "003_identifiers.sql"),
+        (4, "004_wheels_stacks.sql"),
     ]
     conn.close()
 
@@ -91,6 +97,7 @@ def test_package_ships_the_migrations():
         "001_catalog.sql",
         "002_inventory.sql",
         "003_identifiers.sql",
+        "004_wheels_stacks.sql",
     ]
 
 
@@ -111,7 +118,11 @@ def test_002_inventory_applies_on_top_of_a_synced_001_database(tmp_path):
     assert shades == 9
     assert "bottle" not in names(db, "table")
 
-    assert migrate(db) == ["002_inventory.sql", "003_identifiers.sql"]
+    assert migrate(db) == [
+        "002_inventory.sql",
+        "003_identifiers.sql",
+        "004_wheels_stacks.sql",
+    ]
     assert names(db, "table") >= {"bottle", "wishlist_item"}
     assert names(db, "index") >= {"bottle_shade", "bottle_printed_code"}
     assert "shade_status" in names(db, "view")
@@ -162,4 +173,53 @@ def test_003_identifiers_keeps_one_mapping_per_code_and_follows_its_shade(tmp_pa
         conn.execute(insert, ("sku", "HL-1"))
     conn.execute("delete from shade where id = 1")
     assert conn.execute("select count(*) from shade_identifier").fetchone()[0] == 0
+    conn.close()
+
+
+def test_004_applies_on_top_of_001_to_003_and_creates_the_wheel_tables(tmp_path):
+    db = str(tmp_path / "polished.db")
+    directory = tmp_path / "migrations"
+    directory.mkdir()
+    for path in MIGRATIONS.iterdir():
+        if path.name < "004":
+            (directory / path.name).write_text(path.read_text())
+    assert len(migrate(db, directory)) == 3
+    (directory / "004_wheels_stacks.sql").write_text(
+        (MIGRATIONS / "004_wheels_stacks.sql").read_text()
+    )
+    assert migrate(db, directory) == ["004_wheels_stacks.sql"]
+    assert {"wheel", "stack", "stack_layer", "wheel_slot"} <= names(db, "table")
+    assert {
+        "stack_layer_shade",
+        "wheel_slot_stack",
+        "wheel_slot_draft",
+    } <= names(db, "index")
+
+
+def test_004_enforces_its_checks_and_cascades(tmp_path):
+    db = str(tmp_path / "polished.db")
+    migrate(db)
+    conn = sqlite3.connect(db)
+    conn.execute("pragma foreign_keys = on")
+    conn.execute("insert into wheel (slug, name) values ('abc234', 'Holos')")
+    assert conn.execute("select slot_count, archived from wheel").fetchone() == (20, 0)
+    with pytest.raises(sqlite3.IntegrityError):
+        conn.execute("insert into wheel (slug, name) values ('abc234', 'Same slug')")
+    for count in (0, 41):
+        with pytest.raises(sqlite3.IntegrityError):
+            conn.execute(
+                "insert into wheel (slug, name, slot_count) values (?, 'x', ?)",
+                (f"s{count}", count),
+            )
+    with pytest.raises(sqlite3.IntegrityError):
+        conn.execute("insert into stack (status) values ('published')")
+    stack = conn.execute("insert into stack default values").lastrowid
+    assert conn.execute("select status from stack").fetchone() == ("draft",)
+    conn.execute(
+        "insert into wheel_slot (wheel_id, position, draft_stack_id) values (1, 3, ?)", (stack,)
+    )
+    conn.execute("delete from stack where id = ?", (stack,))
+    assert conn.execute("select draft_stack_id from wheel_slot").fetchone() == (None,)
+    conn.execute("delete from wheel where id = 1")
+    assert conn.execute("select count(*) from wheel_slot").fetchone() == (0,)
     conn.close()

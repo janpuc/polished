@@ -21,6 +21,7 @@ def test_defaults_follow_design_12():
     assert s.timezone == "Europe/Warsaw"
     assert s.allowed_groups == {"ID-Users", "ID-Admin"}
     assert s.store_url == "https://holotaco.com"
+    assert s.over_black_handle == "one-coat-black"
 
 
 def test_settings_come_from_polished_environment_variables(monkeypatch):
@@ -149,3 +150,10 @@ def test_auth_none_refuses_host_from_the_environment(monkeypatch):
     monkeypatch.setenv("POLISHED_HOST", "0.0.0.0")
     with pytest.raises(ValidationError, match="loopback"):
         Settings(_env_file=None)
+
+
+def test_the_over_black_handle_comes_from_the_environment(monkeypatch):
+    monkeypatch.setenv("POLISHED_PUBLIC_URL", "http://localhost:8080")
+    monkeypatch.setenv("POLISHED_AUTH_MODE", "none")
+    monkeypatch.setenv("POLISHED_OVER_BLACK_HANDLE", "midnight-creme")
+    assert Settings(_env_file=None).over_black_handle == "midnight-creme"
