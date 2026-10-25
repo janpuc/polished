@@ -77,7 +77,8 @@ offline smoke runs work.
 - With `POLISHED_AUTH_MODE=oidc POLISHED_OIDC_CLIENT_ID=x POLISHED_OIDC_CLIENT_SECRET=x`:
   `curl -si localhost:8080/ | head -1` is a 302 whose `Location` is `/auth/login?next=%2F`;
   `curl -si -H 'HX-Request: true' localhost:8080/` is 401 with an `HX-Redirect` header;
-  `curl -si -X POST localhost:8080/anything` is 401; `/healthz` and `/static/css/app.css` are 200.
+  `curl -si -X POST -H 'Origin: http://localhost:8080' localhost:8080/anything` is 401 (without
+  the Origin header it is 403: the Origin check runs before the gate, DESIGN 14 item 12); `/healthz` and `/static/css/app.css` are 200.
 - `POLISHED_AUTH_MODE=none POLISHED_PUBLIC_URL=https://polished.janpuc.com uv run python -m
   polished serve` exits non-zero with a clear message.
 

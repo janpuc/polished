@@ -1,0 +1,68 @@
+# polished
+
+A self-hosted nail polish inventory for one household, fed by the
+[Holo Taco](https://holotaco.com) catalog. Server-rendered FastAPI + Jinja2 + HTMX on one SQLite
+file, with Pocket ID sign-in.
+
+Status: stage 1 of the v1 build (skeleton, storage and authentication). It serves `/healthz`, the
+sign-in flow, a placeholder home page and the catalog schema; the catalog sync, browse, bottles,
+scanner and wheels come in later stages. The brief is in [`docs/BRIEF.md`](docs/BRIEF.md), the
+design in [`docs/DESIGN.md`](docs/DESIGN.md) and the build plan in [`docs/PLAN.md`](docs/PLAN.md).
+
+## Running locally
+
+```sh
+uv sync --extra dev
+export POLISHED_DB_PATH=./data/polished.db POLISHED_AUTH_MODE=none \
+       POLISHED_PUBLIC_URL=http://localhost:8080
+uv run python -m polished migrate
+uv run python -m polished serve    # http://localhost:8080
+uv run pytest -q
+uv run ruff check && uv run ruff format --check
+```
+
+`POLISHED_AUTH_MODE=none` switches sign-in off and is refused unless `POLISHED_PUBLIC_URL` is
+`localhost` or `127.0.0.1`. `.env.example` lists the development settings with dummy values; copy
+it to `.env` (untracked) if you prefer a file.
+
+Smoke test against a throwaway database:
+
+```sh
+export POLISHED_DB_PATH=$(mktemp -d)/polished.db POLISHED_AUTH_MODE=none \
+       POLISHED_PUBLIC_URL=http://localhost:8080 POLISHED_SYNC_ENABLED=false \
+       POLISHED_SESSION_SECRET=dev-secret-dev-secret-dev-secret-00
+uv run python -m polished migrate
+(uv run python -m polished serve & echo $! > /tmp/polished.pid); sleep 2
+curl -fsS localhost:8080/healthz      # {"status":"ok","version":"dev","schema":1}
+kill $(cat /tmp/polished.pid)
+```
+
+## Settings
+
+Environment variables, all prefixed `POLISHED_` (see `src/polished/config.py`). Secrets come only
+from the environment.
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `POLISHED_PUBLIC_URL` | required | External base URL (`https://polished.janpuc.com`): OIDC redirect, QR and tag URLs, the host the Origin check expects |
+| `POLISHED_DB_PATH` | `/data/polished.db` | SQLite file |
+| `POLISHED_AUTH_MODE` | `oidc` | `oidc` or `none` (development only, localhost `PUBLIC_URL` only) |
+| `POLISHED_OIDC_ISSUER` | `https://id.janpuc.com` | Discovery at `<issuer>/.well-known/openid-configuration`, read at the first login |
+| `POLISHED_OIDC_CLIENT_ID`, `POLISHED_OIDC_CLIENT_SECRET` | unset | Required in `oidc` mode |
+| `POLISHED_OIDC_ALLOWED_GROUPS` | `ID-Users,ID-Admin` | Comma-separated, exact match against the token's `groups` claim |
+| `POLISHED_SESSION_SECRET` | unset | At least 32 characters; required in `oidc` mode (a random one is made per start in `none` mode) |
+| `POLISHED_SESSION_DAYS`, `POLISHED_SESSION_MAX_DAYS` | `30`, `90` | Cookie lifetime, and the absolute session age after which sign-in is repeated |
+| `POLISHED_HOST`, `POLISHED_PORT` | `0.0.0.0`, `8080` | Listener |
+| `POLISHED_STORE_URL` | `https://holotaco.com` | Shop base for the feed and cart permalinks (used from stage 2) |
+| `POLISHED_SYNC_ENABLED` | `true` | Daily catalog sync on or off (used from stage 2) |
+| `POLISHED_SYNC_HOUR`, `POLISHED_SYNC_JITTER_MIN` | `6`, `30` | Daily run, local time, plus up to this many minutes of jitter |
+| `POLISHED_SYNC_MIN_INTERVAL_S` | `1.0` | Gap between requests to the store; values below `1.0` are refused |
+| `POLISHED_SYNC_MANUAL_COOLDOWN_S` | `3600` | Minimum time between runs started from the page |
+| `POLISHED_TIMEZONE` | `Europe/Warsaw` | Household timezone |
+| `POLISHED_OVER_BLACK_HANDLE` | `one-coat-black` | Shade the "Over black" template inserts (stage 7) |
+| `POLISHED_LOG_LEVEL`, `POLISHED_VERSION` | `INFO`, `dev` | Logging; the image build sets the version |
+
+## Third-party files
+
+`src/polished/static/vendor/` holds vendored browser libraries; versions and checksums are in
+`VERSIONS.txt` there. There is no build step and no Node.

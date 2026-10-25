@@ -1,0 +1,89 @@
+/* Mobile first. Touch targets are at least 44 px; the page fills the dynamic viewport and
+   keeps clear of the notch and home indicator. */
+:root {
+  --bg: #fbf8fb;
+  --fg: #231b27;
+  --muted: #6d6373;
+  --accent: #b02a78;
+  --accent-fg: #fff;
+  --line: #e4dce8;
+  --radius: 10px;
+  --tap: 44px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #17121a;
+    --fg: #f1ebf3;
+    --muted: #a99fb0;
+    --accent: #e0629f;
+    --accent-fg: #17121a;
+    --line: #382f3d;
+  }
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  min-height: 100dvh;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom)
+    env(safe-area-inset-left);
+  background: var(--bg);
+  color: var(--fg);
+  font: 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+main { padding: 1rem; max-width: 40rem; margin: 0 auto; }
+
+h1 { font-size: 1.5rem; line-height: 1.2; margin: 0.5rem 0 1rem; }
+
+a { color: var(--accent); }
+
+.muted { color: var(--muted); }
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: var(--tap);
+  padding: 0 1rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.brand { font-weight: 700; color: var(--fg); text-decoration: none; display: inline-flex; align-items: center; min-height: var(--tap); }
+
+.button,
+button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--tap);
+  padding: 0 1.25rem;
+  border: 0;
+  border-radius: var(--radius);
+  background: var(--accent);
+  color: var(--accent-fg);
+  font: inherit;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.link-button {
+  background: none;
+  color: var(--accent);
+  padding: 0 0.5rem;
+}
+
+input, select {
+  min-height: var(--tap);
+  padding: 0 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--bg);
+  color: var(--fg);
+  font: inherit;
+}

@@ -759,7 +759,7 @@ All environment variables, prefix `POLISHED_`. Secrets come only from the enviro
 | `OIDC_ISSUER` | `https://id.janpuc.com` | Discovery at `<issuer>/.well-known/openid-configuration` |
 | `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET` | none | From the operator-written Secret; the secret is a `SecretStr` |
 | `OIDC_ALLOWED_GROUPS` | `ID-Users,ID-Admin` | Comma-separated, exact match against the token's `groups` claim |
-| `SESSION_SECRET` | none, ≥ 32 chars | Signs the session cookie |
+| `SESSION_SECRET` | none, ≥ 32 chars | Signs the session cookie; required in `oidc` mode, `none` mode makes a random one per start (section 14, item 10) |
 | `SESSION_DAYS`, `SESSION_MAX_DAYS` | `30`, `90` | Rolling and absolute session lifetime |
 | `HOST`, `PORT` | `0.0.0.0`, `8080` | Listener |
 | `STORE_URL` | `https://holotaco.com` | Shop base for the feed and cart permalinks |
@@ -889,6 +889,17 @@ tested against this store; stage 4 ends with a manual check by Jan, and the box 
 8. **v1 includes wheels and stacks** (the advice made them v2), per Jan: layers are "the best
    part of the system".
 9. **No offline cache of HTML or cross-origin images**, and no Web NFC, per the advice.
+10. **`SESSION_SECRET` is optional in `AUTH_MODE=none`** (stage 1): a random one is made per start,
+    so the dev commands in `AGENTS.md` run without it. `oidc` mode still refuses to start without
+    one of at least 32 characters, and also without `OIDC_CLIENT_ID` and `OIDC_CLIENT_SECRET`.
+11. **The HTMX 401 sends the user back to the page, not the partial.** `HX-Redirect` carries the
+    path of the `HX-Current-URL` header when it names this host, else the requested path (section
+    8.3 says "current path"); both go through the same `next` validation.
+12. **The Origin check compares host and port** (`netloc`) of `Origin`/`Referer` with `PUBLIC_URL`,
+    so `localhost:8080` and `localhost:9999` differ. Because the check runs before the gate
+    (section 8.3), a signed-out `POST` without an `Origin` is 403 and with a good one 401.
+13. **htmx is pinned to 2.0.11** (the 2.x line `htmx-config` in section 3.2 is written for; htmx 4
+    exists on npm and is not used). Source and checksum are in `static/vendor/VERSIONS.txt`.
 
 ## 15. Home-ops manifests
 
