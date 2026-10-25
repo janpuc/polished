@@ -1,0 +1,29 @@
+---
+# yaml-language-server: $schema=https://k8s-schemas.home-operations.com/kustomize.toolkit.fluxcd.io/kustomization_v1.json
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: polished
+spec:
+  # Backup only, no zeroscaler: the daily catalog sync runs inside the pod and needs it up.
+  components:
+    - ../../../../components/kopiur/backup
+  dependsOn:
+    - name: miroir-config
+      namespace: miroir-system
+    - name: pocket-id-instance
+      namespace: security
+  interval: 1h
+  path: ./kubernetes/apps/selfhosted/polished/app
+  postBuild:
+    substitute:
+      APP: polished
+      KOPIUR_CAPACITY: 2Gi
+      KOPIUR_COPYMETHOD: Direct
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+    namespace: flux-system
+  targetNamespace: selfhosted
+  wait: false

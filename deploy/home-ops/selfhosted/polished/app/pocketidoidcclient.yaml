@@ -1,0 +1,21 @@
+---
+# Sign-in for polished. Only id-users and id-admin may sign in; the app checks the token's
+# groups claim again itself (POLISHED_OIDC_ALLOWED_GROUPS).
+apiVersion: pocketid.internal/v1alpha1
+kind: PocketIDOIDCClient
+metadata:
+  name: polished
+spec:
+  name: polished
+  callbackUrls:
+    - https://polished.janpuc.com/auth/callback
+  pkceEnabled: true
+  allowedUserGroups:
+    - name: id-users
+      namespace: security
+    - name: id-admin
+      namespace: security
+  secret:
+    keys:
+      clientID: POLISHED_OIDC_CLIENT_ID
+      clientSecret: POLISHED_OIDC_CLIENT_SECRET

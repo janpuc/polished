@@ -1,0 +1,105 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/bjw-s-labs/helm-charts/main/charts/other/app-template/schemas/helmrelease-helm-v2.schema.json
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: polished
+spec:
+  chartRef:
+    kind: OCIRepository
+    name: polished
+  interval: 1h
+  values:
+    controllers:
+      polished:
+        annotations:
+          reloader.stakater.com/auto: "true"
+        # One writer on the SQLite volume.
+        strategy: Recreate
+        # The server does not migrate on start (it reports an unmigrated database on
+        # /healthz), so the schema is brought up to date before the app container starts.
+        initContainers:
+          migrate:
+            image: &image
+              repository: ghcr.io/janpuc/polished
+              # Replace with the real tag and digest after the first release (docs/DEPLOY.md).
+              tag: 0.1.0@sha256:REPLACE_AFTER_FIRST_RELEASE
+            command: ["python", "-m", "polished", "migrate"]
+            env:
+              POLISHED_DB_PATH: &db /data/polished.db
+              POLISHED_PUBLIC_URL: &publicUrl https://polished.janpuc.com
+              POLISHED_AUTH_MODE: &authMode oidc
+            envFrom: &envFrom
+              - secretRef:
+                  name: "{{ .Release.Name }}-secret"
+              - secretRef:
+                  name: "{{ .Release.Name }}-oidc-credentials"
+            securityContext: &securityContext
+              allowPrivilegeEscalation: false
+              readOnlyRootFilesystem: true
+              capabilities: { drop: ["ALL"] }
+        containers:
+          app:
+            image: *image
+            env:
+              POLISHED_DB_PATH: *db
+              POLISHED_PUBLIC_URL: *publicUrl
+              POLISHED_AUTH_MODE: *authMode
+              POLISHED_OIDC_ISSUER: https://id.janpuc.com
+              # Exact match against the token's groups claim (Pocket ID's names, not the
+              # PocketIDUserGroup object names).
+              POLISHED_OIDC_ALLOWED_GROUPS: ID-Users,ID-Admin
+              POLISHED_TIMEZONE: Europe/Warsaw
+              POLISHED_SYNC_ENABLED: "true"
+            envFrom: *envFrom
+            probes:
+              liveness: &probe
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /healthz
+                    port: &port 8080
+                  periodSeconds: 30
+                  timeoutSeconds: 5
+                  failureThreshold: 3
+              readiness: *probe
+            resources:
+              requests:
+                cpu: 10m
+                memory: 64Mi
+              limits:
+                memory: 256Mi
+            securityContext: *securityContext
+    defaultPodOptions:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+    service:
+      app:
+        ports:
+          http:
+            port: *port
+    route:
+      app:
+        annotations:
+          gatus.home-operations.com/endpoint: |-
+            conditions: ["[STATUS] == 200"]
+            path: /healthz
+        hostnames:
+          - "{{ .Release.Name }}.janpuc.com"
+        parentRefs:
+          - name: envoy-external
+            namespace: network
+    persistence:
+      data:
+        existingClaim: "{{ .Release.Name }}"
+        globalMounts:
+          - path: /data
+      tmp:
+        type: emptyDir
+        globalMounts:
+          - path: /tmp
