@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Scan or look up · Polished{% endblock %}
+{% block scripts %}
+<script type="module" src="/static/js/sheet.js?v={{ version }}"></script>
+<script type="module" src="/static/js/scanner.js?v={{ version }}"></script>
+{% endblock %}
+{% block content %}
+<h1>Scan a bottle</h1>
+<div class="scan-actions">
+  <button type="button" class="scan-button" data-scan-open>Scan the barcode</button>
+  <label class="button secondary scan-photo" for="scan-photo">Take a photo of the barcode</label>
+  <input id="scan-photo" class="visually-hidden" type="file" accept="image/*" capture="environment">
+</div>
+<p id="scan-note" class="notice" role="status" hidden></p>
+<form class="lookup-form" action="/lookup" method="get" role="search">
+  <label class="muted" for="lookup-q">or type the digits under the barcode, a P code like 259, or a name</label>
+  <input id="lookup-q" type="search" name="q" value="{{ q }}" inputmode="search" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="search" placeholder="810170284120 · 259 · Spirit Fingers"
+         hx-get="/lookup/resolve" hx-vals='{"via": "typed"}' hx-trigger="input changed delay:300ms, search" hx-target="#lookup-result" hx-sync="this:replace">
+</form>
+<div id="lookup-result" aria-live="polite">{% if r %}{% include "_lookup_result.html" %}{% endif %}</div>
+<dialog id="scanner" class="scanner" aria-label="Barcode scanner" data-autoscan="{{ 1 if autoscan else 0 }}">
+  <video id="scanner-video" playsinline muted></video>
+  <div class="scanner-guide" aria-hidden="true"></div>
+  <p id="scanner-status" class="scanner-status" role="status">Point the camera at the barcode</p>
+  <div class="scanner-bar">
+    <button type="button" class="scanner-close" data-scan-close>Close</button>
+  </div>
+</dialog>
+<p class="muted"><a href="/identifiers">Learned codes</a></p>
+{% endblock %}

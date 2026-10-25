@@ -4,7 +4,8 @@
 <form class="sheet-form" method="post" action="/bottles/{{ bottle.id }}" hx-post="/bottles/{{ bottle.id }}" hx-target="#bottle-{{ bottle.id }}" hx-swap="outerHTML">
   <input type="hidden" name="ctx" value="{{ ctx }}">
 {% else %}
-<form class="sheet-form" method="post" action="/shades/{{ shade_id }}/bottles" hx-post="/shades/{{ shade_id }}/bottles" hx-target="#bottles" hx-swap="outerHTML">
+<form class="sheet-form" method="post" action="/shades/{{ shade_id }}/bottles" hx-post="/shades/{{ shade_id }}/bottles"{% if ctx == 'lookup' %} hx-target="#lookup-result" hx-swap="innerHTML"{% else %} hx-target="#bottles" hx-swap="outerHTML"{% endif %}>
+  <input type="hidden" name="ctx" value="{{ ctx }}">
 {% endif %}
   <header class="sheet-head">
     <h2>{% if bottle %}Edit bottle{% else %}Add bottle{% endif %}<span class="sheet-sub">{{ shade_title }}</span></h2>

@@ -5,3 +5,20 @@ htmx.min.js
   source:  https://cdn.jsdelivr.net/npm/htmx.org@2.0.11/dist/htmx.min.js
   sha256:  d6fdc75f204e6bdefa99b69bf1e6d4ac69b8a364f77929f45c13476b4000f717
   fetched: 2026-10-25
+
+zxing-wasm/ (reader build; MIT, see zxing-wasm/LICENSE)
+  version: 3.1.6 (npm, published 2026-10-19; ZXing-C++ inside, barcode reader only)
+  source:  https://registry.npmjs.org/zxing-wasm/-/zxing-wasm-3.1.6.tgz
+           (tarball sha256 188321a7680275ce7ab73c7c13fac9f6c4181b5da7ed65af64ba34d1fd416ea5,
+           sha1 472cb7d5426eb01844413c8f57c052cd2a65bc7c as the registry reports it)
+  files, copied unmodified from the tarball:
+    reader/index.js       package/dist/es/reader/index.js
+      sha256: 368838c01a37be49b8daa833c3d9d253950fd9c29b8c98b9092018c9fd43b03c
+    share.js              package/dist/es/share.js (imported by reader/index.js as ../share.js)
+      sha256: b595f0f4c1060b5e2a45aecf0331e576181dc281b168cb22e98f8db69d16457a
+    zxing_reader.wasm     package/dist/reader/zxing_reader.wasm
+      sha256: 5003fb4b88c4fbd1fd518a2fd8c8ad365c519e183a08c03a322dddfea3cea84e
+      (identical to https://cdn.jsdelivr.net/npm/zxing-wasm@3.1.6/dist/reader/zxing_reader.wasm)
+  fetched: 2026-10-25 with scripts/vendor.sh
+  note: the wasm is loaded from /static/vendor/zxing-wasm/ by a locateFile override in
+        static/js/scanner.js; the package's default CDN location is never used.

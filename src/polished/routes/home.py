@@ -3,10 +3,11 @@
 import sqlite3
 from typing import Annotated, Literal
 
-from fastapi import APIRouter, Depends, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
-from .. import bottles, shades, wishlist
+from .. import bottles, identifiers, shades, wishlist
 from ..db import get_conn
+from ..gtin import is_numeric
 from ..web import render
 
 router = APIRouter()
@@ -31,9 +32,26 @@ def search(
     request: Request,
     conn: Conn,
     q: str = "",
-    ctx: Annotated[Literal["home"], Query()] = "home",
+    ctx: Annotated[Literal["home", "learn"], Query()] = "home",
+    kind: str = "",
+    value: str = "",
 ):
     """Rows only, for every request: the page that asked is already on screen. `ctx` decides
-    what tapping a row does; stage 3 has only `home` (open the shade)."""
+    what tapping a row does: `home` opens the shade, `learn` teaches it the code in `kind` and
+    `value` (a gtin or a P code, DESIGN 7.2)."""
+    code = None
+    if ctx == "learn":
+        code = identifiers.normalise(kind, value)
+        if code is None:
+            raise HTTPException(422, "learn needs a kind (gtin or printed) and a valid value")
     result = shades.search(conn, q) if shades.tokens(q) else None
-    return render(request, "_search_results.html", {"result": result, "q": q.strip(), "ctx": ctx})
+    context = {"result": result, "q": q.strip(), "ctx": ctx, "kind": kind, "value": code}
+    # A number or a P code typed into the home search is offered to the resolver (DESIGN 7.2).
+    stripped = q.strip()
+    if (
+        ctx == "home"
+        and stripped
+        and (is_numeric(stripped) or identifiers.normalise_printed(stripped))
+    ):
+        context["code_q"] = stripped
+    return render(request, "_search_results.html", context)

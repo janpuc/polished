@@ -76,8 +76,8 @@ iPhone Safari / PWA ──https──> Cloudflare tunnel ──> envoy-external 
 - **JS islands** are plain ES modules under `static/js/`, loaded only on pages that need them:
   `scanner.js` (camera and zxing-wasm), `sheet.js` (opens and closes the bottom-sheet
   `<dialog>`, refocuses the picker field), `tag.js` (copy the tag URL). No bundler, no Node.
-- **Vendored static assets** in `static/vendor/`: `htmx.min.js` and `zxing-wasm` (reader build:
-  one ES module plus `zxing_reader.wasm`). Versions recorded in `static/vendor/VERSIONS.txt`, fetched by `scripts/vendor.sh` (a developer step);
+- **Vendored static assets** in `static/vendor/`: `htmx.min.js` and `zxing-wasm/` (reader build:
+  `reader/index.js` and `share.js` as shipped, plus `zxing_reader.wasm`). Versions recorded in `static/vendor/VERSIONS.txt`, fetched by `scripts/vendor.sh` (a developer step);
   Renovate cannot update vendored files, so a refresh is a manual stage.
 - **SQLite** through stdlib `sqlite3`: WAL, `foreign_keys=on`, `busy_timeout=5000`, one
   connection per request (FastAPI sync route functions run in the threadpool) and one for the
@@ -117,7 +117,7 @@ shades.py            list/filter/search queries, status derivation, detail, manu
 bottles.py           bottle CRUD, owned rules
 wishlist.py          wishlist CRUD, totals, cart permalink
 gtin.py              normalise_gtin(), check digit
-identifiers.py       resolve(), learn(), printed-code normalisation (stage 4: normalise_printed only)
+identifiers.py       resolve(), learn(), learn_printed(), printed-code normalisation, learned-code list
 stacks.py            draft/commit, layers, templates, summary(), default_coats()
 wheels.py            wheel CRUD, slug generation, slot grid, tag URL, QR
 routes/              home.py shades.py bottles.py wishlist.py lookup.py wheels.py stacks.py
@@ -533,7 +533,8 @@ result is left-padded with zeros to 13 digits. So `810170284120` and `0810170284
 reports a UPC-A either way) both become `0810170284120`, and `795203598` is rejected. An invalid
 scan is "couldn't read that reliably, try again" and is never learned.
 
-`normalise_printed(raw) -> str | None`: strip, uppercase, remove spaces; all digits gets the
+Whitespace is removed anywhere in the value (a code typed in groups still reads), and only ASCII
+digits count. `normalise_printed(raw) -> str | None`: strip, uppercase, remove spaces; all digits gets the
 prefix `P`; the result must match `^[A-Z]{1,2}\d{1,5}$`.
 
 ### 7.2 Resolution order (`identifiers.resolve(conn, q, via)`)
@@ -572,14 +573,21 @@ nothing.
   false})` into a `<video playsinline muted>`; the stream stops as soon as a code is accepted
   and when the page hides.
 - Decode with vendored `zxing-wasm` (reader build, `prepareZXingModule` with a `locateFile`
-  override pointing at `/static/vendor/zxing-wasm/zxing_reader.wasm`), formats `EAN-13`,
-  `UPC-A`, `EAN-8`, `tryHarder` on, centre-cropped frames at about 6 per second. A code is
+  override pointing at `/static/vendor/zxing-wasm/zxing_reader.wasm`, loaded on the first scan),
+  formats `EAN13`, `UPCA`, `EAN8`, `tryHarder` on, frames cropped to the framing guide (the
+  guide's box mapped through the video's `object-fit: cover`) at about 6 per second. A code is
   accepted after two identical consecutive reads. `BarcodeDetector` is feature-detected as a
   two-line branch and not tested (iPhone only).
 - Fallback button "Take a photo of the barcode": `<input type="file" accept="image/*"
   capture="environment">`, decoded from the still, which is sharper than video frames for a
   small printed barcode.
-- On accept it calls `htmx.ajax('GET', '/lookup/resolve?q=<digits>&via=scan', '#lookup-result')`.
+- The scanner is a full-screen `<dialog id="scanner">` on `/lookup` (video, guide, status line,
+  Close). It opens from `[data-scan-open]` buttons, or at load for `/lookup?scan=1` (what the
+  Scan buttons on home and `/bottles` link to). When the camera cannot start (no secure context,
+  denied, none, busy) a note on the page says which, and names the photo button and the typed
+  field.
+- On accept it vibrates where supported, flashes the guide, stops the camera at once, and calls
+  `htmx.ajax('GET', '/lookup/resolve?q=<digits>&via=scan', '#lookup-result')`.
 - CSP: `script-src 'self' 'wasm-unsafe-eval'`.
 
 ## 8. Authentication
@@ -838,7 +846,7 @@ builds it.
 | Method | Path | Purpose | Response | Stage |
 |---|---|---|---|---|
 | GET | `/` | Home: search field and links; stage 4 adds counts and recent bottles, stage 5 the Scan button | full page | 3 |
-| GET | `/search` | Typeahead rows. Params `q`, `ctx` (`home`, `stack`, `learn`), `filter` (`owned/toppers/all`), `stack_id`, `kind`+`value` for `learn`. Row action depends on `ctx`; `home` in stage 3, `learn` in 5, `stack` in 7. Always rows only (the page that asked is on screen), nothing for an empty query | partial | 3 |
+| GET | `/search` | Typeahead rows. Params `q`, `ctx` (`home`, `stack`, `learn`), `filter` (`owned/toppers/all`), `stack_id`, `kind`+`value` for `learn` (422 without a valid code). Row action depends on `ctx`; `home` in stage 3, `learn` in 5, `stack` in 7. Always rows only (the page that asked is on screen), nothing for an empty query. `home` adds a "Look up “259” as a code" link when `q` is all digits or a P code | partial | 3 |
 | GET | `/shades` | Browse list with filters (section 6) | full page; P = rows + Load more | 3 |
 | GET | `/shades/{id}` | Detail: images, tags, price/status, product link; stage 4 adds bottles and wishlist, stage 6 "Swatched on" | full page | 3 |
 | GET | `/shades/new` | Manual shade form (gifted non-catalog bottle) | full page / P | 4 |
@@ -889,11 +897,16 @@ carry the shade page's action bar as an out-of-band copy when `ctx=shade`, becau
 
 | Method | Path | Purpose | Response | Stage |
 |---|---|---|---|---|
-| GET | `/lookup` | Scan button, text field, result area | full page | 5 |
+| GET | `/lookup` | Scan button, photo button, text field, result area; `?q=` resolves without JavaScript, `?scan=1` opens the camera | full page | 5 |
 | GET | `/lookup/resolve` | `q`, `via=scan/typed` → `match`, `suggestion`, `unknown_code`, `unknown_printed`, `invalid_code`, `results` (section 7.2) | partial | 5 |
-| POST | `/identifiers` | Learn `kind`, `value`, `shade_id` | P "Saved" + add-bottle form | 5 |
+| POST | `/identifiers` | Learn `kind` (`gtin`/`printed`), `value`, `shade_id`; a known code keeps its shade and says so | P "Saved" + the match with "+ Add bottle" | 5 |
 | GET | `/identifiers` | Learned mappings | full page | 5 |
-| POST | `/identifiers/{id}/delete` | Delete a mapping | P | 5 |
+| POST | `/identifiers/{id}/delete` | Delete a mapping; `ctx=lookup` ("This isn't it") turns the result back into "New barcode" | P (empty, or the result) | 5 |
+
+`/lookup/resolve`, `POST /identifiers` and its delete answer with their fragment whether or not
+`HX-Request` is set (deviation 24). The add-bottle sheet takes `?ctx=lookup&printed_code=P259`
+(pre-filled code; the form then posts `ctx=lookup` and the result area shows "Added …" with
+"Scan another").
 
 ### 13.5 Wheels and stacks
 
@@ -977,7 +990,7 @@ carry the shade page's action bar as an out-of-band copy when `ctx=shade`, becau
     the fragment of `/shades`) and `not_found.html` (an unknown shade id is a 404 page, not JSON).
     `render()` takes a `partial=` template and passes `is_partial` to templates (section 3.2).
 20. **`/search` always answers rows only**, with or without `HX-Request`, and refuses a `ctx` other
-    than `home` with 422 until stages 5 and 7 add theirs. An empty query returns an empty body.
+    than `home` with 422 until stages 5 and 7 add theirs (stage 5 added `learn`). An empty query returns an empty body.
 21. **The service worker caches no `/static` file in a `dev`-version server**, and precaches
     `register-sw.js` and the 180 and 192 px icons (not the 512 ones): section 11. `/manifest.webmanifest`, `/sw.js` and
     `/offline` answer `HEAD` so `curl -I` works.
@@ -1024,6 +1037,47 @@ carry the shade page's action bar as an out-of-band copy when `ctx=shade`, becau
     kind filter of 6 finds it. The form is a plain POST, not HTMX.
 31. **The top bar gains Bottles and Wishlist** next to Shades, and the shade list gains "Add by
     hand" (also offered by an empty search).
+
+32. **zxing-wasm 3.1.6 is vendored with the package's own layout** (stage 5): `reader/index.js`
+    imports `../share.js`, so the two files sit under `static/vendor/zxing-wasm/` as shipped
+    (unmodified, sha256 in `VERSIONS.txt`) and `zxing_reader.wasm` next to `share.js`, which gives
+    the `/static/vendor/zxing-wasm/zxing_reader.wasm` URL of PLAN.md. The package's default wasm URL
+    is a jsDelivr CDN; `scanner.js` always overrides it with `locateFile`. Format names in this
+    version are `EAN13`, `UPCA`, `EAN8`. `scripts/vendor.sh` fetches the npm tarball and checks its
+    sha256 (it also re-fetches htmx 2.0.11 with its recorded hash). 3.1.6 was released six days
+    before this stage; a pin a few weeks older would have been as good, and a refresh is manual.
+33. **The scanner is its own full-screen `<dialog>` on `/lookup`**, not the bottom sheet, and the
+    page is the one place the scanner script loads. "Scan" is a big button on home and a link
+    ("Add by scanning") on `/bottles`, both going to `/lookup?scan=1`, which opens the camera on
+    load (and says why if it cannot). There is no scan button inside the add-bottle sheet: a
+    barcode is not the P code the sheet asks for.
+34. **After a barcode is learned the result offers "+ Add bottle"** instead of opening the form by
+    itself (section 7.2 said the form opens): the saved shade and its button are on screen, one tap
+    away, and nothing else happens uninvited. The add-bottle sheet started from the lookup posts
+    `ctx=lookup` and its result replaces the lookup result.
+35. **The P-code learning hook is in the `create_bottle` route** (`identifiers.learn_printed`, in
+    one transaction with the insert), not in `bottles.add`, and runs on create only, not on edit.
+    A conflict (the code points at another shade) keeps the old mapping and saves the bottle; the
+    notice "P259 was Spirit Fingers before" is shown above the bottles on the shade page, or in the
+    "Added" block on the lookup page, because the sheet has already closed by then. A code that
+    does not look like a P number is kept on the bottle and not learned.
+36. **The home search is not the resolver.** It stays a name search and, for a query that is all
+    digits or looks like a P code, adds a link "Look up “259” as a code" to `/lookup?q=259`, where
+    the resolver runs. Typing a number into the lookup field resolves it as 7.2 says.
+37. **A P-code suggestion shows a picker, not ordinary name results** (section 7.2 said "underneath,
+    ordinary name search results"): the query is the code, which a name search would never match,
+    so "Not that one? Pick the shade" is the same typeahead as `unknown_printed` (`ctx=learn`,
+    `kind=printed`; a row opens the add-bottle sheet with the code). A typed name still gives rows.
+38. **The trimmed fixture, like the real feed, has no barcodes** (they exist only in per-product
+    JSON, which v1 never fetches). "Nothing is ever seeded from catalog data" is tested by syncing
+    synthetic products whose variants carry a `barcode` and checking `shade_identifier` stays empty.
+39. **More templates than PLAN.md lists** (stage 5): `_learn_picker.html`, `_lookup_added.html`,
+    and `_shade_row_body.html` (the inside of a shade row, shared by the link row and the learn
+    button row of `_shade_row.html`). `/healthz` reports `schema` 3.
+40. **A headless smoke test of the scanner** lives in `tests/e2e/scanner_smoke.py` and is not
+    collected by pytest (it needs Chromium and a server). It decodes a generated UPC-A image through
+    the photo input and through Chromium's fake camera, with `BarcodeDetector` removed so zxing-wasm
+    does the work as on an iPhone. How to run it is in its docstring and the README.
 
 ## 15. Home-ops manifests
 

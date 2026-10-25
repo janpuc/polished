@@ -544,3 +544,122 @@ button.danger, .danger { color: var(--bad); }
 .prio-pick .pick span { padding: 0 1rem; }
 
 .wish-note { flex: 1 1 8rem; min-width: 0; }
+
+/* Scan and lookup. */
+.scan-button {
+  display: flex;
+  width: 100%;
+  min-height: 64px;
+  margin: 1rem 0 0;
+  font-size: 1.2rem;
+}
+
+.scan-actions { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 0.75rem; }
+
+.scan-actions .scan-button { margin: 0; }
+
+.scan-photo { cursor: pointer; }
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.lookup-form { display: flex; flex-direction: column; gap: 0.25rem; margin-bottom: 1rem; }
+
+.lookup-form label { font-size: 0.85rem; }
+
+.lookup-form input { width: 100%; }
+
+.result { margin: 1rem 0; }
+
+.result-lead { margin: 0 0 0.5rem; font-size: 1.1rem; font-weight: 600; }
+
+.result .actions { margin-top: 0.5rem; }
+
+.learn-picker input { width: 100%; }
+
+.code-link a { display: inline-flex; align-items: center; min-height: var(--tap); }
+
+button.row-link {
+  width: 100%;
+  padding: 0.5rem 0;
+  justify-content: flex-start;
+  background: none;
+  color: inherit;
+  font-weight: 400;
+  text-align: left;
+  border-radius: 0;
+}
+
+.identifier-row { display: flex; align-items: center; gap: 0.5rem; border-bottom: 1px solid var(--line); }
+
+.identifier-row .row-link { flex: 1; min-width: 0; border-bottom: 0; }
+
+.code { font-weight: 700; letter-spacing: 0.02em; }
+
+/* The scanner: full-screen video, a framing guide the decoder crops to, one Close button. */
+.scanner[open] {
+  display: block;
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  max-width: none;
+  height: 100dvh;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  background: #000;
+  color: #fff;
+}
+
+.scanner::backdrop { background: #000; }
+
+.scanner video { width: 100%; height: 100%; object-fit: cover; }
+
+.scanner-guide {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 84%;
+  height: 34%;
+  transform: translate(-50%, -50%);
+  border: 3px solid #fff;
+  border-radius: 14px;
+  box-shadow: 0 0 0 100vmax rgb(0 0 0 / 0.5);
+  pointer-events: none;
+}
+
+.scanner.is-hit .scanner-guide { border-color: #5fcf95; background: rgb(95 207 149 / 0.3); }
+
+.scanner-status {
+  position: absolute;
+  left: 1rem;
+  right: 1rem;
+  bottom: calc(5.5rem + env(safe-area-inset-bottom));
+  margin: 0;
+  text-align: center;
+  font-weight: 600;
+  text-shadow: 0 1px 3px #000;
+}
+
+.scanner-bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  justify-content: center;
+  padding: 1rem 1rem calc(1rem + env(safe-area-inset-bottom));
+}
+
+.scanner-close { min-width: 10rem; min-height: 52px; background: rgb(255 255 255 / 0.9); color: #231b27; }

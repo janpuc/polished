@@ -29,12 +29,13 @@ def names(db_path: str, kind: str) -> set[str]:
 
 def test_migrations_apply_once_and_a_second_run_applies_nothing(tmp_path):
     db = str(tmp_path / "polished.db")
-    assert migrate(db) == ["001_catalog.sql", "002_inventory.sql"]
+    assert migrate(db) == ["001_catalog.sql", "002_inventory.sql", "003_identifiers.sql"]
     assert migrate(db) == []
     conn = sqlite3.connect(db)
     assert conn.execute("select version, name from schema_version").fetchall() == [
         (1, "001_catalog.sql"),
         (2, "002_inventory.sql"),
+        (3, "003_identifiers.sql"),
     ]
     conn.close()
 
@@ -89,6 +90,7 @@ def test_package_ships_the_migrations():
     assert sorted(p.name for p in MIGRATIONS.iterdir() if p.name.endswith(".sql")) == [
         "001_catalog.sql",
         "002_inventory.sql",
+        "003_identifiers.sql",
     ]
 
 
@@ -109,7 +111,7 @@ def test_002_inventory_applies_on_top_of_a_synced_001_database(tmp_path):
     assert shades == 9
     assert "bottle" not in names(db, "table")
 
-    assert migrate(db) == ["002_inventory.sql"]
+    assert migrate(db) == ["002_inventory.sql", "003_identifiers.sql"]
     assert names(db, "table") >= {"bottle", "wishlist_item"}
     assert names(db, "index") >= {"bottle_shade", "bottle_printed_code"}
     assert "shade_status" in names(db, "view")
@@ -136,4 +138,28 @@ def test_002_inventory_enforces_its_checks(tmp_path):
     conn.execute("pragma foreign_keys = on")
     with pytest.raises(sqlite3.IntegrityError):
         conn.execute("insert into bottle (shade_id) values (1)")  # no such shade
+    conn.close()
+
+
+def test_003_identifiers_keeps_one_mapping_per_code_and_follows_its_shade(tmp_path):
+    from polished.db import connect
+
+    db = str(tmp_path / "polished.db")
+    migrate(db)
+    assert "shade_identifier" in names(db, "table")
+    assert "shade_identifier_shade" in names(db, "index")
+    conn = connect(db)
+    conn.execute(
+        "insert into shade (source, kind, title, search_text) values ('manual', 'polish', 'A', 'a')"
+    )
+    insert = "insert into shade_identifier (kind, value, shade_id) values (?, ?, 1)"
+    conn.execute(insert, ("gtin", "0810170284120"))
+    row = conn.execute("select source, use_count, last_used_at from shade_identifier").fetchone()
+    assert tuple(row) == ("learned", 0, None)
+    with pytest.raises(sqlite3.IntegrityError):
+        conn.execute(insert, ("gtin", "0810170284120"))
+    with pytest.raises(sqlite3.IntegrityError):
+        conn.execute(insert, ("sku", "HL-1"))
+    conn.execute("delete from shade where id = 1")
+    assert conn.execute("select count(*) from shade_identifier").fetchone()[0] == 0
     conn.close()

@@ -1,5 +1,6 @@
 {# The bottles of one shade: the body of #bottles on the shade page. #}
 <div id="bottles" class="bottles">
+  {% if notice %}<p class="notice">{{ notice }}</p>{% endif %}
   {% if bottles %}
   <h2>Bottles</h2>
   {% for bottle in bottles %}{% include "_bottle_card.html" %}{% endfor %}

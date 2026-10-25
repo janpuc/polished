@@ -1,0 +1,12 @@
+{# The inside of a shade row: thumbnail, title, finish chips, status and price. #}
+  {% if shade.hero_image_url %}<img class="thumb" src="{{ shade.hero_image_url|thumb(112) }}" srcset="{{ shade.hero_image_url|thumb(112) }} 2x, {{ shade.hero_image_url|thumb(168) }} 3x" width="56" height="56" alt="" loading="lazy" decoding="async">{% else %}<span class="thumb thumb-empty" aria-hidden="true"></span>{% endif %}
+  <span class="row-body">
+    <span class="row-title">{{ shade.title }}</span>
+    {% if shade.finishes %}<span class="chips">{% for finish in shade.finishes[:3] %}<span class="chip">{{ finish|label }}</span>{% endfor %}{% if shade.is_topper %}<span class="chip chip-topper">Topper</span>{% endif %}</span>{% elif shade.is_topper %}<span class="chips"><span class="chip chip-topper">Topper</span></span>{% endif %}
+    <span class="row-foot">
+      {% if shade.status %}<span class="status status-{{ shade.status.key }}">{{ shade.status.label }}</span>{% else %}<span class="status status-manual">Added by hand</span>{% endif %}
+      {% if shade.price_cents is not none %}<span class="price">{{ shade.price_cents|money }}</span>{% endif %}
+      {% if shade.owned_count %}<span class="owned-badge">owned ×{{ shade.owned_count }}</span>{% endif %}
+      {% if shade.wishlisted %}<span class="heart" role="img" aria-label="On the wishlist">♥</span>{% endif %}
+    </span>
+  </span>

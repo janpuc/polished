@@ -9,6 +9,7 @@
          hx-target="#search-results" hx-sync="this:replace">
 </form>
 <div id="search-results" aria-live="polite"></div>
+<a class="button scan-button" href="/lookup?scan=1">Scan a bottle</a>
 <div class="stats">
   <a class="stat" href="/bottles"><strong>{{ counts.bottles }}</strong><span>bottle{{ '' if counts.bottles == 1 else 's' }}</span></a>
   <a class="stat" href="/shades?owned=owned"><strong>{{ counts.shades }}</strong><span>shade{{ '' if counts.shades == 1 else 's' }} owned</span></a>

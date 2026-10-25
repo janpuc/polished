@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Learned codes · Polished{% endblock %}
+{% block content %}
+<p class="back"><a href="/lookup">‹ Scan</a></p>
+<h1>Learned codes</h1>
+<p class="muted">Barcodes and P codes the app learned from you. Nothing here comes from the catalog. Remove one that is wrong and the next scan asks again.</p>
+{% if items %}
+<ul class="shade-list identifiers">
+  {% for item in items %}
+  <li class="identifier-row" id="identifier-{{ item.id }}">
+    <a class="row-link" href="/shades/{{ item.shade_id }}">
+      <span class="row-body">
+        <span class="row-title">{{ item.title }}</span>
+        <span class="row-foot"><span class="state-tag">{% if item.kind == 'gtin' %}Barcode{% else %}P code{% endif %}</span><span class="code">{{ item.value }}</span><span class="muted">used {{ item.use_count }}×</span></span>
+      </span>
+    </a>
+    <button type="button" class="secondary small danger" hx-post="/identifiers/{{ item.id }}/delete" hx-confirm="Forget {{ item.value }}?" hx-target="#identifier-{{ item.id }}" hx-swap="outerHTML">Remove</button>
+  </li>
+  {% endfor %}
+</ul>
+{% else %}
+<p class="muted empty">Nothing learned yet. Scan a bottle and pick its shade to start.</p>
+{% endif %}
+{% endblock %}

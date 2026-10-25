@@ -2,7 +2,7 @@
 {% block title %}Bottles · Polished{% endblock %}
 {% block scripts %}<script type="module" src="/static/js/sheet.js?v={{ version }}"></script>{% endblock %}
 {% block content %}
-<h1>Bottles</h1>
+<h1 class="page-head">Bottles <a class="head-link" href="/lookup?scan=1">Add by scanning</a></h1>
 <p class="muted count">{{ counts.bottles }} bottle{{ '' if counts.bottles == 1 else 's' }} in {{ counts.shades }} shade{{ '' if counts.shades == 1 else 's' }}</p>
 <nav class="filter-chips" aria-label="Filter bottles">
   {% for key, text in [("", "All")] + states.items()|list %}
