@@ -8,6 +8,7 @@ import httpx
 from authlib.integrations.base_client import OAuthError
 from authlib.integrations.starlette_client import OAuth
 from fastapi import APIRouter, Request
+from joserfc.errors import JoseError
 from starlette.requests import Request as StarletteRequest
 from starlette.responses import PlainTextResponse, RedirectResponse, Response
 from starlette.types import ASGIApp, Receive, Scope, Send
@@ -135,6 +136,17 @@ def _htmx_current_path(request: StarletteRequest) -> str:
     return safe_next(request.url.path + (f"?{request.url.query}" if request.url.query else ""))
 
 
+class SignInRefused(Exception):
+    """The identity provider's answer can't be trusted as a sign-in."""
+
+
+def _audience_includes(aud, client_id: str | None) -> bool:
+    """authlib only checks `azp` against the client id, so `aud` is checked here."""
+    if isinstance(aud, str):
+        aud = [aud]
+    return bool(client_id) and isinstance(aud, list) and client_id in aud
+
+
 def _message_page(request: Request, status_code: int, heading: str, message: str) -> Response:
     return render(
         request,
@@ -173,11 +185,21 @@ async def callback(request: Request):
     oidc = request.app.state.oidc
     try:
         token = await oidc.authorize_access_token(request)
-        claims = dict(token.get("userinfo") or {})
+        # Only a validated ID token (signature, iss, exp, nonce) identifies the user.
+        id_claims = token.get("userinfo")
+        if not id_claims or not id_claims.get("sub"):
+            raise SignInRefused("no validated ID token")
+        if not _audience_includes(id_claims.get("aud"), settings.oidc_client_id):
+            raise SignInRefused("ID token audience does not include this client")
+        claims = dict(id_claims)
         if "groups" not in claims:
-            claims.update(await oidc.userinfo(token=token))
-    except OAuthError as exc:
-        log.warning("OIDC callback failed: %s", exc)
+            userinfo = dict(await oidc.userinfo(token=token))
+            if userinfo.get("sub") != claims["sub"]:
+                raise SignInRefused("userinfo sub differs from the ID token sub")
+            userinfo.pop("sub")
+            claims = userinfo | claims
+    except (OAuthError, JoseError, SignInRefused) as exc:
+        log.warning("OIDC callback failed: %s: %s", type(exc).__name__, exc)
         request.session.pop("login_next", None)
         return _message_page(
             request, 400, "Sign-in failed", "The sign-in did not complete. Try again."

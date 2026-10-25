@@ -15,7 +15,7 @@ def build(**values) -> Settings:
 def test_defaults_follow_design_12():
     s = build()
     assert s.db_path == "/data/polished.db"
-    assert (s.host, s.port) == ("0.0.0.0", 8080)
+    assert s.port == 8080
     assert (s.session_days, s.session_max_days) == (30, 90)
     assert s.sync_min_interval_s == 1.0
     assert s.timezone == "Europe/Warsaw"
@@ -122,3 +122,30 @@ def test_serve_exits_non_zero_with_a_message_for_auth_none_on_a_public_url(monke
     err = capsys.readouterr().err
     assert "AUTH_MODE=none is only allowed" in err
     assert "https://polished.janpuc.com" in err
+
+
+def test_host_defaults_to_all_interfaces_in_oidc_mode():
+    assert make_settings_with_oidc().host == "0.0.0.0"
+
+
+def test_host_defaults_to_loopback_in_none_mode():
+    assert build().host == "127.0.0.1"
+
+
+@pytest.mark.parametrize("host", ["127.0.0.1", "::1", "localhost"])
+def test_auth_none_accepts_an_explicit_loopback_host(host):
+    assert build(host=host).host == host
+
+
+@pytest.mark.parametrize("host", ["0.0.0.0", "::", "192.168.1.5"])
+def test_auth_none_refuses_a_non_loopback_host(host):
+    with pytest.raises(ValidationError, match="loopback"):
+        build(host=host)
+
+
+def test_auth_none_refuses_host_from_the_environment(monkeypatch):
+    monkeypatch.setenv("POLISHED_PUBLIC_URL", "http://localhost:8080")
+    monkeypatch.setenv("POLISHED_AUTH_MODE", "none")
+    monkeypatch.setenv("POLISHED_HOST", "0.0.0.0")
+    with pytest.raises(ValidationError, match="loopback"):
+        Settings(_env_file=None)

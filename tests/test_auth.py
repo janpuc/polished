@@ -2,9 +2,12 @@ import html
 import time
 from urllib.parse import parse_qs, urlsplit
 
+import httpx
 import pytest
 from authlib.integrations.base_client import OAuthError
 from conftest import OIDC_URL, make_client, oidc_settings, read_session, session_cookie
+from joserfc import jwt
+from joserfc.jwk import RSAKey
 
 from polished.auth import SESSION_COOKIE, login_url, safe_next
 
@@ -23,7 +26,7 @@ class FakeOidc:
     async def authorize_access_token(self, request):
         if self.error:
             raise self.error
-        return {"access_token": "t", "userinfo": self.token_claims}
+        return {"access_token": "t", "userinfo": {"aud": "client-id"} | self.token_claims}
 
     async def userinfo(self, token):
         self.userinfo_calls += 1
@@ -257,7 +260,9 @@ def test_no_groups_at_all_is_403(oidc_app_settings, oidc_client):
 
 
 def test_groups_missing_from_the_id_token_are_read_from_userinfo(oidc_app_settings, oidc_client):
-    oidc = FakeOidc(token_claims={"sub": "u1", "name": "Rae"}, userinfo={"groups": ["ID-Admin"]})
+    oidc = FakeOidc(
+        token_claims={"sub": "u1", "name": "Rae"}, userinfo={"sub": "u1", "groups": ["ID-Admin"]}
+    )
     response = callback(oidc_app_settings, oidc_client, oidc)
     assert response.status_code == 302
     assert oidc.userinfo_calls == 1
@@ -351,3 +356,158 @@ def test_a_session_without_iat_is_not_trusted(oidc_app_settings, oidc_client):
         domain="polished.example.test",
     )
     assert oidc_client.get("/").status_code == 302
+
+
+# --- callback: real ID tokens ---------------------------------------------------------------
+
+ISSUER = METADATA["issuer"]
+SIGNING_KEY = RSAKey.generate_key(2048, {"kid": "k1", "use": "sig"}, auto_kid=False)
+OTHER_KEY = RSAKey.generate_key(2048, {"kid": "k1", "use": "sig"}, auto_kid=False)
+
+
+class IdentityProvider:
+    """Token and userinfo endpoints behind an httpx.MockTransport; ID tokens are really signed."""
+
+    def __init__(self):
+        self.userinfo = {"sub": "u1", "groups": ["ID-Users"]}
+        self.id_token_claims = {}
+        self.key = SIGNING_KEY
+        self.nonce = None
+        self.send_id_token = True
+        self.userinfo_calls = 0
+
+    def id_token(self):
+        now = int(time.time())
+        claims = {
+            "iss": ISSUER,
+            "sub": "u1",
+            "aud": "client-id",
+            "iat": now,
+            "exp": now + 600,
+            "nonce": self.nonce,
+            "name": "Rae",
+            "groups": ["ID-Users"],
+        } | self.id_token_claims
+        claims = {k: v for k, v in claims.items() if v is not None}
+        return jwt.encode({"alg": "RS256", "kid": "k1"}, claims, self.key)
+
+    def handle(self, request: httpx.Request) -> httpx.Response:
+        if request.url.path.endswith("/token"):
+            body = {"access_token": "at", "token_type": "Bearer", "expires_in": 600}
+            if self.send_id_token:
+                body["id_token"] = self.id_token()
+            return httpx.Response(200, json=body)
+        if request.url.path.endswith("/userinfo"):
+            self.userinfo_calls += 1
+            return httpx.Response(200, json=self.userinfo)
+        return httpx.Response(404)
+
+
+def real_callback(settings, client, idp, *, nonce_override=None):
+    """Log in (which stores state and nonce in the session), then return from the issuer."""
+    oidc = client.app.state.oidc
+    oidc.server_metadata = dict(METADATA) | {"jwks": {"keys": [SIGNING_KEY.as_dict(private=False)]}}
+    oidc.client_kwargs["transport"] = httpx.MockTransport(idp.handle)
+    query = parse_qs(urlsplit(client.get("/auth/login?next=/w/k3m9xq").headers["location"]).query)
+    idp.nonce = nonce_override or query["nonce"][0]
+    return client.get(f"/auth/callback?code=c&state={query['state'][0]}")
+
+
+def assert_refused(response, settings, client):
+    assert response.status_code == 400
+    assert "Sign-in failed" in html.unescape(response.text)
+    session = current_session(settings, client)
+    assert "sub" not in session and "login_next" not in session
+
+
+def test_a_validly_signed_id_token_signs_in(oidc_app_settings, oidc_client):
+    idp = IdentityProvider()
+    response = real_callback(oidc_app_settings, oidc_client, idp)
+    assert response.status_code == 302
+    assert response.headers["location"] == "/w/k3m9xq"
+    assert current_session(oidc_app_settings, oidc_client)["sub"] == "u1"
+    assert idp.userinfo_calls == 0
+
+
+def test_an_audience_for_another_client_is_refused_even_with_our_azp(
+    oidc_app_settings, oidc_client
+):
+    idp = IdentityProvider()
+    idp.id_token_claims = {"aud": "other-client", "azp": "client-id"}
+    assert_refused(
+        real_callback(oidc_app_settings, oidc_client, idp), oidc_app_settings, oidc_client
+    )
+
+
+def test_an_audience_list_containing_our_client_is_accepted(oidc_app_settings, oidc_client):
+    idp = IdentityProvider()
+    idp.id_token_claims = {"aud": ["other-client", "client-id"], "azp": "client-id"}
+    assert real_callback(oidc_app_settings, oidc_client, idp).status_code == 302
+
+
+def test_a_token_response_without_an_id_token_is_refused(oidc_app_settings, oidc_client):
+    idp = IdentityProvider()
+    idp.send_id_token = False
+    response = real_callback(oidc_app_settings, oidc_client, idp)
+    assert_refused(response, oidc_app_settings, oidc_client)
+    assert idp.userinfo_calls == 0
+
+
+def test_userinfo_with_a_different_sub_is_refused(oidc_app_settings, oidc_client):
+    idp = IdentityProvider()
+    idp.id_token_claims = {"groups": None}
+    idp.userinfo = {"sub": "someone-else", "groups": ["ID-Admin"]}
+    response = real_callback(oidc_app_settings, oidc_client, idp)
+    assert_refused(response, oidc_app_settings, oidc_client)
+    assert idp.userinfo_calls == 1
+
+
+def test_userinfo_without_a_sub_is_refused(oidc_app_settings, oidc_client):
+    idp = IdentityProvider()
+    idp.id_token_claims = {"groups": None}
+    idp.userinfo = {"groups": ["ID-Admin"]}
+    assert_refused(
+        real_callback(oidc_app_settings, oidc_client, idp), oidc_app_settings, oidc_client
+    )
+
+
+def test_groups_come_from_userinfo_when_the_sub_matches(oidc_app_settings, oidc_client):
+    idp = IdentityProvider()
+    idp.id_token_claims = {"groups": None}
+    idp.userinfo = {"sub": "u1", "groups": ["ID-Admin"], "name": "Not Rae"}
+    response = real_callback(oidc_app_settings, oidc_client, idp)
+    assert response.status_code == 302
+    session = current_session(oidc_app_settings, oidc_client)
+    assert session["sub"] == "u1" and session["name"] == "Rae"
+    assert idp.userinfo_calls == 1
+
+
+def test_an_expired_id_token_is_a_400_not_a_500(oidc_app_settings, oidc_client):
+    idp = IdentityProvider()
+    past = int(time.time()) - 7200
+    idp.id_token_claims = {"iat": past - 600, "exp": past}
+    assert_refused(
+        real_callback(oidc_app_settings, oidc_client, idp), oidc_app_settings, oidc_client
+    )
+
+
+def test_an_id_token_with_a_bad_signature_is_a_400_not_a_500(oidc_app_settings, oidc_client):
+    idp = IdentityProvider()
+    idp.key = OTHER_KEY
+    assert_refused(
+        real_callback(oidc_app_settings, oidc_client, idp), oidc_app_settings, oidc_client
+    )
+
+
+def test_an_id_token_with_the_wrong_nonce_is_a_400_not_a_500(oidc_app_settings, oidc_client):
+    idp = IdentityProvider()
+    response = real_callback(oidc_app_settings, oidc_client, idp, nonce_override="not-ours")
+    assert_refused(response, oidc_app_settings, oidc_client)
+
+
+def test_an_id_token_from_another_issuer_is_a_400(oidc_app_settings, oidc_client):
+    idp = IdentityProvider()
+    idp.id_token_claims = {"iss": "https://evil.example"}
+    assert_refused(
+        real_callback(oidc_app_settings, oidc_client, idp), oidc_app_settings, oidc_client
+    )

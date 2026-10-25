@@ -7,6 +7,7 @@ from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 LOCAL_HOSTS = ("localhost", "127.0.0.1")
+LOOPBACK_BINDS = ("127.0.0.1", "::1", "localhost")
 MIN_SESSION_SECRET = 32
 
 
@@ -72,6 +73,14 @@ class Settings(BaseSettings):
                 raise ValueError(
                     "POLISHED_AUTH_MODE=none is only allowed when POLISHED_PUBLIC_URL is "
                     f"localhost or 127.0.0.1 (got {self.public_url}); use POLISHED_AUTH_MODE=oidc"
+                )
+            # An unset HOST defaults to loopback so a dev config can't be exposed by accident.
+            if "host" not in self.model_fields_set:
+                self.host = "127.0.0.1"
+            elif self.host not in LOOPBACK_BINDS:
+                raise ValueError(
+                    "POLISHED_AUTH_MODE=none needs POLISHED_HOST to be a loopback address "
+                    f"(127.0.0.1, ::1 or localhost), got {self.host!r}"
                 )
             if self.session_secret is None:
                 self.session_secret = SecretStr(secrets.token_urlsafe(48))
