@@ -1,0 +1,4 @@
+{# A rename: the page title and the hub name swap out of band (the request swaps nothing else). #}
+<h1 id="wheel-name" class="title" hx-swap-oob="outerHTML">{{ wheel.name }}</h1>
+<span id="hub-name" class="hub-name" hx-swap-oob="outerHTML">{{ wheel.name }}</span>
+<p id="rename-status" class="rename-status" hx-swap-oob="outerHTML">Renamed.</p>

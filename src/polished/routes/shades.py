@@ -7,7 +7,7 @@ from urllib.parse import urlencode
 from fastapi import APIRouter, Depends, Form, Query, Request
 from fastapi.responses import RedirectResponse
 
-from .. import bottles, shades, wishlist
+from .. import bottles, shades, wheels, wishlist
 from ..db import get_conn
 from ..web import render
 
@@ -84,6 +84,7 @@ def detail(request: Request, conn: Conn, shade_id: int):
         "shade": shade,
         "bottles": bottles.for_shade(conn, shade_id),
         "wish": wishlist.for_shade(conn, shade_id),
+        "swatched_on": wheels.swatched_on(conn, shade_id),
         "ctx": "shade",
     }
     return render(request, "shade_detail.html", context)

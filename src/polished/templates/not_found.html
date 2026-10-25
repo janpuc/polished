@@ -1,11 +1,11 @@
 {% extends "base.html" %}
-{% set tab = "shades" %}
+{% set tab = tab_key|default("shades") %}
 {% block title %}Not found | Polished{% endblock %}
 {% block content %}
 <div class="status-page">
   <div class="nail-glyph" aria-hidden="true"></div>
   <h1 class="title">Not found</h1>
-  <p>There is no shade with that number. It may have been removed, or the link is wrong.</p>
-  <a class="btn" href="/shades">Browse shades</a>
+  <p>{{ message|default("There is no shade with that number. It may have been removed, or the link is wrong.") }}</p>
+  <a class="btn" href="{{ cta_href|default('/shades') }}">{{ cta_label|default("Browse shades") }}</a>
 </div>
 {% endblock %}

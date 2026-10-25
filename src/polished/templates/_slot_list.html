@@ -1,0 +1,21 @@
+{# The filled slots as a plain list, so every stack can be read without squinting. #}
+<div id="slot-list"{% if oob %} hx-swap-oob="outerHTML"{% endif %}>
+  {% if filled %}
+  <h2 class="section-title">Swatches</h2>
+  <ul class="group slot-rows">
+    {% for tile in filled %}
+    <li>
+      <button type="button" class="slot-row" hx-post="/wheels/{{ wheel.id }}/slots/{{ tile.position }}/draft" hx-target="#sheet-body" hx-swap="innerHTML" aria-label="Slot {{ tile.position }}, {{ tile.summary }}">
+        <span class="slot-row-num">{{ tile.position }}</span>
+        <span class="row-body"><span class="row-title">{{ tile.summary }}</span>{% if tile.painted_on %}<span class="row-sub"><span>{{ tile.painted_on|day }}</span></span>{% endif %}</span>
+        <span class="mini-tips" aria-hidden="true">
+          {% for layer in tile.layers[-3:] %}<span class="tip-mini">{% if layer.hero_image_url %}<img src="{{ layer.hero_image_url|thumb(102, 168) }}" width="24" height="32" alt="" loading="lazy" decoding="async">{% endif %}</span>{% endfor %}
+        </span>
+      </button>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="count">Tap a nail tip to record what is on it.</p>
+  {% endif %}
+</div>

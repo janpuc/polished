@@ -1,0 +1,12 @@
+{# "Take the tag of…": swap tags with another wheel. Context: wheel, others. #}
+{% if others %}
+<form class="take-tag" method="post" action="/wheels/{{ wheel.id }}/slug/take">
+  <div class="field">
+    <label for="take-from-{{ wheel.id }}">Take the tag of…</label>
+    <select id="take-from-{{ wheel.id }}" name="from_wheel_id" required>
+      {% for other in others %}<option value="{{ other.id }}">{{ other.name }}{% if other.archived %} (archived){% endif %}</option>{% endfor %}
+    </select>
+  </div>
+  <button type="submit" class="btn btn-secondary btn-block" hx-post="/wheels/{{ wheel.id }}/slug/take" hx-include="closest form" hx-confirm="The two wheels swap tags. The tag you tap will open the other wheel. Continue?">Take the tag</button>
+</form>
+{% endif %}

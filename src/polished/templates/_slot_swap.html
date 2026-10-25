@@ -1,0 +1,5 @@
+{# What a swatch change swaps out of band: the slot's tile, the list of filled slots and the
+   count in the hub. Context: wheel, tile, filled, filled_count, saved, oob (routes/_builder.py). #}
+{% include "_slot_tile.html" %}
+{% include "_slot_list.html" %}
+<span id="hub-count" class="hub-count" hx-swap-oob="outerHTML">{{ filled_count }} of {{ wheel.slot_count }} swatched</span>

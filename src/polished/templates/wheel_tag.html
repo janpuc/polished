@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon with context %}
+{% set tab = "wheels" %}
+{% block title %}Tag for {{ wheel.name }} | Polished{% endblock %}
+{% block scripts %}<script type="module" src="/static/js/copy.js?v={{ version }}"></script>{% endblock %}
+{% block content %}
+<a class="back" href="/w/{{ wheel.slug }}">{{ icon("chevron-left") }}{{ wheel.name }}</a>
+<header class="page-head">
+  <h1 class="title">Tag and QR code</h1>
+</header>
+<p class="lede">One address opens {{ wheel.name }}: write it on an NFC tag, or print the QR code.</p>
+<div class="field tag-url">
+  <label for="tag-url">Address</label>
+  <input id="tag-url" value="{{ tag_url }}" readonly autocomplete="off" autocapitalize="off" spellcheck="false">
+</div>
+<button type="button" class="btn btn-secondary btn-block" data-copy="#tag-url">{{ icon("copy") }}<span>Copy address</span></button>
+<div class="qr">
+  <img src="/wheels/{{ wheel.id }}/qr.svg" width="216" height="216" alt="QR code for {{ tag_url }}">
+  <p class="caption muted">The iPhone camera opens it.</p>
+</div>
+<h2 class="section-title">Write the tag</h2>
+<ol class="steps">
+  <li>Open NFC Tools on your iPhone and tap Write.</li>
+  <li>Tap Add a record, then URL/URI.</li>
+  <li>Paste the address above and tap OK.</li>
+  <li>Tap Write, then hold the top edge of the phone to the tag.</li>
+</ol>
+<p class="lede">Tap the tag to check: Safari opens {{ wheel.name }} after you sign in.</p>
+<a class="btn btn-block" href="/w/{{ wheel.slug }}">Open the wheel</a>
+<h2 class="section-title">Move the tag</h2>
+<p class="lede">A new address makes the old tag stop working. To keep a tag you already wrote, take it from another wheel instead.</p>
+{% include "_take_tag.html" %}
+<form method="post" action="/wheels/{{ wheel.id }}/slug/regenerate" class="regen">
+  <button type="submit" class="btn btn-text btn-danger" hx-post="/wheels/{{ wheel.id }}/slug/regenerate" hx-confirm="The old tag will stop working until you write the new address on it. Continue?">New tag URL</button>
+</form>
+{% endblock %}

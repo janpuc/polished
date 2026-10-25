@@ -38,6 +38,14 @@
 <h2 class="section-title">Collections</h2>
 <p class="chips">{% for value in shade.tags.collection %}<a class="chip" href="/shades?collection={{ value|urlencode }}">{{ value|label }}</a>{% endfor %}</p>
 {% endif %}
+{% if swatched_on %}
+<h2 class="section-title">Swatched on</h2>
+<ul class="group">
+  {% for spot in swatched_on %}
+  <li><a class="group-link" href="/w/{{ spot.slug }}?hl={{ shade.id }}#slot-{{ spot.position }}">{{ spot.name }}, slot {{ spot.position }}{{ icon("chevron-right") }}</a></li>
+  {% endfor %}
+</ul>
+{% endif %}
 {% if shade.handle and not (shade.status and shade.status.key == 'missing') %}
 <ul class="group home-links">
   <li><a class="group-link" href="{{ store_url }}/products/{{ shade.handle|urlencode }}" target="_blank" rel="noopener noreferrer">View on holotaco.com{{ icon("external") }}</a></li>

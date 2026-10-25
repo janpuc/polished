@@ -9,6 +9,7 @@ from .. import bottles, identifiers, shades, wishlist
 from ..db import get_conn
 from ..gtin import is_numeric
 from ..web import render
+from . import _builder as builder
 
 router = APIRouter()
 
@@ -27,24 +28,25 @@ def home(request: Request, conn: Conn):
     return render(request, "home.html", context)
 
 
-@router.get("/wheels")
-def wheels_placeholder(request: Request):
-    """The Wheels tab until the wheel pages (DESIGN 9) exist; routes/wheels.py replaces it."""
-    return render(request, "wheels.html")
-
-
 @router.get("/search")
 def search(
     request: Request,
     conn: Conn,
     q: str = "",
-    ctx: Annotated[Literal["home", "learn"], Query()] = "home",
+    ctx: Annotated[Literal["home", "learn", "stack"], Query()] = "home",
     kind: str = "",
     value: str = "",
+    stack_id: int | None = None,
+    filter: str = "owned",
 ):
     """Rows only, for every request: the page that asked is already on screen. `ctx` decides
     what tapping a row does: `home` opens the shade, `learn` teaches it the code in `kind` and
-    `value` (a gtin or a P code, DESIGN 7.2)."""
+    `value` (a gtin or a P code, DESIGN 7.2), `stack` adds it as a layer of the draft `stack_id`
+    (DESIGN 10), narrowed by `filter` (owned, toppers or all)."""
+    if ctx == "stack":
+        if stack_id is None:
+            raise HTTPException(422, "stack needs a stack_id")
+        return render(request, "_picker_results.html", builder.picker(conn, stack_id, q, filter))
     code = None
     if ctx == "learn":
         code = identifiers.normalise(kind, value)

@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon with context %}
+{% set tab = "wheels" %}
+{% block title %}{{ wheel.name }} | Polished{% endblock %}
+{% block scripts %}
+<script type="module" src="/static/js/sheet.js?v={{ version }}"></script>
+<script type="module" src="/static/js/wheel.js?v={{ version }}"></script>
+{% endblock %}
+{% block content %}
+<a class="back" href="/wheels">{{ icon("chevron-left") }}Wheels</a>
+{% if wheel.archived %}
+<section class="notice banner" aria-label="Archived wheel">
+  <p>This wheel is archived. Its tag still opens it.</p>
+  <form method="post" action="/wheels/{{ wheel.id }}/archive">
+    <input type="hidden" name="archived" value="0">
+    <button type="submit" class="btn btn-secondary btn-block">Restore</button>
+  </form>
+  {% include "_take_tag.html" %}
+</section>
+{% endif %}
+<header class="page-head">
+  <h1 id="wheel-name" class="title">{{ wheel.name }}</h1>
+</header>
+{% if hl %}
+<p class="notice hl-note" role="status">
+  {% if hl_positions %}<strong>{{ hl.shade.title }}</strong> is on {{ "slot" if hl_positions|length == 1 else "slots" }} {{ hl_positions|join(", ") }}.{% else %}<strong>{{ hl.shade.title }}</strong> is not on this wheel.{% endif %}
+  <a href="/w/{{ wheel.slug }}">Show all</a>
+</p>
+{% endif %}
+<div class="ring{% if hl %} has-hl{% endif %}" role="group" aria-label="{{ wheel.name }}, {{ filled_count }} of {{ wheel.slot_count }} swatched">
+  <div class="hub">
+    <span id="hub-name" class="hub-name">{{ wheel.name }}</span>
+    <span id="hub-count" class="hub-count">{{ filled_count }} of {{ wheel.slot_count }} swatched</span>
+  </div>
+  {% for tile in tiles %}
+  {% include "_slot_tile.html" %}
+  {% endfor %}
+</div>
+{% include "_slot_list.html" %}
+<h2 class="section-title">This wheel</h2>
+<ul class="group wheel-actions">
+  <li><a class="group-link" href="/wheels/{{ wheel.id }}/tag">Tag and QR code{{ icon("chevron-right") }}</a></li>
+  <li>
+    <form class="rename-form" method="post" action="/wheels/{{ wheel.id }}" hx-post="/wheels/{{ wheel.id }}" hx-swap="none">
+      <label class="visually-hidden" for="rename">Wheel name</label>
+      <input id="rename" name="name" value="{{ wheel.name }}" maxlength="60" autocomplete="off" enterkeyhint="done">
+      <button type="submit" class="btn btn-text">Rename</button>
+    </form>
+    <p id="rename-status" class="rename-status" role="status"></p>
+  </li>
+  {% if not wheel.archived %}
+  <li>
+    <form method="post" action="/wheels/{{ wheel.id }}/archive">
+      <input type="hidden" name="archived" value="1">
+      <button type="submit" class="btn btn-text btn-danger group-button" hx-post="/wheels/{{ wheel.id }}/archive" hx-include="closest form" hx-confirm="Archive this wheel? Its tag keeps working and you can restore it.">Archive wheel</button>
+    </form>
+  </li>
+  {% endif %}
+</ul>
+{% endblock %}

@@ -1144,6 +1144,30 @@ carry the shade page's action bar as an out-of-band copy when `ctx=shade`, becau
     stack id as tiebreak.
 50. **A draft copied from a saved slot also copies the stack name** (stage 7), so editing a named
     swatch keeps its name unless the form changes it.
+51. **The ring is CSS only, with generated position rules** (stage 6): `.slot-pos-K` (K = 1..40) sets the
+    index and `.ring-n-N` (N = 1..40) the slot count and the width of one wedge; the angle is
+    `calc(360deg / var(--n) * var(--i))` and no element carries a style attribute (CSP). The tip
+    pictures are not the hit areas: the button over each tip is clipped to a wedge between two rays
+    from the hub (`clip-path`), so neighbouring hit areas touch and never overlap, which a rotated
+    rectangle cannot do on a ring. At 20 slots a wedge averages 42.8pt wide (measured) and 64pt
+    deep; above about 24 slots it is narrower than 42pt (the ring has a fixed 136px radius), and
+    the list below is the roomier way in.
+52. **Empty tips carry their number upright; filled tips carry none.** The number sits in the tip of an
+    empty slot (counter-rotated); a filled tip shows the picture, and its number is in the list below
+    and in the button's accessible name.
+53. **Out-of-band swaps use `div`s, not `li`s.** The ring is `div.slot` and the list is `div#slot-list`,
+    because HTML parsers drop a bare `li` at the top of an HTMX response. `_slot_swap.html` swaps the
+    tile (`#slot-N`), the list and `#hub-count`.
+54. **Confirmed actions answer with `HX-Redirect`.** Archive, "New tag URL" and "Take the tag" carry
+    `hx-confirm`, so they are `hx-post` buttons; for an HTMX request the route answers 200 with
+    `HX-Redirect` (a swapped-in 302 target would land in the wrong element), and a plain form post still
+    gets the 302 of 13.5. `GET /wheels/{id}/qr.svg` also answers HEAD.
+55. **Wheel create is inline, not a sheet,** and a failed create re-renders the list with 422. The list
+    shows "N of M swatched" with a mini ring of dots (filled in accent, empty in `--line`), archived
+    wheels behind a row at the bottom (`/wheels?archived=1`); the rename form lives in the "This wheel"
+    group under the list.
+56. **`not_found.html` takes an optional message, button and tab,** so an unknown wheel says so and
+    offers "See your wheels". Without them it is the shade page as before.
 
 ## 15. Home-ops manifests
 

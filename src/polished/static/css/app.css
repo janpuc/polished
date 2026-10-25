@@ -1864,6 +1864,826 @@ a.chip.is-on {
   border-radius: 18px;
 }
 
+/* 15. Wheels: the ring of nail tips (VISUAL 5), the wheel list, the tag page */
+.ring {
+  --ring: 136px;
+  --slot-h: 64px;
+  position: relative;
+  width: min(100%, 360px);
+  aspect-ratio: 1;
+  margin: 8px auto 0;
+}
+
+.hub {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: 150px;
+  height: 150px;
+  margin: -75px 0 0 -75px;
+  text-align: center;
+}
+
+.hub-name {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  font-family: var(--serif);
+  font-size: 1.1875rem;
+  line-height: 1.4375rem;
+  font-weight: 500;
+  font-variation-settings: "SOFT" 50, "opsz" 24;
+  overflow-wrap: anywhere;
+}
+
+.hub-count {
+  color: var(--ink-2);
+  font-size: 0.8125rem;
+  line-height: 1rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+
+/* A slot sits at the ring's centre, turns to its angle and moves out. Slot 1 is at twelve
+   o'clock and the numbers run clockwise. The slot is only the picture; the button over it is a
+   wedge between two rays from the centre, so neighbouring hit areas touch and never overlap. */
+.slot {
+  --a: calc(360deg / var(--n) * var(--i));
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  display: grid;
+  place-items: center;
+  width: var(--w);
+  height: var(--slot-h);
+  margin: calc(var(--slot-h) / -2) 0 0 calc(var(--w) / -2);
+  transform: rotate(var(--a)) translateY(calc(-1 * var(--ring)));
+  transition: opacity 200ms ease-out;
+  pointer-events: none;
+}
+
+.slot.is-dim {
+  opacity: 0.55;
+}
+
+.tip,
+.tip-art,
+.tip-mini {
+  border-radius: 50% 50% 38% 38% / 62% 62% 30% 30%;
+}
+
+.tip {
+  position: relative;
+  width: 34px;
+  height: 56px;
+  isolation: isolate;
+  transition: transform 100ms ease-out;
+}
+
+.tip::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: var(--fill);
+}
+
+/* The foil ring behind the fill: 1.5px on an empty tip, 3px for a highlight, a sweep after a
+   save. */
+.tip::after {
+  content: "";
+  position: absolute;
+  inset: -1.5px;
+  z-index: -2;
+  border-radius: inherit;
+  background: var(--foil);
+}
+
+.slot.is-filled .tip::after {
+  display: none;
+}
+
+.slot.is-hl .tip::after {
+  display: block;
+  inset: -3px;
+}
+
+.slot.is-saved .tip::after {
+  display: block;
+  inset: -3px;
+  animation: saved-ring 700ms var(--ease-out) both;
+}
+
+@keyframes saved-ring {
+  0% {
+    opacity: 0;
+    transform: scale(0.88);
+  }
+
+  35% {
+    opacity: 1;
+    transform: scale(1.08);
+  }
+
+  100% {
+    opacity: 0;
+    transform: scale(1);
+  }
+}
+
+.tip-art {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+.tip-art::after,
+.tip-mini::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 1px var(--mat);
+}
+
+.tip-art > img,
+.tip-mini img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.tip-bands {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: flex;
+  flex-direction: column-reverse;
+}
+
+.tip-bands > * {
+  display: block;
+  width: 100%;
+  height: 6px;
+  object-fit: cover;
+  background: var(--fill);
+  box-shadow: 0 -1px 0 rgb(255 255 255 / 0.7);
+}
+
+.tip-dot {
+  position: absolute;
+  bottom: -3px;
+  left: 50%;
+  width: 8px;
+  height: 8px;
+  margin-left: -4px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 2px var(--bg);
+}
+
+.slot-num {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: var(--ink-2);
+  font-size: 0.8125rem;
+  line-height: 1;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  transform: rotate(calc(-1 * var(--a)));
+  pointer-events: none;
+}
+
+.slot-hit {
+  position: absolute;
+  inset: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  clip-path: polygon(0 0, 100% 0, 81% 100%, 19% 100%);
+  cursor: pointer;
+  pointer-events: auto;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.slot:has(.slot-hit:active) .tip {
+  transform: scale(0.92);
+}
+
+.slot:has(.slot-hit:focus-visible) .tip {
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
+}
+
+.slot-hit:focus-visible {
+  outline: 0;
+}
+
+.hl-note a {
+  margin-left: 6px;
+  font-weight: 600;
+}
+
+/* The filled slots as a list. */
+.slot-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 56px;
+  padding: 8px 16px;
+  border: 0;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.slot-row:active {
+  background: var(--fill);
+}
+
+.slot-row .row-title {
+  -webkit-line-clamp: 3;
+}
+
+.slot-row-num {
+  flex: none;
+  width: 24px;
+  color: var(--ink-2);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.mini-tips {
+  display: flex;
+  flex: none;
+  gap: 4px;
+}
+
+.tip-mini {
+  position: relative;
+  width: 24px;
+  height: 32px;
+  overflow: hidden;
+  background: var(--fill);
+}
+
+.wheel-actions .rename-form {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px 6px 16px;
+}
+
+.rename-status {
+  margin: 0;
+  padding: 0 16px;
+  color: var(--ink-2);
+  font-size: 0.8125rem;
+  line-height: 1rem;
+}
+
+.rename-status:not(:empty) {
+  padding-bottom: 8px;
+}
+
+.group-button {
+  width: 100%;
+  min-height: 52px;
+  padding: 0 16px;
+  border-radius: 0;
+  justify-content: flex-start;
+}
+
+.banner {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 8px 0 8px;
+  border-radius: var(--r-group);
+}
+
+.banner p {
+  font-weight: 500;
+}
+
+.banner .field {
+  margin: 0 0 8px;
+}
+
+/* The wheel list: a mini ring in front of each name. */
+.new-wheel-box {
+  margin: 0 0 16px;
+}
+
+.new-wheel-box summary {
+  display: flex;
+  width: 100%;
+  list-style: none;
+  cursor: pointer;
+}
+
+.new-wheel-box summary::-webkit-details-marker {
+  display: none;
+}
+
+.new-wheel {
+  padding-top: 16px;
+}
+
+.wheel-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 68px;
+  padding: 10px 16px;
+  color: inherit;
+  text-decoration: none;
+}
+
+.wheel-row:active {
+  background: var(--fill);
+}
+
+.wheel-row > .icon {
+  flex: none;
+  color: var(--ink-2);
+}
+
+.mini-ring {
+  position: relative;
+  flex: none;
+  width: 44px;
+  height: 44px;
+}
+
+.mini-dot {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 5px;
+  height: 5px;
+  margin: -2.5px 0 0 -2.5px;
+  border-radius: 50%;
+  background: var(--line);
+  transform: rotate(calc(360deg / var(--n) * var(--i))) translateY(-17px);
+}
+
+.mini-dot.is-filled {
+  background: var(--accent);
+}
+
+.count-chip {
+  margin-left: auto;
+  color: var(--ink-2);
+  font-weight: 400;
+}
+
+.count-chip + .icon {
+  margin-left: 0;
+}
+
+/* The tag page. */
+.tag-url {
+  margin-bottom: 12px;
+}
+
+.qr {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin: 24px 0 0;
+}
+
+.qr img {
+  padding: 12px;
+  border-radius: var(--r-group);
+  background: #fff;
+}
+
+.steps {
+  margin: 8px 0 16px;
+  padding-left: 1.5rem;
+  list-style: decimal;
+}
+
+.steps li {
+  padding: 4px 0 4px 4px;
+}
+
+.take-tag {
+  margin-bottom: 8px;
+}
+
+.regen {
+  display: flex;
+  justify-content: center;
+  margin-top: 8px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .slot,
+  .tip {
+    transition: none;
+  }
+
+  .slot:has(.slot-hit:active) .tip {
+    transform: none;
+  }
+
+  .slot.is-saved .tip::after {
+    animation: saved-fade 1s linear both;
+  }
+
+  @keyframes saved-fade {
+    0%,
+    70% {
+      opacity: 1;
+    }
+
+    100% {
+      opacity: 0;
+    }
+  }
+}
+
+/* Positions: generated for 1..40 slots (slot-pos-K sets the index, ring-n-N the count and the
+   width of one slot's wedge: 2 * (R + H/2) * tan(180deg / N), capped at 96px). Keep R and H in sync
+   with --ring and --slot-h below. */
+.slot-pos-1 {
+  --i: 0;
+}
+
+.slot-pos-2 {
+  --i: 1;
+}
+
+.slot-pos-3 {
+  --i: 2;
+}
+
+.slot-pos-4 {
+  --i: 3;
+}
+
+.slot-pos-5 {
+  --i: 4;
+}
+
+.slot-pos-6 {
+  --i: 5;
+}
+
+.slot-pos-7 {
+  --i: 6;
+}
+
+.slot-pos-8 {
+  --i: 7;
+}
+
+.slot-pos-9 {
+  --i: 8;
+}
+
+.slot-pos-10 {
+  --i: 9;
+}
+
+.slot-pos-11 {
+  --i: 10;
+}
+
+.slot-pos-12 {
+  --i: 11;
+}
+
+.slot-pos-13 {
+  --i: 12;
+}
+
+.slot-pos-14 {
+  --i: 13;
+}
+
+.slot-pos-15 {
+  --i: 14;
+}
+
+.slot-pos-16 {
+  --i: 15;
+}
+
+.slot-pos-17 {
+  --i: 16;
+}
+
+.slot-pos-18 {
+  --i: 17;
+}
+
+.slot-pos-19 {
+  --i: 18;
+}
+
+.slot-pos-20 {
+  --i: 19;
+}
+
+.slot-pos-21 {
+  --i: 20;
+}
+
+.slot-pos-22 {
+  --i: 21;
+}
+
+.slot-pos-23 {
+  --i: 22;
+}
+
+.slot-pos-24 {
+  --i: 23;
+}
+
+.slot-pos-25 {
+  --i: 24;
+}
+
+.slot-pos-26 {
+  --i: 25;
+}
+
+.slot-pos-27 {
+  --i: 26;
+}
+
+.slot-pos-28 {
+  --i: 27;
+}
+
+.slot-pos-29 {
+  --i: 28;
+}
+
+.slot-pos-30 {
+  --i: 29;
+}
+
+.slot-pos-31 {
+  --i: 30;
+}
+
+.slot-pos-32 {
+  --i: 31;
+}
+
+.slot-pos-33 {
+  --i: 32;
+}
+
+.slot-pos-34 {
+  --i: 33;
+}
+
+.slot-pos-35 {
+  --i: 34;
+}
+
+.slot-pos-36 {
+  --i: 35;
+}
+
+.slot-pos-37 {
+  --i: 36;
+}
+
+.slot-pos-38 {
+  --i: 37;
+}
+
+.slot-pos-39 {
+  --i: 38;
+}
+
+.slot-pos-40 {
+  --i: 39;
+}
+
+.ring-n-1 {
+  --n: 1;
+  --w: 96.0px;
+}
+
+.ring-n-2 {
+  --n: 2;
+  --w: 96.0px;
+}
+
+.ring-n-3 {
+  --n: 3;
+  --w: 96.0px;
+}
+
+.ring-n-4 {
+  --n: 4;
+  --w: 96.0px;
+}
+
+.ring-n-5 {
+  --n: 5;
+  --w: 96.0px;
+}
+
+.ring-n-6 {
+  --n: 6;
+  --w: 96.0px;
+}
+
+.ring-n-7 {
+  --n: 7;
+  --w: 96.0px;
+}
+
+.ring-n-8 {
+  --n: 8;
+  --w: 96.0px;
+}
+
+.ring-n-9 {
+  --n: 9;
+  --w: 96.0px;
+}
+
+.ring-n-10 {
+  --n: 10;
+  --w: 96.0px;
+}
+
+.ring-n-11 {
+  --n: 11;
+  --w: 96.0px;
+}
+
+.ring-n-12 {
+  --n: 12;
+  --w: 90.0px;
+}
+
+.ring-n-13 {
+  --n: 13;
+  --w: 82.8px;
+}
+
+.ring-n-14 {
+  --n: 14;
+  --w: 76.7px;
+}
+
+.ring-n-15 {
+  --n: 15;
+  --w: 71.4px;
+}
+
+.ring-n-16 {
+  --n: 16;
+  --w: 66.8px;
+}
+
+.ring-n-17 {
+  --n: 17;
+  --w: 62.8px;
+}
+
+.ring-n-18 {
+  --n: 18;
+  --w: 59.2px;
+}
+
+.ring-n-19 {
+  --n: 19;
+  --w: 56.1px;
+}
+
+.ring-n-20 {
+  --n: 20;
+  --w: 53.2px;
+}
+
+.ring-n-21 {
+  --n: 21;
+  --w: 50.6px;
+}
+
+.ring-n-22 {
+  --n: 22;
+  --w: 48.3px;
+}
+
+.ring-n-23 {
+  --n: 23;
+  --w: 46.2px;
+}
+
+.ring-n-24 {
+  --n: 24;
+  --w: 44.2px;
+}
+
+.ring-n-25 {
+  --n: 25;
+  --w: 42.4px;
+}
+
+.ring-n-26 {
+  --n: 26;
+  --w: 40.8px;
+}
+
+.ring-n-27 {
+  --n: 27;
+  --w: 39.3px;
+}
+
+.ring-n-28 {
+  --n: 28;
+  --w: 37.9px;
+}
+
+.ring-n-29 {
+  --n: 29;
+  --w: 36.5px;
+}
+
+.ring-n-30 {
+  --n: 30;
+  --w: 35.3px;
+}
+
+.ring-n-31 {
+  --n: 31;
+  --w: 34.2px;
+}
+
+.ring-n-32 {
+  --n: 32;
+  --w: 33.1px;
+}
+
+.ring-n-33 {
+  --n: 33;
+  --w: 32.1px;
+}
+
+.ring-n-34 {
+  --n: 34;
+  --w: 31.1px;
+}
+
+.ring-n-35 {
+  --n: 35;
+  --w: 30.2px;
+}
+
+.ring-n-36 {
+  --n: 36;
+  --w: 29.4px;
+}
+
+.ring-n-37 {
+  --n: 37;
+  --w: 28.6px;
+}
+
+.ring-n-38 {
+  --n: 38;
+  --w: 27.8px;
+}
+
+.ring-n-39 {
+  --n: 39;
+  --w: 27.1px;
+}
+
+.ring-n-40 {
+  --n: 40;
+  --w: 26.4px;
+}
+
 /* 14. Preferences */
 @media (hover: hover) {
   .row-link:hover,

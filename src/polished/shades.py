@@ -252,6 +252,22 @@ def search(conn: sqlite3.Connection, text: str, limit: int = SEARCH_LIMIT) -> Sh
     return list_shades(conn, ShadeQuery.from_params(q=text), size=limit, owned_first=True)
 
 
+PICK_SCOPES = ("owned", "toppers", "all")
+
+
+def pick(
+    conn: sqlite3.Connection, text: str, scope: str = "owned", limit: int = SEARCH_LIMIT
+) -> ShadePage:
+    """The stack builder's picker: shades matching `text`, narrowed by `scope` (what the household
+    owns, only toppers, or everything), owned shades first. An empty `text` lists the scope."""
+    query = ShadeQuery.from_params(
+        q=text,
+        kind="topper" if scope == "toppers" else None,
+        owned="owned" if scope == "owned" else None,
+    )
+    return list_shades(conn, query, size=limit, owned_first=True)
+
+
 def facets(conn: sqlite3.Connection) -> dict[str, list[str]]:
     """The tag values to offer as filters: finishes and colours most common first,
     collections alphabetical."""

@@ -24,13 +24,14 @@ def test_every_tab_of_the_bar_has_a_page(client):
     for href in ("/", "/shades", "/bottles", "/wheels", "/wishlist"):
         assert f'class="tab" href="{href}"' in html
         assert client.get(href).status_code == 200
-    assert "Wheels are coming soon" in client.get("/wheels").text
+    assert "No wheels yet" in client.get("/wheels").text
     assert client.get("/shades").text.count('aria-current="page"') == 1
 
 
 def test_pages_that_need_no_account_have_no_tab_bar(client):
     assert 'class="tabbar"' not in client.get("/offline").text
     assert 'class="tabbar"' not in client.get("/signed-out").text
+
 
 def test_every_icon_a_page_uses_exists_in_the_sprite(client):
     import re
