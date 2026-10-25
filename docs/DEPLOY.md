@@ -20,8 +20,9 @@ writes the Secret `polished-oidc-credentials` itself.
 
 1. Push this repo to `github.com/janpuc/polished` (already public). The `Release` workflow runs
    on `main`: lint and test, then builds `ghcr.io/janpuc/polished:edge` and `:sha-<short>`.
-2. release-please opens a release PR once there are releasable commits. Merge it. The merge
-   tags `v0.1.0` and the same workflow publishes `:0.1.0`, `:0.1`, `:0` and `:latest`.
+2. release-please keeps a release PR open (`chore(main): release 0.2.0` as of 2026-10-25).
+   Merge it. The merge tags `v0.2.0` and the same workflow publishes `:0.2.0`, `:0.2`, `:0` and
+   `:latest`. Use whatever version the PR names in the steps below.
 3. Make the package public (the web UI is the only way):
    <https://github.com/users/janpuc/packages/container/polished/settings>, "Change visibility".
    home-ops uses no image pull secrets, so a private package would sit in `ImagePullBackOff`.
@@ -29,7 +30,7 @@ writes the Secret `polished-oidc-credentials` itself.
 4. Get the digest of the release tag:
 
    ```sh
-   docker buildx imagetools inspect ghcr.io/janpuc/polished:0.1.0 | grep -m1 Digest
+   docker buildx imagetools inspect ghcr.io/janpuc/polished:0.2.0 | grep -m1 Digest
    ```
 
 For Renovate: the repo needs the `OP_SERVICE_ACCOUNT_TOKEN` Actions secret (same as serendip)
@@ -57,7 +58,8 @@ Add one line to `kubernetes/apps/selfhosted/kustomization.yaml`, after `medibrow
 ```
 
 In `kubernetes/apps/selfhosted/polished/app/helmrelease.yaml`, replace
-`0.1.0@sha256:REPLACE_AFTER_FIRST_RELEASE` with the tag and digest from step 2.4 (it appears
+`0.1.0@sha256:REPLACE_AFTER_FIRST_RELEASE` with the released tag and digest from step 2.4
+(e.g. `0.2.0@sha256:…`) (it appears
 once; the init container and the app share it through a YAML anchor). Commit on the branch and
 open a PR.
 
@@ -74,7 +76,7 @@ kubectl -n selfhosted logs deploy/polished -c migrate    # "applied 001_catalog.
 curl -fsS https://polished.janpuc.com/healthz
 ```
 
-`/healthz` answers `{"status":"ok","version":"0.1.0","schema":<n>}`. Without a session,
+`/healthz` answers `{"status":"ok","version":"0.2.0","schema":<n>}` (the released version). Without a session,
 `/` redirects to `/auth/login`.
 
 ## 5. First login checklist
@@ -82,10 +84,13 @@ curl -fsS https://polished.janpuc.com/healthz
 - [ ] Sign in with Pocket ID in Safari; a user outside `ID-Users`/`ID-Admin` gets the 403 page.
 - [ ] Open the installed home-screen app (PWA) and sign in again there: Safari and the PWA keep
       separate cookies, so each signs in once.
-- [ ] `/sync` shows the catch-up run (it starts on its own after the first start) and 372 shades.
+- [ ] `/sync` shows the catch-up run (it starts on its own about a minute after the first start)
+      and 372 shades. The first run then reads every shade's colour from cdn.shopify.com at one
+      picture every 0.5 s, about 7 minutes; until then tips are a neutral grey.
 - [ ] Scan a bottle on `/lookup` (the camera needs https, so only on the real hostname) and
       pick its shade.
-- [ ] Tap a tag on a shade page and check the result list.
+- [ ] Make a wheel, write its address on an NFC tag with NFC Tools (Wheels, the wheel, Tag and
+      QR code), and tap the tag with the iPhone: Safari opens the wheel.
 - [ ] Build a stack in the layer builder and save it.
 - [ ] Gatus lists `polished` (condition `[STATUS] == 200` on `/healthz`).
 
