@@ -24,3 +24,6 @@ htmlcov/
 /research/*.json
 
 .DS_Store
+
+# apple-design is a local-only skill (no license to redistribute it).
+/.pi/skills/apple-design/
