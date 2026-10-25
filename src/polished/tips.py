@@ -20,13 +20,17 @@ NEUTRAL_HEX = "#c9bfc0"  # a shade whose colour is not known yet
 NUDE_HEX = "#e9d2c6"  # what a topper or a jelly goes over when nothing opaque is below
 RAINBOW = ("#ff5fa2", "#ffb347", "#f4ec6a", "#5fe3a1", "#5fb8ff", "#a07bff")
 SEE_THROUGH = {"jelly"}
+# Colour tags that mean a topper carries no tint of its own: its flakes or glitter sit in a clear base.
+UNTINTED_COLOURS = {"clear", "silver", "neutral", "black", "white", "grey", "gray"}
 CLEAR_KINDS = {"basecoat"}
 
 # Select list for a shade's tip, appended to a query over `shade s`.
 TIP_FIELDS = (
     "s.kind, s.is_topper, s.swatch_hex, s.swatch_hex2, s.swatch_override_hex,"
     " (select group_concat(t.value) from shade_tag t"
-    " where t.shade_id = s.id and t.ns = 'finish') as finishes"
+    " where t.shade_id = s.id and t.ns = 'finish') as finishes,"
+    " (select group_concat(t.value) from shade_tag t"
+    " where t.shade_id = s.id and t.ns = 'color') as colours"
 )
 
 
@@ -39,6 +43,15 @@ class TipShade:
     topper: bool
     clear: bool
     coats: int = 1
+    colours: frozenset[str] | None = None  # the shop's colour tags, when the row carries them
+
+    @property
+    def tinted(self) -> bool:
+        """Whether a topper leaves a hint of its own colour. The sampled colour of a clear topper
+        is its photo's backdrop, so only a topper the shop calls a real colour tints."""
+        if self.colours is not None:
+            return bool(self.colours - UNTINTED_COLOURS)
+        return colorsys.rgb_to_hsv(*(c / 255 for c in _rgb(self.hex)))[1] > 0.25
 
     @property
     def see_through(self) -> bool:
@@ -66,7 +79,14 @@ def tip_shade(row) -> TipShade:
         topper=bool(row["is_topper"]),
         clear=row["kind"] in CLEAR_KINDS,
         coats=row["coats"] if "coats" in keys else 1,
+        colours=_tag_set(row["colours"]) if "colours" in keys else None,
     )
+
+
+def _tag_set(value) -> frozenset[str]:
+    if isinstance(value, str):
+        value = value.split(",")
+    return frozenset(value or ()) - {""}
 
 
 def revision(shades: list[TipShade]) -> str:
@@ -273,7 +293,7 @@ def _paint(canvas: _Canvas, shade: TipShade) -> None:
         )  # depth: deeper toward the free edge
     elif not shade.topper:
         canvas.rect(base)
-    elif colorsys.rgb_to_hsv(*(c / 255 for c in _rgb(base)))[1] > 0.25:
+    elif shade.tinted:
         canvas.rect(base, 0.3)  # a coloured topper leaves a hint of its colour
 
     if (
@@ -320,7 +340,8 @@ def _paint(canvas: _Canvas, shade: TipShade) -> None:
         )
 
     if finishes & {"holographic", "iridescent"}:
-        _rainbow_sheen(canvas, rng, 0.2 if "holographic" in finishes else 0.12)
+        strength = 0.2 if "holographic" in finishes else 0.12
+        _rainbow_sheen(canvas, rng, strength * (0.6 if shade.topper else 1))
     if finishes & {"shimmer", "holographic", "iridescent", "reflective"}:
         count = 190 if "shimmer" in finishes else 90
         _dots(

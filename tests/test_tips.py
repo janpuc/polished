@@ -231,3 +231,18 @@ def test_a_bad_colour_is_422_and_nothing_is_saved(client, catalog, value):
 
 def test_an_unknown_shade_is_404(client, catalog):
     assert client.post("/shades/99999/tip-colour", data={"hex": "#336699"}).status_code == 404
+
+
+def test_a_clear_topper_adds_no_tint_and_a_coloured_one_does():
+    black = shade(1, "#101010", "creme")
+    clear = TipShade(
+        2, "#6c9177", None, frozenset({"flakie"}), True, False, 1, frozenset({"silver"})
+    )
+    gold = TipShade(3, "#d4a84f", None, frozenset({"flakie"}), True, False, 1, frozenset({"gold"}))
+    assert 'fill="#6c9177" fill-opacity="0.30"' not in render([black, clear])
+    assert 'fill="#d4a84f" fill-opacity="0.30"' in render([black, gold])
+
+
+def test_a_topper_row_without_colour_tags_falls_back_to_the_colour_itself():
+    assert TipShade(1, "#ff2288", None, frozenset(), True, False).tinted
+    assert not TipShade(1, "#8b9991", None, frozenset(), True, False).tinted
