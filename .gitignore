@@ -1,0 +1,26 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Runtime data: the SQLite database, its WAL files and uploaded photos never go in git.
+/data/
+*.db
+*.db-*
+*.sqlite3
+/photos/
+/uploads/
+
+# Secrets and local config.
+.env
+.env.*
+!.env.example
+
+# The Shopify snapshot is public data but 4 MB of noise; tests use the trimmed fixtures
+# in tests/fixtures/. research/scripts/ stays tracked.
+/research/*.json
+
+.DS_Store
