@@ -1,0 +1,20 @@
+{# One wishlist row's sheet, swapped into #sheet-body: the note, and Remove. The priority stays in
+   the row's menu; it rides along here unchanged. #}
+<form class="sheet-form" method="post" action="/wishlist/{{ item.id }}" hx-post="/wishlist/{{ item.id }}" hx-target="#wishlist" hx-swap="outerHTML">
+  <input type="hidden" name="priority" value="{{ item.priority }}">
+  <div class="grabber" aria-hidden="true"></div>
+  <header class="sheet-head">
+    <h2 tabindex="-1" autofocus>{{ item.title }}<span class="sheet-sub">{{ priority_label }}</span></h2>
+    <button type="button" class="btn btn-text" data-sheet-close>Cancel</button>
+  </header>
+  <div class="field">
+    <label for="wish-note">Note</label>
+    <textarea id="wish-note" name="note" rows="3" maxlength="200" placeholder="Why this one, or what to pair it with…">{{ item.note or '' }}</textarea>
+  </div>
+  <div class="sheet-quiet">
+    <button type="button" class="btn btn-text btn-danger" hx-post="/wishlist/{{ item.id }}/delete" hx-vals='{"ctx": "list"}' hx-target="#wishlist" hx-swap="outerHTML">Remove from wishlist</button>
+  </div>
+  <div class="sheet-actions">
+    <button type="submit" class="btn btn-block">Save note</button>
+  </div>
+</form>

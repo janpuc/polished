@@ -15,10 +15,11 @@ The database must be fresh: the run creates the wheel "Holos" and fills its slot
 
 What it checks, on an iPhone-sized viewport, with no console errors and no 4xx/5xx:
 1. A new wheel opens its builder on slot 12: empty state, Save disabled.
-2. Three taps on results add three layers; the live summary names them with " + ".
+2. Three taps on results add three layers; the live summary names them with " + " and the head
+   draws the stack's composite tip (one picture once the cross-fade is done).
 3. Over black (skipped with a note when the catalog has no `one-coat-black`, as the trimmed
    fixture has not), a layer moves up, a coat is added.
-4. A typed name survives a layer edit (the form is never re-rendered).
+4. A typed name survives a layer edit (the form is never re-rendered); the head tip changes.
 5. Save swatch closes the sheet, tile 12 is filled and the list shows the summary.
 6. Reopening shows the saved layers and the name; Cancel closes it and the swatch stays.
 """
@@ -102,6 +103,12 @@ def run() -> None:
             f"the live summary names them in order ({summary})",
         )
         check(page.locator("#save-button").is_enabled(), "Save swatch enables with layers")
+        tip = page.locator("#stack-tip img")
+        expect(tip).to_have_count(1)  # the fade is done: the older pictures are dropped
+        first_src = tip.get_attribute("src")
+        check(
+            "/tips/stack/" in first_src, f"the head draws the stack's composite tip ({first_src})"
+        )
 
         # 3. Over black, move, coats.
         over_black = page.get_by_role("button", name="Over black")
@@ -134,6 +141,11 @@ def run() -> None:
         )
         summary = page.locator("#stack-summary").inner_text()
         check(f"×{coats + 1}" in summary, f"the summary shows the new coats ({summary})")
+        expect(page.locator("#stack-tip img")).to_have_count(1)
+        check(
+            page.locator("#stack-tip img").get_attribute("src") != first_src,
+            "the head tip is a new picture after the layers changed",
+        )
 
         # 5. Save.
         page.locator("#save-button").click()

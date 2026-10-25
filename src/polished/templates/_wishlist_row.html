@@ -1,28 +1,22 @@
+{% from "_icons.html" import icon with context %}
 {% from "_tip.html" import tip %}
+{# One wished shade. The title is a stretched link to the shade; the note button opens the row's
+   sheet (note and Remove), the priority is a native menu that posts on change. #}
 <li class="wish-row" id="wish-{{ item.id }}">
-  <a class="row-link" href="/shades/{{ item.shade_id }}">
-    {{ tip(item, "m") }}
-    <span class="row-body">
-      <span class="row-title">{{ item.title }}</span>
-      {% if item.price_cents is not none %}<span class="row-sub"><span class="price">{{ item.price_cents|money }}</span></span>{% endif %}
-      {% if item.status is none or item.status.key != 'available' or item.owned_count %}
-      <span class="row-flags">
-        {% if item.status is none %}<span class="status status-manual">Added by hand</span>{% elif item.status.key != 'available' %}<span class="status status-{{ item.status.key }}">{{ item.status.label }}</span>{% endif %}
-        {% if item.owned_count %}<span class="pill">Owned ×{{ item.owned_count }}</span>{% endif %}
-      </span>
-      {% endif %}
-    </span>
-  </a>
-  <form class="wish-controls" method="post" action="/wishlist/{{ item.id }}">
-    <div class="segmented" role="radiogroup" aria-label="Priority of {{ item.title }}">
-      {% for p in priorities %}
-      <label class="pick"><input type="radio" name="priority" value="{{ p }}"{% if item.priority == p %} checked{% endif %} hx-post="/wishlist/{{ item.id }}" hx-include="closest form" hx-trigger="change" hx-target="#wishlist" hx-swap="outerHTML"><span>{{ {1: "Want most", 2: "Would like", 3: "Maybe"}[p] }}</span></label>
-      {% endfor %}
-    </div>
-    <details class="wish-note-box"{% if item.note %} open{% endif %}>
-      <summary>{{ "Note" if item.note else "Add a note" }}</summary>
-      <input class="wish-note" type="text" name="note" value="{{ item.note or '' }}" maxlength="200" autocomplete="off" placeholder="Why this one…" aria-label="Note for {{ item.title }}" enterkeyhint="done" hx-post="/wishlist/{{ item.id }}" hx-include="closest form" hx-trigger="change" hx-swap="none">
-    </details>
-    <button type="button" class="btn btn-text wish-remove" hx-post="/wishlist/{{ item.id }}/delete" hx-vals='{"ctx": "list"}' hx-target="#wishlist" hx-swap="outerHTML">Remove</button>
-  </form>
+  <span class="wish-tip">{{ tip(item, "m") }}</span>
+  <a class="wish-title row-title" href="/shades/{{ item.shade_id }}">{{ item.title }}</a>
+  {% if item.price_cents is not none %}<span class="wish-price price">{{ item.price_cents|money }}</span>{% endif %}
+  {% if item.status is none or item.status.key != 'available' or item.owned_count %}
+  <span class="wish-flags">
+    {% if item.status is none %}<span class="status status-manual">Added by hand</span>{% elif item.status.key != 'available' %}<span class="status status-{{ item.status.key }}">{{ item.status.label }}</span>{% endif %}
+    {% if item.owned_count %}<span>Owned ×{{ item.owned_count }}</span>{% endif %}
+  </span>
+  {% endif %}
+  <button type="button" class="wish-note{% if not item.note %} is-empty{% endif %}" hx-get="/wishlist/{{ item.id }}/edit" hx-target="#sheet-body" hx-swap="innerHTML"{% if item.note %} aria-label="Note for {{ item.title }}: {{ item.note }}. Edit"{% endif %}>{{ item.note or "Add a note" }}</button>
+  <span class="wish-prio">
+    <select name="priority" aria-label="Priority of {{ item.title }}" hx-post="/wishlist/{{ item.id }}/priority" hx-trigger="change" hx-target="#wishlist" hx-swap="outerHTML">
+      {% for p, text in priorities.items() %}<option value="{{ p }}"{% if item.priority == p %} selected{% endif %}>{{ text }}</option>{% endfor %}
+    </select>
+    {{ icon("chevron-down", "icon-sm") }}
+  </span>
 </li>

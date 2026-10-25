@@ -36,7 +36,7 @@ def rows(response) -> int:
 
 
 def titles_in(html: str) -> list[str]:
-    return re.findall(r'class="row-title">([^<]+)<', html)
+    return re.findall(r'class="(?:[\w-]+ )*row-title(?: [\w-]+)*"[^>]*>([^<]+)<', html)
 
 
 # Adding a bottle
@@ -116,8 +116,9 @@ def test_a_state_change_is_one_post_and_returns_the_card(seeded):
     response = client.post(f"/bottles/{bottle}/state", data={"state": "low"}, headers=HX)
     assert response.status_code == 200 and "<html" not in response.text
     assert f'id="bottle-{bottle}"' in response.text and "P259" in response.text
-    assert re.findall(r'class="pill pill-level state-(\w+)"', response.text) == ["low"]
-    assert re.search(r"state-low\"[^>]*>Low<svg", response.text)
+    assert re.findall(r'class="bottle-level level-(\w+)"', response.text) == ["low"]
+    assert re.search(r"</svg><span>Low</span>", response.text)
+    assert f'hx-get="/bottles/{bottle}/edit?ctx=shade"' in response.text
     assert conn.execute("select state from bottle").fetchone()[0] == "low"
 
 
@@ -196,12 +197,59 @@ def test_archive_and_restore(seeded):
     shade = sid(conn, "thirst-trap")
     bottle = make_bottle(client, conn)
     archived = client.post(f"/bottles/{bottle}/archive", data={"archived": "1"})
-    assert "Archived" in archived.text and "Restore" in archived.text
+    assert "is-archived" in archived.text and "Archived" in archived.text
+    assert archived.headers["hx-trigger"] == "sheetClose"
     assert conn.execute("select archived from bottle").fetchone()[0] == 1
     assert "Add bottle" in client.get(f"/shades/{shade}").text
+    # Archive and Restore live in the edit sheet, one POST each.
+    sheet = client.get(f"/bottles/{bottle}/edit?ctx=shade").text
+    assert "Restore this bottle" in sheet and "Archive this bottle" not in sheet
+    assert f'hx-post="/bottles/{bottle}/archive"' in sheet and '"archived": "0"' in sheet
     restored = client.post(f"/bottles/{bottle}/archive", data={"archived": "0"})
-    assert "Archive" in restored.text and "Restore" not in restored.text
+    assert "is-archived" not in restored.text and "Archived" not in restored.text
+    sheet = client.get(f"/bottles/{bottle}/edit?ctx=shade").text
+    assert "Archive this bottle" in sheet and '"archived": "1"' in sheet
     assert "Add bottle" in client.get(f"/shades/{shade}").text
+
+
+def test_archiving_from_the_list_swaps_the_row_away_and_closes_the_sheet(seeded):
+    client, conn = seeded
+    bottle = make_bottle(client, conn)
+    archived = client.post(f"/bottles/{bottle}/archive", data={"archived": "1", "ctx": "list"})
+    assert archived.status_code == 200 and archived.text == ""
+    assert archived.headers["hx-trigger"] == "sheetClose"
+    assert conn.execute("select archived from bottle").fetchone()[0] == 1
+    assert f'id="bottle-{bottle}"' not in client.get("/bottles").text
+    restored = client.post(f"/bottles/{bottle}/archive", data={"archived": "0", "ctx": "list"})
+    assert restored.text == "" and conn.execute("select archived from bottle").fetchone()[0] == 0
+    assert f'id="bottle-{bottle}"' in client.get("/bottles").text
+
+
+def test_a_bottle_row_shows_its_code_purchase_and_a_level_drawn_in_the_shade_colour(seeded):
+    client, conn = seeded
+    shade = sid(conn, "thirst-trap")
+    conn.execute("update shade set swatch_override_hex = '#c02060' where id = ?", (shade,))
+    conn.commit()
+    coded = make_bottle(
+        client, conn, printed_code="188", bought_on="2026-07-21", price_paid="15.50", state="half"
+    )
+    plain = make_bottle(client, conn, bought_on="2026-05-18")
+    page = client.get("/bottles").text
+    assert 'class="bottle-title"><span translate="no">P188</span>' in page
+    assert "Bought 21 Jul 2026, $15.50" in page
+    assert 'class="bottle-title is-plain">No P code</span>' in page and "Bought 18 May 2026" in page
+    assert page.count('fill="#c02060"') == 2  # both bottles: the shade's colour
+    assert "Archive</" not in page and " style=" not in page  # Archive is in the edit sheet now
+    assert f'hx-get="/bottles/{coded}/edit?ctx=list"' in page
+    assert f'hx-get="/bottles/{plain}/edit?ctx=list"' in page
+    # Empty has no liquid to draw; the other levels fill to a different height.
+    heights = {}
+    for state in ("full", "half", "low", "empty"):
+        client.post(f"/bottles/{plain}/state", data={"state": state, "ctx": "list"})
+        row = re.search(rf'id="bottle-{plain}".*?</article>', client.get("/bottles").text, re.S)
+        glyph = re.search(r'<path d="M2 ([\d.]+)H14', row.group(0))
+        heights[state] = float(glyph.group(1)) if glyph else None
+    assert heights == {"full": 10.0, "half": 18.0, "low": 22.0, "empty": None}
 
 
 def test_delete_removes_the_card_closes_the_sheet_and_updates_the_action_bar(seeded):
@@ -227,10 +275,13 @@ def test_bottles_page_is_a_full_page_or_a_fragment_and_filters(seeded):
     full = client.get("/bottles")
     assert "<html" in full.text and 'id="bottle-groups"' in full.text
     assert titles_in(full.text) == ["Peely Base", "Thirst Trap"]
-    assert "2 bottles in 2 shades" in full.text
+    assert "2 bottles in 2 shades" in full.text and "Show archived" in full.text
+    # The level filter is one row of five chips, no horizontal scroller.
+    assert full.text.count('<a class="chip') == 5 and "chip-scroll" not in full.text
     part = client.get("/bottles", params={"state": "half"}, headers=HX)
     assert "<html" not in part.text and titles_in(part.text) == ["Thirst Trap"]
     assert titles_in(client.get("/bottles?archived=1").text) == ["Rest In Peach"]
+    assert "Hide archived" in client.get("/bottles?archived=1").text
     assert 'class="bottle ' not in client.get("/bottles?state=empty").text
     assert "Nothing at this level" in client.get("/bottles?state=empty").text
 
@@ -334,9 +385,8 @@ def test_the_wishlist_page_shows_groups_a_total_and_the_checkout_button(seeded):
     assert "<html" in page.text
     assert page.text.index("Want most") < page.text.index("Would like")
     assert titles_in(page.text) == ["Peely Base", "Hit The Lights", "Thirst Trap"]
-    assert "3 shades, $44.00." in page.text
-    assert "2 are in stock now for $29.00" in page.text
-    assert "Open in Holo Taco checkout" in page.text and "Copy the list" in page.text
+    assert "$29.00</strong> for 2 shades in stock" in page.text and "1 not buyable" in page.text
+    assert "Open in Holo Taco checkout" in page.text and "Copy list" in page.text
     assert 'target="_blank" rel="noopener"' in page.text
     assert "/static/js/copy.js" in page.text
 
@@ -385,7 +435,7 @@ def test_changing_priority_moves_the_item_and_keeps_the_note(seeded):
     )
     assert response.status_code == 200 and "<html" not in response.text
     assert 'id="wishlist"' in response.text and "Maybe one day" in response.text
-    assert 'section-title">Would like' not in response.text and 'value="pink!"' in response.text
+    assert 'section-title">Would like' not in response.text and ">pink!</button>" in response.text
     assert client.post(f"/wishlist/{item}", data={"priority": "7"}).status_code == 422
     assert client.post("/wishlist/9999", data={"priority": "1"}).status_code == 404
     assert (
@@ -395,6 +445,61 @@ def test_changing_priority_moves_the_item_and_keeps_the_note(seeded):
     assert (
         conn.execute("select priority from wishlist_item where id = ?", (item,)).fetchone()[0] == 3
     )
+
+
+def test_the_priority_menu_posts_the_priority_alone_and_keeps_the_note(seeded):
+    client, conn = seeded
+    client.post(f"/shades/{sid(conn, 'thirst-trap')}/wishlist")
+    item = conn.execute("select id from wishlist_item").fetchone()[0]
+    client.post(f"/wishlist/{item}", data={"priority": "2", "note": "pair with black"})
+    page = client.get("/wishlist").text
+    # A select per row, one option per priority, the current one selected; no segmented control.
+    assert (
+        f'<select name="priority" aria-label="Priority of Thirst Trap"'
+        f' hx-post="/wishlist/{item}/priority"' in page
+    )
+    assert re.findall(r'<option value="(\d)"( selected)?>([^<]+)</option>', page) == [
+        ("1", "", "Want most"),
+        ("2", " selected", "Would like"),
+        ("3", "", "Maybe one day"),
+    ]
+    assert 'name="priority" value=' not in page
+    moved = client.post(f"/wishlist/{item}/priority", data={"priority": "1"}, headers=HX)
+    assert moved.status_code == 200 and "pair with black" in moved.text
+    assert conn.execute("select priority, note from wishlist_item").fetchone()[:] == (
+        1,
+        "pair with black",
+    )
+    assert client.post(f"/wishlist/{item}/priority", data={"priority": "7"}).status_code == 422
+    assert client.post("/wishlist/9999/priority", data={"priority": "1"}).status_code == 404
+    refused = client.post(f"/wishlist/{item}/priority", data={"priority": "3"}, headers=NO_ORIGIN)
+    assert refused.status_code == 403
+    cleared = client.post(f"/wishlist/{item}", data={"priority": "1", "note": ""}, headers=HX)
+    assert "Add a note" in cleared.text
+    assert conn.execute("select note from wishlist_item").fetchone()[0] is None
+
+
+def test_a_wishlist_row_has_a_note_button_and_a_sheet_with_the_note_and_remove(seeded):
+    client, conn = seeded
+    client.post(f"/shades/{sid(conn, 'thirst-trap')}/wishlist")
+    item = conn.execute("select id from wishlist_item").fetchone()[0]
+    page = client.get("/wishlist").text
+    assert "Add a note</button>" in page and f'hx-get="/wishlist/{item}/edit"' in page
+    assert "Remove" not in page and "wish-controls" not in page
+    sheet = client.get(f"/wishlist/{item}/edit", headers=HX)
+    assert sheet.status_code == 200 and "<html" not in sheet.text
+    assert 'name="note"' in sheet.text and 'name="priority" value="2"' in sheet.text
+    assert (
+        f'hx-post="/wishlist/{item}/delete"' in sheet.text and "Remove from wishlist" in sheet.text
+    )
+    assert client.get("/wishlist/9999/edit").status_code == 404
+    saved = client.post(f"/wishlist/{item}", data={"priority": "2", "note": "autumn"}, headers=HX)
+    assert saved.headers["hx-trigger"] == "sheetClose" and ">autumn</button>" in saved.text
+    assert 'name="note"' in client.get(f"/wishlist/{item}/edit").text
+    assert "autumn" in client.get(f"/wishlist/{item}/edit").text
+    removed = client.post(f"/wishlist/{item}/delete", data={"ctx": "list"}, headers=HX)
+    assert removed.headers["hx-trigger"] == "sheetClose" and "Thirst Trap" not in removed.text
+    assert conn.execute("select count(*) from wishlist_item").fetchone()[0] == 0
 
 
 def test_removing_from_the_list_or_from_the_shade_page(seeded):
@@ -519,7 +624,8 @@ def test_a_shade_with_only_past_bottles_lists_them_under_past_bottles(seeded):
     add_bottle(client, shade, bought_on="2026-10-03", price_paid="15.50")
     conn.execute("update bottle set state = 'empty'")
     page = client.get(f"/shades/{shade}").text
-    assert "Past bottles" in page and "Bought 3 Oct 2026" in page and "Paid $15.50." in page
+    assert "Past bottles" in page and "No P code" in page
+    assert "Bought 3 Oct 2026, $15.50" in page
     assert '<h2 class="section-title">Bottles</h2>' not in page
     add_bottle(client, shade)
     both = client.get(f"/shades/{shade}").text

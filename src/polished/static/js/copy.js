@@ -1,5 +1,5 @@
-// "Copy the list": copies the text of the element named by data-copy. Where the clipboard API is
-// refused (a plain-http origin), the text is selected so a long press can copy it.
+// "Copy list": copies the text of the element named by data-copy. Where the clipboard API is
+// refused (a plain-http origin), the text is shown and selected so a long press can copy it.
 document.addEventListener("click", async (event) => {
   const button = event.target.closest("[data-copy]");
   if (!button) return;
@@ -12,6 +12,7 @@ document.addEventListener("click", async (event) => {
     await navigator.clipboard.writeText(text);
     caption.textContent = "Copied";
   } catch {
+    source.hidden = false; // a hidden source is shown, so there is something to select
     source.focus();
     source.select?.();
     caption.textContent = "Select and copy";

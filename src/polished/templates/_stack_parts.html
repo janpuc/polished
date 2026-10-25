@@ -1,5 +1,16 @@
-{# Two bits of the builder that sit outside #stack-layers and follow it: the live summary under
-   the title and the Save button. `oob` makes a layer response replace them in the open sheet. #}
+{# Three bits of the builder that sit outside #stack-layers and follow it: the composite tip and the
+   live summary in the head, and the Save button. `oob` makes a layer response replace them in the
+   open sheet. The tip is never replaced: each edit appends the new picture over the old one
+   (`tip_fresh`), static/js/sheet.js fades it in once it has loaded and drops the older ones. #}
+{% from "_tip_img.html" import stack_tip %}
+{% macro head_tip(s) -%}
+<span id="stack-tip" class="tip-xl" aria-hidden="true">{% if s.layers %}{{ stack_tip(s.stack_id, s.layers, 72, 118, false) }}{% endif %}</span>
+{%- endmacro %}
+
+{% macro tip_fresh(s) -%}
+<div hx-swap-oob="beforeend:#stack-tip">{% if s.layers %}<img class="tip-fresh" src="{{ tip_stack_url(s.stack_id, s.layers) }}" width="72" height="118" alt="" decoding="async">{% else %}<span class="tip-fresh tip-blank"></span>{% endif %}</div>
+{%- endmacro %}
+
 {% macro summary_line(s, oob=False) -%}
 <p id="stack-summary" class="stack-summary" aria-live="polite"{% if oob %} hx-swap-oob="true"{% endif %}>{% if s.layers %}{{ s.summary }}{% else %}<span class="summary-empty">Nothing on this nail yet</span>{% endif %}</p>
 {%- endmacro %}

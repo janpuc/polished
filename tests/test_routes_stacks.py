@@ -283,6 +283,54 @@ def test_dismissing_keeps_the_draft_and_the_next_tap_resumes_it(client, catalog,
     assert 'id="slot-12"' not in reopened.text
 
 
+def tip_urls(text):
+    return re.findall(r'src="(/tips/stack/\d+\.svg\?v=\w+)"', text)
+
+
+def test_the_head_shows_the_stacks_composite_tip_and_every_edit_appends_a_new_picture(
+    client, catalog, wheel
+):
+    stack_id, opened = open_sheet(client, wheel)
+    head = opened.text.split('class="builder-body')[0]
+    assert '<span id="stack-tip" class="tip-xl" aria-hidden="true"></span>' in head
+    assert "Slot 12" in head and 'class="builder-caption">Holos<' in head
+    first = add(client, stack_id, catalog, "spirit-fingers")
+    # Out of band, appended over the old picture (so the page can cross-fade), with a URL that
+    # carries the layers' revision: a second layer, then a coat, then a removal are each a new one.
+    assert 'hx-swap-oob="beforeend:#stack-tip"' in first.text and 'class="tip-fresh"' in first.text
+    seen = tip_urls(first.text)
+    assert len(seen) == 1 and seen[0].startswith(f"/tips/stack/{stack_id}.svg?v=")
+    second = add(client, stack_id, catalog, "flakie-holo-taco")
+    layers = stacks.layers(catalog, stack_id)
+    coats = client.post(
+        f"/stacks/{stack_id}/layers/{layers[0]['id']}/coats", data={"delta": "1"}, headers=PARTIAL
+    )
+    gone = client.post(f"/stacks/{stack_id}/layers/{layers[1]['id']}/delete", headers=PARTIAL)
+    seen += tip_urls(second.text) + tip_urls(coats.text) + tip_urls(gone.text)
+    assert len(seen) == 4 and len(set(seen)) == 4
+    assert client.get(seen[-1]).status_code == 200
+    # The last layer gone: nothing to draw, a blank nail fades in over the old picture.
+    last = client.post(
+        f"/stacks/{stack_id}/layers/{stacks.layers(catalog, stack_id)[0]['id']}/delete",
+        headers=PARTIAL,
+    )
+    assert tip_urls(last.text) == [] and 'class="tip-fresh tip-blank"' in last.text
+    # A reopened draft draws its tip in the head from the start.
+    add(client, stack_id, catalog, "flakie-holo-taco")
+    again = client.get(f"/stacks/{stack_id}/sheet").text
+    assert re.search(r'<span id="stack-tip" class="tip-xl"[^>]*><img src="/tips/stack/', again)
+    assert "tip-fresh" not in again
+
+
+def test_resumed_note_is_a_footnote_in_the_head_not_a_notice(client, catalog, wheel):
+    stack_id, _ = open_sheet(client, wheel)
+    add(client, stack_id, catalog, "flakie-holo-taco")
+    _, again = open_sheet(client, wheel)
+    head, body = again.text.split('class="builder-body')
+    assert '<p class="footnote muted">Resumed your draft.</p>' in head
+    assert "Resumed your draft." not in body and 'class="notice"' not in body
+
+
 def test_a_saved_slot_opens_with_its_layers_name_and_remove(client, catalog, wheel):
     swatch(catalog, wheel, 12, "one-coat-black", "flakie-holo-taco")
     stack_id, sheet = open_sheet(client, wheel)

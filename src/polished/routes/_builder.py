@@ -106,9 +106,7 @@ def sheet_context(
     request: Request, conn: sqlite3.Connection, stack_id: int, *, resumed: bool = False
 ) -> dict:
     scope = default_scope(conn)
-    context = layers_context(
-        request, conn, stack_id, notice="Resumed your draft." if resumed else None
-    )
+    context = layers_context(request, conn, stack_id, resumed=resumed)
     sheet = context["s"]
     context.update(
         scope=scope,

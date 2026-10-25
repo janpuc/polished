@@ -42,6 +42,9 @@
   <symbol id="chevron-right" viewBox="0 0 24 24">
     <path d="m9.5 5 7 7-7 7"/>
   </symbol>
+  <symbol id="chevron-down" viewBox="0 0 24 24">
+    <path d="m5 9.5 7 7 7-7"/>
+  </symbol>
   <symbol id="chevron-left" viewBox="0 0 24 24">
     <path d="m14.5 5-7 7 7 7"/>
   </symbol>

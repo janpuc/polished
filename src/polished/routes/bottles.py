@@ -302,7 +302,11 @@ def archive_bottle(
 ):
     _require_bottle(conn, bottle_id)
     bottles.set_archived(conn, bottle_id, bool(archived))
-    return _card(request, conn, bottle_id, ctx)
+    # On /bottles an archived (or restored) bottle no longer belongs to the list that is on
+    # screen: an empty answer swaps its row away. On the shade page the card stays, marked.
+    response = Response() if ctx == "list" else _card(request, conn, bottle_id, ctx)
+    response.headers.update(SHEET_CLOSE)
+    return response
 
 
 @router.post("/bottles/{bottle_id}/delete")

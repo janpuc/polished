@@ -49,7 +49,8 @@
     </div>
   </details>
   {% if bottle %}
-  <div class="sheet-danger">
+  <div class="sheet-quiet">
+    <button type="button" class="btn btn-text" hx-post="/bottles/{{ bottle.id }}/archive" hx-vals='{"archived": "{{ 0 if bottle.archived else 1 }}", "ctx": "{{ ctx }}"}' hx-target="#bottle-{{ bottle.id }}" hx-swap="outerHTML">{% if bottle.archived %}Restore this bottle{% else %}Archive this bottle{% endif %}</button>
     <button type="button" class="btn btn-text btn-danger" hx-post="/bottles/{{ bottle.id }}/delete" hx-vals='{"ctx": "{{ ctx }}"}' hx-confirm="Delete this bottle entry? Use Archive to keep it." hx-target="#bottle-{{ bottle.id }}" hx-swap="outerHTML">Delete this entry</button>
   </div>
   {% endif %}

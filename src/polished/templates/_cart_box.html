@@ -1,24 +1,27 @@
-{# The checkout button and its fallback. Swapped as a whole by the priority control. #}
+{# The head of the wishlist: what the checkout covers in one line, the one filled button, two text
+   actions and the include filter. Swapped as a whole by the filter, so the total follows it. #}
 {% from "_icons.html" import icon with context %}
-<section id="cart-box" class="cart-box">
+<section id="cart-box" class="cart-box" aria-label="Checkout">
+  <div class="cart-head">
+    {% if cart.url %}
+    <p class="cart-total"><strong>{{ cart.total_cents|money }}</strong> for {{ cart.items|length }} shade{{ '' if cart.items|length == 1 else 's' }} in stock</p>
+    {% else %}
+    <p class="cart-total">Nothing on this part of the list is in stock right now</p>
+    {% endif %}
+    {% if cart.skipped %}<p class="footnote muted">{{ cart.skipped }} not buyable</p>{% endif %}
+  </div>
+  {% if cart.url %}<a class="btn btn-block" href="{{ cart.url }}" target="_blank" rel="noopener">Open in Holo Taco checkout</a>{% endif %}
+  <div class="cart-actions">
+    {% if cart.url %}<button type="button" class="btn btn-text" data-copy="#cart-list" aria-live="polite">{{ icon("copy") }}<span>Copy list</span></button>{% endif %}
+    <button type="button" class="btn btn-text" hx-get="/wishlist/bought" hx-include="#cart-box [name=max_priority]" hx-target="#sheet-body" hx-swap="innerHTML">I bought these</button>
+  </div>
   <form class="cart-priority" action="/wishlist/cart" method="get" hx-get="/wishlist/cart" hx-trigger="change" hx-target="#cart-box" hx-swap="outerHTML">
-    <span class="legend" id="legend-cart">Include</span>
-    <div class="segmented" role="radiogroup" aria-labelledby="legend-cart">
+    <div class="segmented" role="radiogroup" aria-label="Include in the checkout">
       {% for p, text in [(1, "Want most"), (2, "Plus would like"), (3, "Everything")] %}
       <label class="pick"><input type="radio" name="max_priority" value="{{ p }}"{% if cart.max_priority == p %} checked{% endif %}><span>{{ text }}</span></label>
       {% endfor %}
     </div>
     <noscript><button type="submit" class="btn btn-secondary btn-block">Update</button></noscript>
   </form>
-  {% if cart.url %}
-  <p class="cart-total"><strong>{{ cart.total_cents|money }}</strong><span>{{ cart.items|length }} shade{{ '' if cart.items|length == 1 else 's' }} in stock now{% if cart.skipped %}, {{ cart.skipped }} not buyable{% endif %}</span></p>
-  <div class="cart-actions">
-    <a class="btn btn-block" href="{{ cart.url }}" target="_blank" rel="noopener">Open in Holo Taco checkout</a>
-    <button type="button" class="btn btn-text" data-copy="#cart-list" aria-live="polite">{{ icon("copy") }}<span>Copy the list</span></button>
-  </div>
-  <textarea id="cart-list" class="cart-list" readonly rows="{{ [cart.items|length, 6]|min }}" aria-label="Shade names to copy">{{ cart.names }}</textarea>
-  <p class="cart-hint">Opens the Holo Taco checkout with these {{ cart.items|length }} shade{{ '' if cart.items|length == 1 else 's' }}, one of each.</p>
-  {% else %}
-  <p class="cart-total"><span>Nothing on this part of the list is in stock right now{% if cart.skipped %}, {{ cart.skipped }} not buyable{% endif %}.</span></p>
-  {% endif %}
+  {% if cart.url %}<textarea id="cart-list" class="cart-list" readonly hidden rows="{{ [cart.items|length, 6]|min }}" aria-label="Shade names to copy">{{ cart.names }}</textarea>{% endif %}
 </section>

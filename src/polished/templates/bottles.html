@@ -9,7 +9,6 @@
   <a class="btn btn-text btn-icon" href="/lookup?scan=1" aria-label="Add a bottle by scanning">{{ icon("camera") }}</a>
 </header>
 {% set view = "collection" %}{% include "_bottle_views.html" %}
-<p class="count">{{ counts.bottles }} bottle{{ '' if counts.bottles == 1 else 's' }} in {{ counts.shades }} shade{{ '' if counts.shades == 1 else 's' }}</p>
 {% include "_bottle_filters.html" %}
 <div id="bottle-groups">
   {% include "_bottle_groups.html" %}

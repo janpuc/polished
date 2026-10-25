@@ -797,7 +797,7 @@ keeps nothing, so a dropped connection or a backgrounded tab loses nothing.
 
 1. **Open.** On the wheel page, tapping slot 12 posts `POST /wheels/{id}/slots/12/draft`
    (`hx-target="#sheet-body"`). The server creates the `wheel_slot` row if missing, then returns
-   the existing `draft_stack_id` if there is one ("Resumed your draft" note), else creates a
+   the existing `draft_stack_id` if there is one (a "Resumed your draft." footnote in the head), else creates a
    draft `stack` containing a copy of the slot's saved layers (or none) and stores it in
    `draft_stack_id`. The partial is the sheet; `sheet.js` calls `showModal()` on the `<dialog>`
    when `#sheet-body` is swapped.
@@ -807,8 +807,9 @@ keeps nothing, so a dropped connection or a backgrounded tab loses nothing.
    listed in painting order, **Base at the top**, as the advice recommends:
 
    ```
-   Wheel "Holos" · slot 12                                    [Cancel]
-   One-Coat Black + Spirit Fingers ×2 + Flakie Holo Taco      <- live summary
+   [tip]  Slot 12                                             [Cancel]
+   [tip]  Holos                       <- the stack's composite tip, 72x118
+   [tip]  One-Coat Black + Spirit Fingers ×2 + Flakie Holo Taco   <- live summary
    Base  [img] One-Coat Black       −  1  +   ↑ ↓  ×
    2nd   [img] Spirit Fingers       −  2  +   ↑ ↓  ×
    Top   [img] Flakie Holo Taco     −  1  +   ↑ ↓  ×
@@ -964,12 +965,14 @@ builds it.
 | GET | `/bottles/{id}/edit` | Edit form | P (sheet) | 4 |
 | POST | `/bottles/{id}` | Update | P bottle card, `HX-Trigger: sheetClose` | 4 |
 | POST | `/bottles/{id}/state` | Set full / half / low / empty | P bottle card | 4 |
-| POST | `/bottles/{id}/archive` | `archived=0/1` | P bottle card | 4 |
+| POST | `/bottles/{id}/archive` | `archived=0/1`; called from the edit sheet | P bottle card (`ctx=shade`) or an empty body that swaps the row away (`ctx=list`); `HX-Trigger: sheetClose` | 4 |
 | POST | `/bottles/{id}/delete` | Hard delete a mistaken entry (`hx-confirm`) | P (empty) + `sheetClose` | 4 |
 | GET | `/wishlist` | Items by priority, total (all, and buyable), cart box | full page | 4 |
 | POST | `/shades/{id}/wishlist` | Add (`priority`, default 2; an existing item is kept) | P action bar | 4 |
-| POST | `/wishlist/{id}` | Priority (1 to 3) and note | P `#wishlist` | 4 |
-| POST | `/wishlist/{id}/delete` | Remove (`ctx=shade` from a shade page) | P `#wishlist` / action bar | 4 |
+| GET | `/wishlist/{id}/edit` | The row's sheet: note and Remove | P (sheet) | 2a |
+| POST | `/wishlist/{id}` | Priority (1 to 3) and note, from the row's sheet (an empty note clears it) | P `#wishlist`, `HX-Trigger: sheetClose` | 4 |
+| POST | `/wishlist/{id}/priority` | Priority alone, from the row's menu; the note stays | P `#wishlist` | 2a |
+| POST | `/wishlist/{id}/delete` | Remove (`ctx=shade` from a shade page, `ctx=list` from the row's sheet) | P `#wishlist` + `sheetClose` / action bar | 4 |
 | GET | `/wishlist/cart` | Permalink for buyable items up to `max_priority` | P cart box | 4 |
 | GET | `/wishlist/bought` | "I bought these" sheet; `max_priority` picks what starts ticked | P (sheet) | history |
 | POST | `/wishlist/bought` | `item` (ids, repeated), `price-<id>`, `bought_on`; one full bottle per item, items removed, one transaction | P `#wishlist` with a confirmation, `HX-Trigger: sheetClose`; 422 retargets the sheet; unknown item 404 | history |
@@ -981,15 +984,18 @@ available), quantity 1, in list order (priority 1 first, then the order added), 
 the first priorities. Verified 2026-10-25 with one request: `https://holotaco.com/cart/16924152004698:1`
 answers 301 to `https://www.holotaco.com/cart/16924152004698:1?cart_link_id=…`, then 302 to
 `https://www.holotaco.com/checkouts/cn/…`. So the permalink opens the Shopify **checkout** with the
-items in it, not the cart page; the button reads "Open in Holo Taco checkout". The box also offers
-"Copy the list" (the shade names, one per line, for ordering by hand) as a fallback, and shows the
-count and total of what the link carries and how many items on that part of the list are not buyable.
+items in it, not the cart page; the button reads "Open in Holo Taco checkout". The head of the page
+(`_cart_box.html`) is one line, "$78.50 for 5 shades in stock", a footnote "1 not buyable" when
+items on that part of the list cannot be bought, the checkout button, the text actions "Copy list"
+(the shade names, one per line, for ordering by hand, from a hidden textarea that is shown and
+selected where the clipboard is refused) and "I bought these", and the include filter (a segmented
+control of three) under them.
 
 Every route in this section except `GET /bottles` and `GET /wishlist` answers with its fragment
 whether or not `HX-Request` is set, as `/search` does. A bottle
 form that fails validation answers 422 with `HX-Retarget: #sheet-body`, so the messages appear in
-the sheet. `POST /wishlist/{id}` and `/wishlist/{id}/delete` return the whole `#wishlist` body
-(totals, checkout box and groups all change with a priority), not one row; the delete from a shade
+the sheet. `POST /wishlist/{id}`, `/wishlist/{id}/priority` and `/wishlist/{id}/delete` return the
+whole `#wishlist` body (totals, checkout box and groups all change with a priority), not one row; the delete from a shade
 page (`ctx=shade`) returns the shade's action bar instead. Bottle cards and the new bottle list
 carry the shade page's action bar as an out-of-band copy when `ctx=shade`, because the bar's
 "I have this" / "+ Add bottle" label and the "owned ×N" badge follow the bottles.
@@ -1318,7 +1324,7 @@ carry the shade page's action bar as an out-of-band copy when `ctx=shade`, becau
 72. **Bottle card:** the four-segment level control left the card; it shows one pill ("Half ›") that opens the
     edit sheet, which holds the segmented control. The `Edit` text button went (the pill is the way in); the
     title is the P code, else "Bought 12 Mar 2026", else "Bottle", and "No P code." moves to the caption with
-    the price ("Paid $13.00."). `POST /bottles/<id>/state` stays, unused by the card.
+    the price ("Paid $13.00."). `POST /bottles/<id>/state` stays, unused by the card. **Superseded by 81.**
 73. **Owned pill on the shade page** lives in the subhead after the price (`_owned_pill.html`, a span that
     bottle fragments replace out of band), the shade-page button is always "Add bottle", and "In stock" is
     not shown (silence is in stock, as in the rows).
@@ -1374,9 +1380,56 @@ carry the shade page's action bar as an out-of-band copy when `ctx=shade`, becau
     - Two defects found by the screenshots are fixed here: the number on an empty tip no longer widens
       the page on a 12-slot ring (a 7px horizontal scroll that pushed the tab bar off the screen), and the
       hidden file input of the lookup page no longer sits past the right edge (same symptom, 408px).
-    - Left for run 2 (advice section 4): the Home restructure, the wheel list's mini rings, the level glyph
-      and Archive inside the bottle sheet, the wishlist head and row controls, the builder's composite
-      head, lookup camera-first, the shade page's tip beside the title.
+    - Left for run 2 (advice section 4): the Home restructure, the wheel list's mini rings, lookup
+      camera-first, the shade page's tip beside the title. The level glyph, Archive in the bottle sheet, the
+      wishlist head and rows and the builder's composite head are run 2a (81).
+
+81. **Run 2a: Bottles, Wishlist and the builder sheet** (advice section 3; the screens only, Home, Wheels,
+    shade detail and lookup are run 2b). Where it departs from the advice or the brief:
+    - **Bottle rows** are plain rows of one grouped list per shade (`_bottle_card.html`, still the one
+      partial the shade page uses): P code or "No P code" in `--ink-2`, a footnote "Bought 21 Jul 2026,
+      $15.50" (or "Paid $15.50"; "Archived." leads it for an archived bottle), then "Opened ..." and the
+      notes. The whole row is the button that opens the edit sheet; the pill, the red-free "Archive" text
+      and the "Bought 18 May 2026" title are gone (72 is superseded).
+    - **The level glyph** (`_level_glyph.html`) is an inline SVG bottle, 20x35, with the liquid drawn as a
+      path filled to 100 / 50 / 25 / 0 percent in the shade's colour (`tip_hex`). The colour is a `fill`
+      attribute, not a style, so the CSP has nothing to block and no per-shade CSS or extra route exists. The
+      outline and cap are `currentColor` (`--ink-3`); the word beside it (Full, Half, Low, Empty) is `--ink-2`
+      in every state (the amber "Low" went: the glyph is the colour).
+    - **Archive moved into the edit sheet**, a quiet text action beside "Delete this entry" (red, because it
+      destroys); "Restore this bottle" for an archived one. The route is unchanged but now closes the sheet,
+      and on `/bottles` (`ctx=list`) it answers with an empty body so the row leaves the list that is on
+      screen (a group with no row left is hidden by `:has()`); on the shade page (`ctx=shade`) the card stays,
+      marked "Archived". The counts line is not recomputed until the next load.
+    - **The level filter** is one row of five outlined chips (`.chip-row`, flex with wrap, no scroller). "Archived"
+      left the chips for a text toggle, "Show archived" / "Hide archived", at the right of the count line
+      ("Archived bottles" while it is on); both ride along out of band with the chips.
+    - **Wishlist head** is the advice's short head: the checkout box (one line, footnote, button, "Copy list" and
+      "I bought these" side by side, the include segmented) on the board; the sentence summary, the "Include"
+      label, the hint and the plain names list are gone (the names stay in a hidden textarea for Copy list).
+      The total is of what the link carries, so the wishlist's grand total (items not in stock) is no longer
+      shown. "I bought these" moved into the cart box, so it is swapped with it and reads the same filter.
+    - **Wishlist rows** are a grid: tip, title (a stretched link to the shade), price at the trailing edge, a
+      footnote line for status and "Owned ×N" (plain text, no pill), the note as a footnote button ("Add a
+      note" in ink 600 when empty) and a native `<select>` for the priority ("Want most" with a chevron).
+      The note button opens the row's sheet (`_wishlist_sheet.html`: note, "Remove from wishlist" in red, Save
+      note); Remove left the row. The menu posts to a new `POST /wishlist/{id}/priority` because FastAPI reads
+      an empty form field as missing, so "priority alone, keep the note" cannot share `POST /wishlist/{id}`
+      with "the sheet clears the note".
+    - **Builder head** is the stack's composite tip (72x118) beside "Slot 3", the wheel name as a caption and
+      Cancel, the summary under them as body text (17, weight 400, two lines at most; the layers list shows
+      all of them). "Resumed your draft." is a footnote in the head, not a notice in the layers.
+      `sheet_context` passes `resumed` instead of a notice. The tip is `#stack-tip`; every layer edit appends the
+      new `/tips/stack/{id}.svg?v=<revision>` over the old one out of band (`beforeend:#stack-tip`, a blank
+      shape when the last layer went), `sheet.js` fades it in on `load` (an opacity transition, so it holds
+      under reduced motion) and then drops the pictures under it, so a slow connection never shows an empty
+      nail. The shortcut chips wrap (`flex-wrap`, 10px padding) instead of scrolling.
+    - Small: `ui.svg` has a `chevron-down`; `.sheet-danger` is `.sheet-quiet` (it now holds Archive and Remove
+      as well as the destructive actions); the sheet's subtitle and note no longer balance their wrap.
+    - For 2b: the shade page's bottle list is the same partial, so it already has rows, glyphs and "Archive
+      this bottle" in the sheet; its `<h2>Bottles</h2>` section titles and its "Past bottles" heading are
+      untouched. `.group-head` (tip, name, link) is the bottle list's shade head and could serve the shade
+      list. `.sheet-quiet` is the place for a sheet's secondary actions.
 
 ## 15. Home-ops manifests
 

@@ -1358,26 +1358,49 @@ a.chip:not(.is-on):active {
   display: inline;
 }
 
-/* 9. Bottles */
-.chip-scroll {
+/* 9. Bottles: a head per shade (tip and name), then one grouped list of plain rows. The level is a
+   small bottle filled to Full, Half, Low or Empty in the shade's own colour, the only colour in a
+   row (_level_glyph.html: inline SVG with presentation attributes, so the CSP has nothing to
+   block). The whole row opens the edit sheet. */
+/* Five chips share one row at 390pt and wrap, never scroll, when the text size grows. */
+.chip-row {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
-  margin: 12px calc(-1 * var(--gutter)) 0;
-  padding: 0 var(--gutter);
-  overflow-x: auto;
-  scrollbar-width: none;
+  margin-top: 12px;
 }
 
-.chip-scroll::-webkit-scrollbar {
-  display: none;
+.chip-row .chip {
+  flex: 1 1 auto;
 }
 
-.chip-scroll .chip {
-  flex: none;
+.filter-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: var(--tap);
+  margin-top: 8px;
+}
+
+.filter-line .count {
+  margin: 0;
+}
+
+.filter-line .btn-text {
+  margin-right: -10px;
+  font-size: 0.9375rem;
+  line-height: 1.25rem;
 }
 
 .bottle-group {
-  margin-top: 24px;
+  margin-top: 16px;
+}
+
+/* A group whose last bottle was just archived out of the list has nothing left to show. */
+.bottle-group:not(:has(.bottle)) {
+  display: none;
 }
 
 .group-head {
@@ -1394,69 +1417,92 @@ a.chip:not(.is-on):active {
   flex: 1;
 }
 
-.bottle {
-  padding: 8px 13px 14px;
-}
-
-.bottle.is-archived .bottle-code,
-.bottle.is-archived .bottle-meta {
-  opacity: 0.6;
-}
-
-.bottle-head {
+.bottle-row {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  gap: 0 8px;
-  min-height: var(--tap);
+  gap: 12px;
+  width: 100%;
+  min-height: 64px;
+  padding: 10px 10px 10px 13px;
+  border: 0;
+  border-radius: var(--r-row);
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
 }
 
-.bottle-code {
-  flex: 1 1 6rem;
+.bottle-row:active {
+  background: var(--fill);
+}
+
+.bottle-row:focus-visible {
+  outline-offset: -2px;
+}
+
+.bottle-row > .icon {
+  color: var(--ink-3);
+}
+
+.bottle-body {
+  flex: 1;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.bottle-title {
   font-size: 1.0625rem;
   line-height: 1.375rem;
   font-weight: 600;
 }
 
-.pill-level {
-  position: relative;
-  gap: 2px;
-  padding-right: 4px;
-  border: 0;
-  font-family: inherit;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-}
-
-/* The pill is small; its hit area is the 44pt row. */
-.pill-level::after {
-  content: "";
-  position: absolute;
-  inset: -14px -6px;
-}
-
-.pill-level.state-low {
-  color: var(--warn);
-}
-
-.pill-level.state-empty {
+.bottle-title.is-plain {
   color: var(--ink-2);
+  font-weight: 500;
 }
 
-.bottle-head .btn-text {
-  padding: 0 8px;
+.bottle-foot {
+  color: var(--ink-2);
+  font-size: 0.8125rem;
+  line-height: 1.125rem;
+  font-variant-numeric: tabular-nums;
 }
 
-.bottle-head .btn-text:last-child {
-  margin-right: -8px;
+.bottle-notes {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  overflow-wrap: anywhere;
 }
 
-.bottle-meta {
-  margin: 6px 0 0;
+/* The glyph column is fixed, so the bottles line up down the list whatever the word. */
+.bottle-level {
+  flex: none;
+  display: grid;
+  grid-template-columns: 20px 3.25rem;
+  align-items: center;
+  column-gap: 8px;
   color: var(--ink-2);
   font-size: 0.9375rem;
   line-height: 1.25rem;
+  font-weight: 500;
+}
+
+.level-glyph {
+  display: block;
+  width: 20px;
+  height: 35px;
+  color: var(--ink-3);
+}
+
+.bottle.is-archived .bottle-body,
+.bottle.is-archived .bottle-level {
+  opacity: 0.6;
 }
 
 .bottles-section {
@@ -1556,6 +1602,7 @@ a.chip:not(.is-on):active {
 
 .sheet-sub {
   display: block;
+  text-wrap: pretty;
   margin-top: 2px;
   color: var(--ink-2);
   font-size: 0.9375rem;
@@ -1612,9 +1659,12 @@ a.chip:not(.is-on):active {
   box-shadow: 0 -1px 0 var(--material-edge);
 }
 
-.sheet-danger {
+/* Quiet actions at the foot of a sheet: Archive, Remove. Red only where the action destroys. */
+.sheet-quiet {
   display: flex;
+  flex-wrap: wrap;
   justify-content: center;
+  gap: 0 8px;
   padding-bottom: calc(8px + env(safe-area-inset-bottom));
 }
 
@@ -1622,54 +1672,46 @@ a.chip:not(.is-on):active {
   width: 100%;
 }
 
-/* 11. Wishlist */
-.wish-summary {
-  margin: 4px 0 16px;
-  font-size: 1.0625rem;
-  line-height: 1.375rem;
-}
-
+/* 11. Wishlist: a short head on the board (what the checkout covers in one line, the one filled
+   button, two text actions, the include filter), then the wished shades as plain rows. A row is
+   a stretched link to the shade with its note button and a native priority menu on top. */
 .cart-box {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  margin-bottom: 8px;
+  margin-top: 4px;
 }
 
-.cart-box .segmented .pick span {
-  padding: 0 4px;
+.cart-head {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
 .cart-total {
-  display: flex;
-  flex-direction: column;
-}
-
-.cart-total strong {
-  font-size: 1.75rem;
-  line-height: 2.125rem;
-  font-weight: 700;
-  letter-spacing: -0.02em;
+  font-size: 1.375rem;
+  line-height: 1.75rem;
+  font-weight: 400;
+  letter-spacing: -0.01em;
   font-variant-numeric: tabular-nums;
 }
 
-.cart-total span {
-  color: var(--ink-2);
-  font-size: 0.9375rem;
-  line-height: 1.25rem;
+.cart-total strong {
+  font-weight: 700;
 }
 
-.cart-hint {
-  color: var(--ink-2);
-  font-size: 0.8125rem;
-  line-height: 1.125rem;
+.cart-priority .segmented .pick span {
+  padding: 0;
 }
 
 .cart-actions {
   display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 4px;
+  gap: 8px;
+}
+
+.cart-actions .btn-text {
+  flex: 1;
+  min-width: 0;
 }
 
 .cart-list {
@@ -1684,10 +1726,6 @@ a.chip:not(.is-on):active {
   resize: none;
 }
 
-.cart-list:focus-visible {
-  outline-offset: 4px;
-}
-
 .wish-group .section-title span {
   color: var(--ink-2);
   font-weight: 400;
@@ -1696,7 +1734,13 @@ a.chip:not(.is-on):active {
 
 .wish-row {
   position: relative;
-  padding-bottom: 8px;
+  isolation: isolate;
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) auto;
+  column-gap: 12px;
+  align-items: center;
+  margin: 0 calc(-1 * var(--gutter));
+  padding: 12px var(--gutter);
 }
 
 .wish-row::after {
@@ -1704,73 +1748,117 @@ a.chip:not(.is-on):active {
   position: absolute;
   right: 0;
   bottom: 0;
-  left: 52px;
+  left: calc(var(--gutter) + 52px);
   height: 1px;
   background: var(--line);
 }
 
-.wish-row .row-link {
-  min-height: 88px;
+.wish-tip {
+  grid-column: 1;
+  grid-row: 1 / span 3;
+  align-self: start;
+  pointer-events: none;
 }
 
-.wish-controls {
+.wish-title {
+  grid-column: 2;
+  grid-row: 1;
+  color: inherit;
+  text-decoration: none;
+}
+
+/* The link covers the row; what is interactive on top of it comes later in the source. */
+.wish-title::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+}
+
+.wish-title:active::after {
+  background: var(--fill);
+}
+
+.wish-title:focus-visible {
+  outline: 0;
+}
+
+.wish-title:focus-visible::after {
+  outline: 2px solid var(--ink);
+  outline-offset: -2px;
+}
+
+.wish-price {
+  grid-column: 3;
+  grid-row: 1;
+  justify-self: end;
+  pointer-events: none;
+}
+
+.wish-flags {
+  grid-column: 2 / span 2;
+  grid-row: 2;
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
-  gap: 4px 8px;
-}
-
-.wish-controls .segmented {
-  flex: 1;
-  width: auto;
-}
-
-.wish-controls .segmented .pick span {
-  padding: 0 4px;
-}
-
-.wish-controls .btn-text {
-  margin-right: -10px;
-}
-
-.wish-controls .wish-remove {
+  gap: 0 8px;
   color: var(--ink-2);
-  font-weight: 500;
-}
-
-.wish-controls .wish-remove:active {
-  color: var(--bad);
-}
-
-.wish-note-box {
-  order: 1;
-  flex: 1 1 100%;
-}
-
-.wish-note-box > summary {
-  display: flex;
-  align-items: center;
-  min-height: var(--tap);
-  color: var(--ink-2);
-  font-size: 0.9375rem;
-  line-height: 1.25rem;
-  font-weight: 500;
-  cursor: pointer;
-  list-style: none;
-}
-
-.wish-note-box > summary::-webkit-details-marker {
-  display: none;
+  font-size: 0.8125rem;
+  line-height: 1.125rem;
+  pointer-events: none;
 }
 
 .wish-note {
-  width: 100%;
+  grid-column: 2;
+  grid-row: 3;
+  min-width: 0;
   min-height: var(--tap);
-  margin-bottom: 4px;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  background: none;
+  color: var(--ink-2);
+  font-size: 0.8125rem;
+  line-height: 1.125rem;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
 }
 
-.bought-button {
-  margin: 0 0 8px;
+.wish-note.is-empty {
+  color: var(--ink);
+  font-size: 0.9375rem;
+  line-height: 1.25rem;
+  font-weight: 600;
+}
+
+.wish-prio {
+  position: relative;
+  grid-column: 3;
+  grid-row: 3;
+  display: inline-flex;
+  align-items: center;
+}
+
+.wish-prio select {
+  appearance: none;
+  -webkit-appearance: none;
+  width: auto;
+  min-height: var(--tap);
+  padding: 0 22px 0 8px;
+  border: 0;
+  border-radius: var(--r-input);
+  background: transparent;
+  font: 600 0.9375rem/1.25rem var(--sans);
+  text-align-last: right;
+  cursor: pointer;
+}
+
+.wish-prio .icon {
+  position: absolute;
+  right: 0;
+  color: var(--ink-3);
+  pointer-events: none;
 }
 
 /* 11b. Purchase history and the "I bought these" sheet */
@@ -1834,6 +1922,7 @@ a.chip:not(.is-on):active {
 
 .sheet-note {
   display: block;
+  text-wrap: pretty;
   margin-top: 2px;
   color: var(--ink-2);
   font-size: 0.9375rem;
@@ -3041,36 +3130,89 @@ input.tip-input {
   position: sticky;
   top: 0;
   z-index: 3;
-  padding: 0 var(--gutter);
+  padding: 0 var(--gutter) 12px;
   background: var(--surface);
   box-shadow: 0 1px 0 var(--line);
 }
 
-.builder-head .sheet-head {
-  padding-bottom: 4px;
+/* The stack's own nail beside its name: tip left; slot, wheel name and Cancel on the first row of
+   the text column, the live summary under them. */
+.builder-title {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding-top: 8px;
 }
 
-.builder .sheet-sub {
-  font-size: 0.8125rem;
-  line-height: 1.125rem;
-  font-weight: 500;
+.builder-text {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+}
+
+.builder-name {
+  min-width: 0;
+  padding-top: 6px;
+}
+
+.builder-name h2 {
+  font-size: 1.75rem;
+  line-height: 2.125rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.builder-name h2:focus {
+  outline: 0;
+}
+
+.builder-caption {
+  color: var(--ink-2);
+  font-size: 0.9375rem;
+  line-height: 1.25rem;
+}
+
+.builder-text > .btn-text {
+  margin-right: -10px;
 }
 
 .stack-summary {
+  grid-column: 1 / -1;
   display: -webkit-box;
-  -webkit-line-clamp: 3;
+  -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
-  margin: 0;
-  padding: 0 0 12px;
+  margin: 6px 0 0;
   font-size: 1.0625rem;
   line-height: 1.375rem;
-  font-weight: 600;
   overflow-wrap: anywhere;
 }
 
 .summary-empty {
   color: var(--ink-2);
+}
+
+/* Every layer edit appends the new picture over the old one; it fades in once loaded and
+   static/js/sheet.js drops the ones under it. Opacity only, so reduced motion keeps it. */
+#stack-tip img,
+#stack-tip .tip-blank {
+  position: absolute;
+  inset: 0;
+}
+
+.tip-blank {
+  background: var(--fill);
+}
+
+.tip-fresh {
+  opacity: 0;
+  transition: opacity 200ms ease-out;
+}
+
+.tip-fresh.is-in {
+  opacity: 1;
 }
 
 .builder-body {
@@ -3101,7 +3243,7 @@ input.tip-input {
   column-gap: 10px;
   align-items: center;
   padding: 6px 0;
-  scroll-margin-top: 130px;
+  scroll-margin-top: 176px;
 }
 
 /* The rail: a 2px line through the tips, so the list reads as one painted nail. */
@@ -3293,15 +3435,9 @@ span.layer-btn {
 
 .shortcuts {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
-  margin: 8px calc(-1 * var(--gutter)) 0;
-  padding: 0 var(--gutter);
-  overflow-x: auto;
-  scrollbar-width: none;
-}
-
-.shortcuts::-webkit-scrollbar {
-  display: none;
+  margin: 12px 0 0;
 }
 
 .shortcut {
@@ -3310,7 +3446,7 @@ span.layer-btn {
   align-items: center;
   gap: 2px;
   min-height: var(--tap);
-  padding: 0 14px;
+  padding: 0 10px;
   border: 1px solid var(--line-2);
   border-radius: var(--r-input);
   background: transparent;
@@ -3475,7 +3611,7 @@ span.layer-btn {
   margin-top: 8px;
 }
 
-.sheet-danger {
+.sheet-quiet {
   padding-bottom: 0;
 }
 
@@ -3488,13 +3624,17 @@ span.layer-btn {
     display: none;
   }
 
-  .builder-head .sheet-head {
+  .builder-title {
     padding-top: 4px;
   }
 
+  .builder-title .tip-xl {
+    width: 44px;
+    height: 72px;
+  }
+
   .stack-summary {
-    -webkit-line-clamp: 2;
-    padding-bottom: 8px;
+    -webkit-line-clamp: 1;
   }
 
   .rail {
@@ -3551,7 +3691,8 @@ span.layer-btn {
 /* 14. Preferences */
 @media (hover: hover) {
   .row-link:hover,
-  .group-link:hover {
+  .group-link:hover,
+  .bottle-row:hover {
     background: var(--fill);
   }
 }

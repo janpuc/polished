@@ -1,10 +1,15 @@
-{# The level chips of /bottles. On a fragment request they ride along out of band, so the
-   highlighted chip follows the list. #}
-<nav id="bottle-filters" class="chip-scroll" aria-label="Filter bottles"{% if is_partial %} hx-swap-oob="true"{% endif %}>
-  {% for key, text in [("", "All")] + states.items()|list %}
-  {% set href = "/bottles?" ~ ("state=" ~ key if key else "") ~ ("&" if key and archived else "") ~ ("archived=1" if archived else "") %}
-  <a class="chip{% if state == key %} is-on{% endif %}" href="{{ href }}" hx-get="{{ href }}" hx-target="#bottle-groups" hx-swap="innerHTML" hx-push-url="true"{% if state == key %} aria-current="true"{% endif %}>{{ text }}</a>
-  {% endfor %}
+{# The level filter and the count line of /bottles. On a fragment request they ride along out of
+   band, so the highlighted level and the archived toggle follow the list. #}
+<div id="bottle-filters"{% if is_partial %} hx-swap-oob="true"{% endif %}>
+  <nav class="chip-row" aria-label="Filter bottles by level">
+    {% for key, text in [("", "All")] + states.items()|list %}
+    {% set href = "/bottles?" ~ ("state=" ~ key if key else "") ~ ("&" if key and archived else "") ~ ("archived=1" if archived else "") %}
+    <a class="chip{% if state == key %} is-on{% endif %}" href="{{ href }}" hx-get="{{ href }}" hx-target="#bottle-groups" hx-swap="innerHTML" hx-push-url="true"{% if state == key %} aria-current="true"{% endif %}>{{ text }}</a>
+    {% endfor %}
+  </nav>
   {% set href = "/bottles?" ~ ("state=" ~ state if state else "") ~ ("&" if state and not archived else "") ~ ("archived=1" if not archived else "") %}
-  <a class="chip{% if archived %} is-on{% endif %}" href="{{ href }}" hx-get="{{ href }}" hx-target="#bottle-groups" hx-swap="innerHTML" hx-push-url="true"{% if archived %} aria-current="true"{% endif %}>Archived</a>
-</nav>
+  <div class="filter-line">
+    <p class="count">{% if archived %}Archived bottles{% else %}{{ counts.bottles }} bottle{{ '' if counts.bottles == 1 else 's' }} in {{ counts.shades }} shade{{ '' if counts.shades == 1 else 's' }}{% endif %}</p>
+    <a class="btn btn-text" href="{{ href }}" hx-get="{{ href }}" hx-target="#bottle-groups" hx-swap="innerHTML" hx-push-url="true">{{ "Hide archived" if archived else "Show archived" }}</a>
+  </div>
+</div>

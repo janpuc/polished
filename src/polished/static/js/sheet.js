@@ -56,6 +56,34 @@ if (sheet && body) {
       ?.scrollIntoView({ block: "nearest", behavior: reduced ? "auto" : "smooth" });
   });
 
+  // The builder's head tip: every layer edit appends the new composite over the old one (out of
+  // band, into #stack-tip). It fades in once it has loaded (CSS, a plain opacity transition, so
+  // reduced motion keeps it), then the pictures under it are dropped. The old one stays visible
+  // until the new one is there, so a slow connection never shows an empty nail.
+  const settleTip = (tip) => {
+    const shown = [...tip.children].findLast(
+      (el) => el.classList.contains("is-in") || !el.classList.contains("tip-fresh"),
+    );
+    while (shown?.previousElementSibling) shown.previousElementSibling.remove();
+  };
+
+  body.addEventListener("htmx:oobAfterSwap", (event) => {
+    const tip = event.detail.target;
+    if (tip?.id !== "stack-tip") return;
+    const fresh = tip.lastElementChild;
+    if (!fresh) return;
+    const show = () => {
+      void fresh.offsetWidth; // the transition needs the faded-out state to have been drawn
+      fresh.classList.add("is-in");
+      setTimeout(() => settleTip(tip), 300);
+    };
+    if (fresh.tagName !== "IMG" || fresh.complete) show();
+    else {
+      fresh.addEventListener("load", show, { once: true });
+      fresh.addEventListener("error", () => fresh.remove(), { once: true });
+    }
+  });
+
   // A stack that is no longer a draft (cancelled or saved in another tab) answers 404 or 409.
   body.addEventListener("htmx:responseError", (event) => {
     const status = body.querySelector("#builder-status");

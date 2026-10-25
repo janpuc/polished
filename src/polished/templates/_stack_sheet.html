@@ -1,17 +1,25 @@
 {# The layer-stack builder, swapped into #sheet-body (DESIGN 10). Layer edits swap only
    #stack-layers (and the summary, Save button and results out of band); the search form and the
    name and note form are never re-rendered, so typed text survives. When the sheet opens from a
-   wheel page, the slot's tile comes along out of band (tile is in the context then). #}
+   wheel page, the slot's tile comes along out of band (tile is in the context then). The head is the
+   stack's composite tip beside the slot and wheel name, the live summary under them. #}
 {% from "_icons.html" import icon with context %}
-{% from "_stack_parts.html" import summary_line, save_button %}
+{% from "_stack_parts.html" import head_tip, summary_line, save_button %}
 <div class="builder" data-builder>
   <div class="builder-head">
     <div class="grabber" aria-hidden="true"></div>
-    <header class="sheet-head">
-      <h2 tabindex="-1" autofocus>Slot {{ s.position }}<span class="sheet-sub">{{ s.wheel_name }}</span></h2>
-      <button type="button" class="btn btn-text" hx-post="/stacks/{{ s.stack_id }}/cancel" hx-swap="none">Cancel</button>
+    <header class="builder-title">
+      {{ head_tip(s) }}
+      <div class="builder-text">
+        <div class="builder-name">
+          <h2 tabindex="-1" autofocus>Slot {{ s.position }}</h2>
+          <p class="builder-caption">{{ s.wheel_name }}</p>
+          {% if resumed %}<p class="footnote muted">Resumed your draft.</p>{% endif %}
+        </div>
+        <button type="button" class="btn btn-text" hx-post="/stacks/{{ s.stack_id }}/cancel" hx-swap="none">Cancel</button>
+        {{ summary_line(s) }}
+      </div>
     </header>
-    {{ summary_line(s) }}
   </div>
   <div class="builder-body sheet-form">
     <p id="builder-status" class="notice notice-error" role="alert" hidden></p>
@@ -50,7 +58,7 @@
       </details>
     </form>
     {% if saved_slot %}
-    <div class="sheet-danger">
+    <div class="sheet-quiet">
       <button type="button" class="btn btn-text btn-danger" hx-post="/wheels/{{ s.wheel_id }}/slots/{{ s.position }}/clear" hx-swap="none" hx-confirm="Remove the swatch from slot {{ s.position }}?">Remove swatch</button>
     </div>
     {% endif %}

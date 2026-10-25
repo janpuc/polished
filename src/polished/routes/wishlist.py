@@ -158,6 +158,17 @@ def add_to_wishlist(
     return render(request, "_shade_actions.html", actions_context(conn, shade_id))
 
 
+@router.get("/wishlist/{item_id}/edit")
+def edit_item_sheet(request: Request, conn: Conn, item_id: int):
+    """The row's sheet: the note, and Remove."""
+    item = _require_item(conn, item_id)
+    return render(
+        request,
+        "_wishlist_sheet.html",
+        {"item": item, "priority_label": wishlist.PRIORITY_LABELS[item["priority"]]},
+    )
+
+
 @router.post("/wishlist/{item_id}")
 def update_item(
     request: Request,
@@ -166,10 +177,23 @@ def update_item(
     priority: Annotated[int, Form()],
     note: Annotated[str, Form()] = "",
 ):
+    """The row's sheet: priority and note together (an empty note clears it)."""
     _require_item(conn, item_id)
     if priority not in wishlist.PRIORITIES:
         raise HTTPException(422, "priority must be 1, 2 or 3")
     wishlist.update(conn, item_id, priority, note)
+    response = render(request, "_wishlist.html", _page_context(request, conn))
+    response.headers.update(SHEET_CLOSE)
+    return response
+
+
+@router.post("/wishlist/{item_id}/priority")
+def set_priority(request: Request, conn: Conn, item_id: int, priority: Annotated[int, Form()]):
+    """The priority menu of a row: the priority alone, the note stays."""
+    item = _require_item(conn, item_id)
+    if priority not in wishlist.PRIORITIES:
+        raise HTTPException(422, "priority must be 1, 2 or 3")
+    wishlist.update(conn, item_id, priority, item["note"])
     return render(request, "_wishlist.html", _page_context(request, conn))
 
 
@@ -184,4 +208,6 @@ def delete_item(
     wishlist.remove(conn, item_id)
     if ctx == "shade":
         return render(request, "_shade_actions.html", actions_context(conn, item["shade_id"]))
-    return render(request, "_wishlist.html", _page_context(request, conn))
+    response = render(request, "_wishlist.html", _page_context(request, conn))
+    response.headers.update(SHEET_CLOSE)
+    return response

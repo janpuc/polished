@@ -1,10 +1,10 @@
 {# The layers of a draft with the shortcut pills: the one element every layer edit swaps
-   (hx-target="#stack-layers", outerHTML). With `layers_oob` the live summary, the Save button and,
+   (hx-target="#stack-layers", outerHTML). With `layers_oob` the head tip, the live summary, the Save button and,
    after a layer was added, the empty results come along out of band. The name and note form is
    not in here, so typed text survives every edit. Context: routes/_builder.py layers_context. #}
 {% from "_icons.html" import icon with context %}
 {% from "_tip.html" import tip %}
-{% from "_stack_parts.html" import summary_line, save_button %}
+{% from "_stack_parts.html" import summary_line, save_button, tip_fresh %}
 <div id="stack-layers" class="stack-layers" hx-target="#stack-layers" hx-swap="outerHTML">
   {% if notice %}<p class="notice" role="status">{{ notice }}</p>{% endif %}
   {% if s.layers %}
@@ -50,6 +50,7 @@
   {% endif %}
 </div>
 {% if layers_oob %}
+{{ tip_fresh(s) }}
 {{ summary_line(s, true) }}
 {{ save_button(s, true) }}
 {% if picker is not none %}
