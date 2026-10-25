@@ -27,13 +27,17 @@ def parse_compare_at_cents(value: str | None) -> int | None:
     return parse_price_cents(value) or None
 
 
+# Typos in the shop's own tags, folded into the tag they meant.
+TAG_TYPOS = {("color", "whte"): ("color", "white")}
+
+
 def tag_pairs(tags: list[str]) -> list[tuple[str, str]]:
     """The finish:, color: and collection: tags as (namespace, value), duplicates dropped."""
     pairs: dict[tuple[str, str], None] = {}
     for tag in tags:
         ns, sep, value = tag.partition(":")
         if sep and ns in TAG_NAMESPACES and value:
-            pairs[(ns, value)] = None
+            pairs[TAG_TYPOS.get((ns, value), (ns, value))] = None
     return list(pairs)
 
 

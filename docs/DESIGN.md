@@ -1522,6 +1522,12 @@ By hand, outside the repo and not by an agent: create the 1Password item `polish
 HelmRelease. DNS needs nothing: the tunnel serves `*.janpuc.com` and `cloudflare-dns` follows the
 HTTPRoute.
 
+No `--proxy-headers` or `--forwarded-allow-ips`: absolute URLs, the Origin check and the secure
+cookie come from `PUBLIC_URL` and `AUTH_MODE`, and the login `next=` check compares only the Host
+header, which envoy passes through. The init container gets the same `envFrom` as the app, because
+settings validation requires the OIDC variables for `migrate` too. Image tags are `edge` and
+`sha-<short>` on every push to main, plus `X.Y.Z`, `X.Y`, `X` and `latest` on a release.
+
 Known operational risk: kopiur `Direct` copies the live SQLite file (as serendip does). WAL
 checkpoints make a torn copy unlikely but not impossible; if a restore ever fails, switch
 `KOPIUR_COPYMETHOD` to `Snapshot`, or add a nightly `VACUUM INTO /data/backup/polished.db`.

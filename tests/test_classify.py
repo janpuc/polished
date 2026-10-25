@@ -149,3 +149,10 @@ def test_search_text_is_lowercase_and_accent_folded():
     assert fold("Crème Brûlée") == "creme brulee"
     text = search_text("Crème Taco", "creme-taco", ["holographic", "new-releases"])
     assert text == "creme taco creme taco holographic new releases"
+
+
+def test_the_shops_tag_typos_are_folded_into_the_tag_they_meant():
+    assert tag_pairs(["color:whte", "color:white", "finish:creme"]) == [
+        ("color", "white"),
+        ("finish", "creme"),
+    ]

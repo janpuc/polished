@@ -4,14 +4,22 @@ A self-hosted nail polish inventory for one household, fed by the
 [Holo Taco](https://holotaco.com) catalog. Server-rendered FastAPI + Jinja2 + HTMX on one SQLite
 file, with Pocket ID sign-in.
 
-Status: stage 5 of the v1 build (skeleton, storage, authentication, the catalog sync, browse,
-search and the PWA shell, bottles and the wishlist, and identifier lookup with the barcode
-scanner). It serves `/healthz`, the sign-in flow, a search home page, `/shades` with filters and a
-detail page per shade, bottles and the wishlist with a Holo Taco checkout link, `/lookup` (scan a
-barcode or type a P code), the `/sync` page and the daily catalog sync, and installs to a phone's
-home screen; wheels and the layer builder come in later stages. The brief is in
-[`docs/BRIEF.md`](docs/BRIEF.md), the design in [`docs/DESIGN.md`](docs/DESIGN.md) and the build
+Status: the v1 feature set is built and not yet deployed. It covers the daily Holo Taco catalog
+sync, browse and search, bottles with their level and purchase history, the wishlist with a Holo
+Taco checkout link and "I bought these", barcode and P-code lookup, swatch wheels with NFC/QR tags,
+the layer builder, and painted-nail tips drawn from each shade's sampled colour and finish. It
+installs to a phone's home screen. The brief is in [`docs/BRIEF.md`](docs/BRIEF.md), the design in
+[`docs/DESIGN.md`](docs/DESIGN.md), the look in [`docs/VISUAL.md`](docs/VISUAL.md) and the build
 plan in [`docs/PLAN.md`](docs/PLAN.md).
+
+## Container and deploy
+
+`docker build -t polished --build-arg POLISHED_VERSION=0.1.0 .` builds the image (python:3.12-slim,
+uid 1000, data in `/data`, port 8080, healthcheck on `/healthz`). The build fails if the package,
+its migrations or its static files are missing. Release-please versions the app from Conventional
+Commits and the `Release` workflow publishes `ghcr.io/janpuc/polished`. The home-ops manifests are
+in [`deploy/home-ops/`](deploy/home-ops/) and the steps to take them live are in
+[`docs/DEPLOY.md`](docs/DEPLOY.md).
 
 ## Running locally
 
