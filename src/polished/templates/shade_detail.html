@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}{{ shade.title }} · Polished{% endblock %}
+{% block content %}
+<p class="back"><a href="/shades">‹ Shades</a></p>
+{% if shade.images %}
+<div class="gallery" tabindex="0" role="group" aria-label="Photos of {{ shade.title }}">
+  {% for src in shade.images %}
+  <img src="{{ src|thumb(720) }}" srcset="{{ src|thumb(480) }} 480w, {{ src|thumb(720) }} 720w, {{ src|thumb(1080) }} 1080w" sizes="(min-width: 40rem) 20rem, 80vw" width="320" height="320" alt="{{ shade.title }}, photo {{ loop.index }} of {{ shade.images|length }}"{% if not loop.first %} loading="lazy"{% endif %} decoding="async">
+  {% endfor %}
+</div>
+{% endif %}
+<h1>{{ shade.title }}</h1>
+<p class="detail-meta">
+  {% if shade.status %}<span class="status status-{{ shade.status.key }}">{{ shade.status.label }}</span>{% else %}<span class="status status-manual">Added by hand</span>{% endif %}
+  {% if shade.price_cents is not none %}
+  <span class="price">{{ shade.price_cents|money }}</span>
+  {% if shade.on_sale %}<s class="muted">{{ shade.compare_at_cents|money }}</s> <span class="chip chip-sale">Sale</span>{% endif %}
+  {% endif %}
+</p>
+<p class="chips">
+  {% if shade.is_topper %}<span class="chip chip-topper">Topper</span>{% endif %}
+  {% if shade.kind == 'basecoat' %}<span class="chip">Base coat</span>{% endif %}
+  {% for finish in shade.tags.finish %}<a class="chip" href="/shades?finish={{ finish|urlencode }}">{{ finish|label }}</a>{% endfor %}
+</p>
+{% if shade.handle and not (shade.status and shade.status.key == 'missing') %}
+<p><a class="button" href="{{ store_url }}/products/{{ shade.handle|urlencode }}" target="_blank" rel="noopener noreferrer">View on holotaco.com</a></p>
+{% elif shade.status and shade.status.key == 'missing' %}
+<p class="muted">No longer listed on holotaco.com.</p>
+{% endif %}
+{% if shade.tags.color %}
+<h2>Colour</h2>
+<p class="chips">{% for value in shade.tags.color %}<a class="chip" href="/shades?color={{ value|urlencode }}">{{ value|label }}</a>{% endfor %}</p>
+{% endif %}
+{% if shade.tags.collection %}
+<h2>Collections</h2>
+<p class="chips">{% for value in shade.tags.collection %}<a class="chip" href="/shades?collection={{ value|urlencode }}">{{ value|label }}</a>{% endfor %}</p>
+{% endif %}
+{% if shade.sku %}<p class="muted sku">SKU {{ shade.sku }}</p>{% endif %}
+{% endblock %}

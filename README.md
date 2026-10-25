@@ -4,9 +4,10 @@ A self-hosted nail polish inventory for one household, fed by the
 [Holo Taco](https://holotaco.com) catalog. Server-rendered FastAPI + Jinja2 + HTMX on one SQLite
 file, with Pocket ID sign-in.
 
-Status: stage 2 of the v1 build (skeleton, storage, authentication and the catalog sync). It
-serves `/healthz`, the sign-in flow, a placeholder home page, the `/sync` page and the daily
-catalog sync; browse, bottles, scanner and wheels come in later stages. The brief is in [`docs/BRIEF.md`](docs/BRIEF.md), the
+Status: stage 3 of the v1 build (skeleton, storage, authentication, the catalog sync, and
+browse, search and the PWA shell). It serves `/healthz`, the sign-in flow, a search home page,
+`/shades` with filters and a detail page per shade, the `/sync` page and the daily catalog sync,
+and installs to a phone's home screen; bottles, scanner and wheels come in later stages. The brief is in [`docs/BRIEF.md`](docs/BRIEF.md), the
 design in [`docs/DESIGN.md`](docs/DESIGN.md) and the build plan in [`docs/PLAN.md`](docs/PLAN.md).
 
 ## Running locally

@@ -1,0 +1,11 @@
+{% if result is none %}{% elif not result.rows %}
+<p class="muted empty">Nothing matches “{{ q }}”.</p>
+{% else %}
+<ul class="shade-list">
+  {% for shade in result.rows %}{% include "_shade_row.html" %}
+  {% endfor %}
+</ul>
+{% if result.total > result.rows|length %}
+<p class="more-link"><a href="/shades?q={{ q|urlencode }}">All {{ result.total }} matches</a></p>
+{% endif %}
+{% endif %}

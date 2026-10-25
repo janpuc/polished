@@ -137,6 +137,11 @@ tests (`tests/test_<module>.py`) independent of HTTP.
 and `includeIndicatorStyles: false` so HTMX injects no inline `<style>` (the CSP forbids it).
 All HTML responses carry `Cache-Control: private, no-cache` and `Vary: HX-Request,
 HX-History-Restore-Request`, so Safari's back button never shows a partial.
+`render(request, page, context, status_code, partial=None)` in `web.py` implements the rule: with a
+`partial` template and an HTMX request it renders the partial, else the page. Templates see
+`is_partial`, so a fragment can carry out-of-band updates (the result and filter counts) that the
+full page already has in place. Money (`money`), thumbnail (`thumb`: `&width=` or `?width=` added
+to a Shopify image URL) and tag-value (`label`: "rose-gold" becomes "Rose gold") are Jinja filters.
 
 ## 4. Data model
 
@@ -472,14 +477,31 @@ raises; the fixture README says so.
 ## 6. Searching and browsing
 
 - `search_text` is lowercase, accent-folded (`NFKD`, marks stripped), punctuation to spaces.
-  A query is tokenised the same way; every token must match as `LIKE '%token%'`. 372 rows: no
-  FTS5.
+  A query is tokenised the same way (`shades.tokens`: folded, split on anything that is not a
+  letter or digit); every token must match as `LIKE '%token%'`. 372 rows: no FTS5.
 - Ranking in the picker and the home search: owned first, then wishlisted, then the rest; within
-  a group, titles starting with the query first, then alphabetical. Limit 30.
-- Filters on `/shades`: `finish` and `color` (multi-select, any-of within a namespace),
-  `collection` (one), `kind`, `status` (`any|buyable|retired|sold_out`), `owned`
-  (`any|owned|not_owned|wishlist`), `sort` (`name|newest|price`; newest = `published_at`),
-  `page` (40 a page, a "Load more" button, not infinite scroll).
+  a group, titles starting with the query first, then alphabetical. Limit 30. Stage 3 has no
+  owned or wishlist groups yet: a title starting with the query, then alphabetical. The same
+  order applies to `/shades?q=` when sorted by name.
+- Filters on `/shades`, one GET form (so the URL is the state and works without JavaScript):
+  `finish` and `color` (multi-select, any-of within a namespace, AND between filters),
+  `collection` (one), `kind` (`polish|topper|base`; `topper` is `shade.is_topper`, `polish` is a
+  polish that is not a topper, `base` is a base coat, so the three partition the catalog),
+  `status` (`buyable|retired|sold_out`, the derived status of 5.3: `buyable` is the "Buyable
+  yes" rows, `retired` and `sold_out` the rows with that status; a missing shade is in none of
+  them), `owned` (`any|owned|not_owned|wishlist`, stage 4), `sort` (`name|newest|price`;
+  newest = `published_at`; manual shades without a date or price sort last), `page` (40 a page,
+  a "Load more" button, not infinite scroll). A value the page does not know means "no filter".
+  The form sits in a `<details>` next to the sticky search field; the panel drops down over the
+  list. A change or 200 ms of typing sends the form with `hx-get`, the fragment (rows, Load more
+  and the two counts as out-of-band spans) replaces `#shade-list`, and `hx-push-url` keeps the URL.
+- A shade row (`_shade_row.html`, one line, class `shade-row`) shows the hero thumbnail, title,
+  up to three finish chips (plus "Topper"), the status label and the price; it opens the shade.
+- The detail page shows the images (every `images[]` entry of the product's stored feed JSON) in
+  a horizontally scrolling, scroll-snapped strip, the status, price (with the compare-at price and
+  a "Sale" chip when `price < compare_at`), finish, colour and collection chips that link back to
+  the filtered list, and a link to `POLISHED_STORE_URL/products/<handle>` (replaced by "No longer
+  listed" for a missing shade).
 - Images are hotlinked from `cdn.shopify.com` with `&width=` added for thumbnails (Shopify's
   image CDN resizes by query parameter) and `loading="lazy"`. The service worker does not cache
   cross-origin images.
@@ -569,7 +591,13 @@ GET  /auth/login?next=/w/k3m9xq
 GET  /auth/callback?code&state
        authorize_access_token: checks state, exchanges the code (PKCE verifier + client secret),
        validates the id_token (signature via JWKS, iss, aud, exp, nonce)
-       claims = id_token claims; if "groups" is absent there, call the userinfo endpoint
+       the id_token is required: a token response without one, or a session without a nonce, is
+       refused (400). aud must equal or contain POLISHED_OIDC_CLIENT_ID (checked in polished,
+       because authlib only checks azp). claims = id_token claims; if "groups" is absent there,
+       call the userinfo endpoint and merge only if its sub equals the id_token sub (else 400);
+       the id_token's values always win, userinfo never overwrites sub.
+       Any OAuthError, JOSE error (bad signature, expired, wrong nonce/iss/aud) or refusal above
+       → login_next cleared, 400 "Sign-in failed" page, no session.
        groups ∩ POLISHED_OIDC_ALLOWED_GROUPS (exact match; default ID-Users, ID-Admin) empty → 403
        page "This account isn't allowed here", no session is created
        otherwise session.clear(); session = {sub, name, iat, seen}; → 302 login_next or /
@@ -611,7 +639,10 @@ auth gate → routes.
   the CSRF defence; there are no tokens to thread through partials.
 - **`AUTH_MODE=none`** (local dev and tests): the gate injects `sub="dev"`. At startup it is
   refused unless the host of `POLISHED_PUBLIC_URL` is `localhost` or `127.0.0.1`, so the cluster
-  manifest can never run open by accident, and it logs a warning on every start.
+  manifest can never run open by accident, and it logs a warning on every start. In none mode
+  `POLISHED_HOST` defaults to `127.0.0.1` and must be `127.0.0.1`, `::1` or `localhost` if set;
+  startup is refused otherwise, so a dev config can't listen on the network. `oidc` mode keeps
+  the `0.0.0.0` default.
 - Other headers: `Content-Security-Policy: default-src 'self'; img-src 'self' https://cdn.shopify.com
   data:; script-src 'self' 'wasm-unsafe-eval'; style-src 'self'; connect-src 'self'; worker-src
   'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'`, `X-Content-Type-Options:
@@ -739,11 +770,13 @@ Operations on a stack id are refused (409) unless the stack is a draft that some
   `apple-mobile-web-app-*` meta tags are in `base.html` because iOS ignores the manifest icons.
   Icons are committed PNGs generated once by `scripts/make_icons.py`.
 - `GET /sw.js` is served from the root so its scope is `/`, with `Cache-Control: no-cache`. It
-  has three jobs: precache `/offline`, `app.css`, `htmx.min.js` and the icons into
-  `polished-static-<version>`; serve `/static/*` cache-first (templates append `?v=<version>`,
+  has three jobs: precache `/offline`, `app.css`, `htmx.min.js`, `register-sw.js` and the 180 and
+  192 px icons into `polished-static-<version>`; serve `/static/*` cache-first (templates append `?v=<version>`,
   so a release changes the URLs); answer a failed navigation with `/offline`. It never caches
   HTML, partials, API responses or cross-origin requests, never touches non-GET requests, and
   deletes old caches on `activate`. No offline writes, no background sync.
+  `sw.js` is a Jinja template (it takes the version) and answers `HEAD` as well as `GET`. A server
+  whose version is `dev` leaves `/static` to the network, since its `?v=dev` URLs never change.
 - `/offline` is a static page ("Polished needs a connection") and is public.
 - The zxing-wasm file (about a megabyte) is cached by the service worker on first scan, not
   precached.
@@ -762,7 +795,7 @@ All environment variables, prefix `POLISHED_`. Secrets come only from the enviro
 | `OIDC_ALLOWED_GROUPS` | `ID-Users,ID-Admin` | Comma-separated, exact match against the token's `groups` claim |
 | `SESSION_SECRET` | none, ≥ 32 chars | Signs the session cookie; required in `oidc` mode, `none` mode makes a random one per start (section 14, item 10) |
 | `SESSION_DAYS`, `SESSION_MAX_DAYS` | `30`, `90` | Rolling and absolute session lifetime |
-| `HOST`, `PORT` | `0.0.0.0`, `8080` | Listener |
+| `HOST`, `PORT` | `0.0.0.0` (`oidc`), `127.0.0.1` (`none`, loopback only); `8080` | Listener |
 | `STORE_URL` | `https://holotaco.com` | Shop base for the feed and cart permalinks |
 | `SYNC_ENABLED` | `true` | Scheduler on/off (the manual button and CLI still work) |
 | `SYNC_HOUR`, `SYNC_JITTER_MIN` | `6`, `30` | Daily run, local time |
@@ -800,7 +833,7 @@ builds it.
 | Method | Path | Purpose | Response | Stage |
 |---|---|---|---|---|
 | GET | `/` | Home: search field and links; stage 4 adds counts and recent bottles, stage 5 the Scan button | full page | 3 |
-| GET | `/search` | Typeahead rows. Params `q`, `ctx` (`home`, `stack`, `learn`), `filter` (`owned/toppers/all`), `stack_id`, `kind`+`value` for `learn`. Row action depends on `ctx`; `home` in stage 3, `learn` in 5, `stack` in 7 | partial | 3 |
+| GET | `/search` | Typeahead rows. Params `q`, `ctx` (`home`, `stack`, `learn`), `filter` (`owned/toppers/all`), `stack_id`, `kind`+`value` for `learn`. Row action depends on `ctx`; `home` in stage 3, `learn` in 5, `stack` in 7. Always rows only (the page that asked is on screen), nothing for an empty query | partial | 3 |
 | GET | `/shades` | Browse list with filters (section 6) | full page; P = rows + Load more | 3 |
 | GET | `/shades/{id}` | Detail: images, tags, price/status, product link; stage 4 adds bottles and wishlist, stage 6 "Swatched on" | full page | 3 |
 | GET | `/shades/new` | Manual shade form (gifted non-catalog bottle) | full page / P | 4 |
@@ -916,6 +949,26 @@ tested against this store; stage 4 ends with a manual check by Jan, and the box 
     plain `curl`. A form posted without HTMX is redirected (303) to `/sync`.
 17. **The fixture has 16 products**, not "about 14": the unresolved-alias case (a manual-alias
     gift whose shade is absent) and the `color:clear` topper needed two more.
+18. **`kind` filter values are `polish|topper|base`** (stage 3), not the column's `polish|topcoat|
+    basecoat`: "topper" is `shade.is_topper` (top coats, flakie and glow polishes, clear bases),
+    and the three values partition the catalog so the counts add up. The status filter keeps the
+    four DESIGN values; `retiring` and `missing` are row labels, not filters.
+19. **Stage 3 has more templates than PLAN.md lists:** `_shade_rows.html` (rows plus Load more,
+    the fragment of `/shades`) and `not_found.html` (an unknown shade id is a 404 page, not JSON).
+    `render()` takes a `partial=` template and passes `is_partial` to templates (section 3.2).
+20. **`/search` always answers rows only**, with or without `HX-Request`, and refuses a `ctx` other
+    than `home` with 422 until stages 5 and 7 add theirs. An empty query returns an empty body.
+21. **The service worker caches no `/static` file in a `dev`-version server**, and precaches
+    `register-sw.js` and the 180 and 192 px icons (not the 512 ones): section 11. `/manifest.webmanifest`, `/sw.js` and
+    `/offline` answer `HEAD` so `curl -I` works.
+22. **The status label of a sold-out, soon-retiring shade is "Sold out, retiring"** (5.3 says
+    "Sold out (plus 'retiring')").
+23. **The trimmed fixture cannot exercise three acceptance checks of PLAN.md stage 3:** no fixture
+    shade matches "spirit" or "black" (`/shades?q=spirit` shows the empty state), and it has no
+    in-stock holographic shade (its two holographic shades are retired or sold out, so
+    `finish=holographic&status=buyable` counts 0 rows). `tests/test_routes_browse.py` adds
+    synthetic in-stock holographic shades for the last; the local snapshot answers all three
+    (Spirit Fingers found, 22 "black" rows, 62 buyable holographic, 48 toppers of 372).
 
 ## 15. Home-ops manifests
 

@@ -1,0 +1,12 @@
+{# Rows plus Load more: the body of #shade-list, and the whole fragment HTMX swaps in. #}
+{% if is_partial %}
+<span id="result-count" hx-swap-oob="true">{{ result.total }} shade{{ '' if result.total == 1 else 's' }}</span>
+<span id="filter-count" hx-swap-oob="true">{% if query.filter_count() %}{{ query.filter_count() }}{% endif %}</span>
+{% endif %}
+{% for shade in result.rows %}{% include "_shade_row.html" %}
+{% else %}
+<li class="empty muted">No shades match these filters.</li>
+{% endfor %}
+{% if more_url %}
+<li class="more"><button type="button" class="secondary" hx-get="{{ more_url }}" hx-target="closest li" hx-swap="outerHTML">Load more</button></li>
+{% endif %}

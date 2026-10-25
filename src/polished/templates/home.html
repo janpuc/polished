@@ -1,6 +1,19 @@
 {% extends "base.html" %}
+{% block title %}Polished{% endblock %}
 {% block content %}
-<h1>Polished</h1>
-<p class="muted">Signed in as {{ user.name }}. The collection arrives in a later stage.</p>
-<p><a href="/sync">Catalog sync</a></p>
+<form class="search-bar" action="/shades" method="get" role="search">
+  <input id="q" type="search" name="q" placeholder="Search {{ shade_count }} shades"
+         aria-label="Search shades" autocomplete="off" autocapitalize="off" spellcheck="false"
+         enterkeyhint="search" autofocus
+         hx-get="/search" hx-vals='{"ctx": "home"}' hx-trigger="input changed delay:200ms, search"
+         hx-target="#search-results" hx-sync="this:replace">
+</form>
+<div id="search-results" aria-live="polite"></div>
+<ul class="links">
+  <li><a href="/shades">Browse all shades</a></li>
+  <li><a href="/shades?kind=topper">Toppers</a></li>
+  <li><a href="/shades?status=buyable&amp;sort=newest">New and in stock</a></li>
+  <li><a href="/sync">Catalog sync</a></li>
+</ul>
+{% if user %}<p class="muted">Signed in as {{ user.name }}.</p>{% endif %}
 {% endblock %}

@@ -4,19 +4,34 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="htmx-config" content='{"historyCacheSize": 0, "includeIndicatorStyles": false}'>
+  <meta name="theme-color" content="#fbf8fb" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#17121a" media="(prefers-color-scheme: dark)">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Polished">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="/static/icons/icon-192.png">
   <title>{% block title %}Polished{% endblock %}</title>
-  <link rel="stylesheet" href="/static/css/app.css">
-  <script src="/static/vendor/htmx.min.js" defer></script>
+  <link rel="stylesheet" href="/static/css/app.css?v={{ version }}">
+  <script src="/static/vendor/htmx.min.js?v={{ version }}" defer></script>
+  <script type="module" src="/static/js/register-sw.js?v={{ version }}"></script>
 </head>
 <body>
+  {% block topbar %}
   <header class="topbar">
     <a class="brand" href="/">Polished</a>
-    {% if user %}
-    <form method="post" action="/auth/logout">
-      <button type="submit" class="link-button">Sign out</button>
-    </form>
-    {% endif %}
+    <nav>
+      <a class="nav-link" href="/shades">Shades</a>
+      {% if user %}
+      <form method="post" action="/auth/logout">
+        <button type="submit" class="link-button">Sign out</button>
+      </form>
+      {% endif %}
+    </nav>
   </header>
+  {% endblock %}
   <main id="main">
     {% block content %}{% endblock %}
   </main>
