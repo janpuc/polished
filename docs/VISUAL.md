@@ -132,15 +132,25 @@ Screenshot checklist at 390×844, light and dark: thumbnails show bottles, not b
 
 ## 10. Logo
 
-Replace the bottle. A bottle is what every polish app and every Holo Taco photo already shows; the nail tip is this app's own element. **The mark is one nail tip, face on, filled with holographic foil, on plum.**
+Revised the same day after the first build read as a jelly bean at 180px: a bare capsule with a
+semicircle cap has no nail cues. The mark is now **a nail painted in holographic foil, overhanging a
+stylised fingertip, on plum**. The source of truth is `src/polished/static/icons/logo.svg` and
+`favicon.svg`; `scripts/make_icons.py` rasterises them.
 
-Construction, `viewBox 0 0 100 100`:
-- Ground: full-bleed square, radial gradient centred at (50,42), `#301838` centre to `#1E1024` edge. No transparency, no rounding (iOS masks it).
-- Nail: a path 44 wide and 62 tall, centred at x 50. Free edge is a semicircle of radius 22 centred at (50,42); sides run from y 42 down to y 82, tapering to 36 wide at the base with a slight concave curve; base corners radius 6. Fill: linear gradient at 135° with stops `#FFB3C7 0, #FFE29A .25, #B7F5C8 .5, #9FD8FF .75, #D3B4FF 1`.
-- Gloss: an ellipse 18×9 centred at (41,36), rotated −30°, white at 45 percent opacity.
-- Smile line: a 2-unit stroke arc following the free edge 7 units inside it, white at 55 percent. No letters.
-
-Maskable 512: the same artwork; the nail spans y 20 to 82 and x 28 to 72, which sits inside the 80 percent safe circle (radius 40 from centre) with margin. Favicon: a 32px PNG and a `favicon.svg` with the gloss and smile line removed and the nail enlarged to 70 percent of the box, on the plum ground rounded `rx 22`; the plum tile reads on light and dark tab bars alike, so the SVG needs no media query and no `<style>`, which also keeps it clear of the CSP. The 180px apple-touch icon rasterises the full version; `make_icons.py` becomes a rasteriser for `logo.svg` (resvg or cairosvg at 1024 then downscaled).
+- Ground: full-bleed square, radial `#3a1c45` to `#180b1e`. No rounding (iOS masks it).
+- Finger: a plum-mauve silhouette (`#86537f` to `#2a1532`, top to bottom), not a skin tone, rising
+  from the bottom edge to an apex at y 30. The nail's free edge overhangs it by 8 units, which is
+  the strongest single "nail" cue.
+- Nail: a squoval (flatter cubic cap, not a semicircle), 36 wide, y 22 to 70, drawn three times:
+  seven-stop saturated foil over the whole hue circle, a perpendicular white sheen, and a dark rim
+  "dome" so it curves.
+- Nail cues: lunula at 30 percent white, a lighter free-edge band above a 1.6-unit smile line,
+  a soft radial gloss, and one four-point sparkle at the upper right.
+- Favicon (also the header mark): the foil nail enlarged on a rounded plum tile, the free-edge band
+  as a fill (strokes vanish at 16px), no gloss, lunula or finger.
+- Maskable 512: every meaningful part is inside the 80 percent safe circle (farthest point, the
+  sparkle tip, is 37.7 units from the centre); the finger bleeds off the bottom by design.
+- No filters, no `<style>`, path data repeated instead of `<use>` so every rasteriser agrees.
 
 ## Risks
 

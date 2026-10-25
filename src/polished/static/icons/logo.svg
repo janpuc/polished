@@ -1,21 +1,39 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="1024" height="1024">
-  <!-- The Polished mark: one nail tip, face on, in holographic foil on plum (docs/VISUAL.md 10).
-       Full-bleed square, no rounding: iOS masks it. scripts/make_icons.py rasterises this file. -->
+  <!-- The Polished mark: a nail painted in holographic foil, overhanging a stylised plum fingertip,
+       with lunula, smile line, gloss and one sparkle (docs/VISUAL.md 10). Full-bleed square, no
+       rounding: iOS masks it. No filters, no style element. scripts/make_icons.py rasterises it. -->
   <defs>
-    <radialGradient id="ground" cx="50" cy="42" r="68" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#301838"/>
-      <stop offset="1" stop-color="#1e1024"/>
+    <radialGradient id="ground" cx="50" cy="40" r="72" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#3a1c45"/><stop offset="1" stop-color="#180b1e"/>
     </radialGradient>
-    <linearGradient id="foil" x1="28" y1="20" x2="72" y2="82" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#ffb3c7"/>
-      <stop offset="0.25" stop-color="#ffe29a"/>
-      <stop offset="0.5" stop-color="#b7f5c8"/>
-      <stop offset="0.75" stop-color="#9fd8ff"/>
-      <stop offset="1" stop-color="#d3b4ff"/>
+    <linearGradient id="finger" x1="0" y1="30" x2="0" y2="100" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#86537f"/><stop offset="1" stop-color="#2a1532"/>
     </linearGradient>
+    <linearGradient id="foil" x1="32" y1="22" x2="68" y2="70" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ff5fa8"/><stop offset="0.18" stop-color="#ffb347"/>
+      <stop offset="0.34" stop-color="#f7f06a"/><stop offset="0.5" stop-color="#4fe8a4"/>
+      <stop offset="0.66" stop-color="#3fc4ff"/><stop offset="0.82" stop-color="#8f7bff"/>
+      <stop offset="1" stop-color="#ff5fa8"/>
+    </linearGradient>
+    <linearGradient id="sheen" x1="68" y1="22" x2="32" y2="70" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#fff" stop-opacity="0.45"/><stop offset="0.35" stop-color="#fff" stop-opacity="0"/>
+      <stop offset="0.65" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#fff" stop-opacity="0.3"/>
+    </linearGradient>
+    <radialGradient id="dome" cx="50" cy="44" r="30" gradientUnits="userSpaceOnUse">
+      <stop offset="0.55" stop-color="#1e1024" stop-opacity="0"/><stop offset="1" stop-color="#1e1024" stop-opacity="0.4"/>
+    </radialGradient>
+    <radialGradient id="gloss" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#fff" stop-opacity="0.9"/><stop offset="1" stop-color="#fff" stop-opacity="0"/>
+    </radialGradient>
   </defs>
   <rect width="100" height="100" fill="url(#ground)"/>
-  <path id="nail" fill="url(#foil)" d="M28 42A22 22 0 0 1 72 42C72 56 70.6 67 68.6 74.6C67 80.2 60.4 83 50 83C39.6 83 33 80.2 31.4 74.6C29.4 67 28 56 28 42Z"/>
-  <ellipse cx="41" cy="36" rx="9" ry="4.5" transform="rotate(-30 41 36)" fill="#fff" fill-opacity="0.45"/>
-  <path d="M35.9 36.9A15 15 0 0 1 64.1 36.9" fill="none" stroke="#fff" stroke-opacity="0.55" stroke-width="2" stroke-linecap="round"/>
+  <path fill="url(#finger)" d="M22 100V58C22 41 34 30 50 30C66 30 78 41 78 58V100Z"/>
+  <path fill="url(#foil)" d="M32 40C32 29 40 22 50 22C60 22 68 29 68 40V56C68 65 60 70 50 70C40 70 32 65 32 56Z"/>
+  <path fill="url(#sheen)" d="M32 40C32 29 40 22 50 22C60 22 68 29 68 40V56C68 65 60 70 50 70C40 70 32 65 32 56Z"/>
+  <path fill="url(#dome)" d="M32 40C32 29 40 22 50 22C60 22 68 29 68 40V56C68 65 60 70 50 70C40 70 32 65 32 56Z"/>
+  <path fill="#fff" fill-opacity="0.3" d="M37 64C40 59 45 57 50 57C55 57 60 59 63 64C61 68 56 70 50 70C44 70 39 68 37 64Z"/>
+  <path fill="#fff" fill-opacity="0.22" d="M32 40C32 29 40 22 50 22C60 22 68 29 68 40C62 32 38 32 32 40Z"/>
+  <path fill="none" stroke="#fff" stroke-opacity="0.75" stroke-width="1.6" stroke-linecap="round" d="M32.5 39.5C38 32 62 32 67.5 39.5"/>
+  <ellipse cx="41" cy="36" rx="10" ry="5.5" transform="rotate(-32 41 36)" fill="url(#gloss)"/>
+  <path fill="#fff" fill-opacity="0.95" d="M74 22C74.7 27.5 76.5 29.3 82 30C76.5 30.7 74.7 32.5 74 38C73.3 32.5 71.5 30.7 66 30C71.5 29.3 73.3 27.5 74 22Z"/>
 </svg>

@@ -1,20 +1,19 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-  <!-- The favicon: the same nail tip without the gloss and the smile line, about 75 percent of the box, on a
-       rounded plum tile that reads on light and dark tab bars alike. No style element, no media
-       query (the CSP). -->
+  <!-- The favicon and the small header mark: the foil nail with a lighter free-edge band (strokes
+       vanish at 16px), on a rounded plum tile that reads on light and dark tab bars alike. No style
+       element, no media query (the CSP). -->
   <defs>
-    <radialGradient id="ground" cx="50" cy="42" r="68" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#301838"/>
-      <stop offset="1" stop-color="#1e1024"/>
+    <radialGradient id="ground" cx="50" cy="40" r="72" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#3a1c45"/><stop offset="1" stop-color="#180b1e"/>
     </radialGradient>
-    <linearGradient id="foil" x1="28" y1="20" x2="72" y2="82" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#ffb3c7"/>
-      <stop offset="0.25" stop-color="#ffe29a"/>
-      <stop offset="0.5" stop-color="#b7f5c8"/>
-      <stop offset="0.75" stop-color="#9fd8ff"/>
-      <stop offset="1" stop-color="#d3b4ff"/>
+    <linearGradient id="foil" x1="22" y1="14" x2="78" y2="86" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ff5fa8"/><stop offset="0.18" stop-color="#ffb347"/>
+      <stop offset="0.34" stop-color="#f7f06a"/><stop offset="0.5" stop-color="#4fe8a4"/>
+      <stop offset="0.66" stop-color="#3fc4ff"/><stop offset="0.82" stop-color="#8f7bff"/>
+      <stop offset="1" stop-color="#ff5fa8"/>
     </linearGradient>
   </defs>
   <rect width="100" height="100" rx="22" fill="url(#ground)"/>
-  <path transform="translate(50 50) scale(1.2) translate(-50 -51)" fill="url(#foil)" d="M28 42A22 22 0 0 1 72 42C72 56 70.6 67 68.6 74.6C67 80.2 60.4 83 50 83C39.6 83 33 80.2 31.4 74.6C29.4 67 28 56 28 42Z"/>
+  <path fill="url(#foil)" d="M22 42C22 25 34 14 50 14C66 14 78 25 78 42V66C78 79 66 86 50 86C34 86 22 79 22 66Z"/>
+  <path fill="#fff" fill-opacity="0.32" d="M22 42C22 25 34 14 50 14C66 14 78 25 78 42C68 30 32 30 22 42Z"/>
 </svg>
