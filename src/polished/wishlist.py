@@ -3,7 +3,10 @@
 
 import sqlite3
 from dataclasses import dataclass, field
+from datetime import date
 
+from . import bottles
+from .db import atomic
 from .shades import status
 
 PRIORITIES = (1, 2, 3)
@@ -124,3 +127,34 @@ def cart(wishlist: list[dict], store_url: str, max_priority: int = PRIORITIES[-1
         total_cents=sum(i["price_cents"] or 0 for i in buyable),
         skipped=len(wanted) - len(buyable),
     )
+
+
+def mark_bought(
+    conn: sqlite3.Connection, items: list[tuple[int, int | None]], bought_on: str
+) -> list[int]:
+    """Turns wishlist items into bottles: for each (item id, price paid in cents or None) one full
+    bottle of the item's shade bought on `bought_on` (an ISO date), and the item is removed, all or
+    nothing. Returns the new bottle ids in the order given. Raises LookupError for an unknown item,
+    ValueError for no items, a repeated item or a date that is not YYYY-MM-DD; nothing is written
+    then."""
+    date.fromisoformat(bought_on)
+    if not items:
+        raise ValueError("no items")
+    ids = [item_id for item_id, _ in items]
+    if len(set(ids)) != len(ids):
+        raise ValueError("an item was listed twice")
+    with atomic(conn):
+        shade_ids = {}
+        for item_id in ids:
+            row = conn.execute(
+                "select shade_id from wishlist_item where id = ?", (item_id,)
+            ).fetchone()
+            if row is None:
+                raise LookupError(f"no wishlist item {item_id}")
+            shade_ids[item_id] = row["shade_id"]
+        new_ids = []
+        for item_id, price_cents in items:
+            values = bottles.BottleInput(bought_on=bought_on, price_paid_cents=price_cents)
+            new_ids.append(bottles.add(conn, shade_ids[item_id], values))
+            remove(conn, item_id)
+    return new_ids

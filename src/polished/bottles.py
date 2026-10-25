@@ -1,6 +1,7 @@
 """Bottles: several per shade, each with a state, a printed P code and purchase details
 (DESIGN 4.2). A shade is owned while one of its bottles is neither archived nor empty."""
 
+import calendar
 import re
 import sqlite3
 from dataclasses import dataclass
@@ -202,3 +203,49 @@ def counts(conn: sqlite3.Connection) -> dict[str, int]:
     ).fetchone()[0]
     shades = conn.execute("select count(*) from shade_status where owned_count > 0").fetchone()[0]
     return {"bottles": bottles, "shades": shades}
+
+
+def _plural(count: int, noun: str) -> str:
+    return f"{count} {noun}{'' if count == 1 else 's'}"
+
+
+def group_history(rows: list[dict]) -> list[dict]:
+    """Bottle rows (any order) as years -> months -> rows, newest first. A bottle is dated by
+    `bought_on`, or by the date part of `created_at` when that is empty (`dated_by_entry`). Totals
+    add `price_paid_cents`; a bottle without a price counts in `unpriced`, not in the total."""
+    dated = []
+    for row in rows:
+        entry = dict(row)
+        entry["dated_by_entry"] = not row["bought_on"]
+        entry["date"] = row["bought_on"] or row["created_at"][:10]
+        dated.append(entry)
+    dated.sort(key=lambda r: (r["date"], r["id"]), reverse=True)
+    years: list[dict] = []
+    for entry in dated:
+        year, month = entry["date"][:4], entry["date"][5:7]
+        if not years or years[-1]["year"] != year:
+            years.append({"year": year, "months": []})
+        months = years[-1]["months"]
+        if not months or months[-1]["month"] != month:
+            name = calendar.month_name[int(month)]
+            months.append({"month": month, "label": f"{name} {year}", "rows": []})
+        months[-1]["rows"].append(entry)
+    for year in years:
+        for month in year["months"]:
+            _totals(month, month["rows"])
+        _totals(year, [r for m in year["months"] for r in m["rows"]])
+    return years
+
+
+def _totals(target: dict, rows: list[dict]) -> None:
+    priced = [r["price_paid_cents"] for r in rows if r["price_paid_cents"] is not None]
+    target["count"] = len(rows)
+    target["total_cents"] = sum(priced)
+    target["unpriced"] = len(rows) - len(priced)
+    target["count_text"] = _plural(len(rows), "bottle")
+
+
+def history(conn: sqlite3.Connection) -> list[dict]:
+    """The purchase history: every bottle, archived and empty ones included, by month bought."""
+    rows = conn.execute(f"{_SELECT} order by b.id")
+    return group_history([dict(r) for r in rows])

@@ -1,11 +1,13 @@
 {# Everything on the wishlist page that a change can alter: totals, checkout box, groups. #}
 <div id="wishlist">
+  {% if bought %}<p class="notice" role="status">{{ bought }} bottle{{ '' if bought == 1 else 's' }} added. See them in <a href="/bottles/history">History</a>.</p>{% endif %}
   {% if summary.count %}
   <p class="wish-summary">{{ summary.count }} shade{{ '' if summary.count == 1 else 's' }}, {{ summary.total_cents|money }}.
     {%- if summary.buyable_count == summary.count %} All {{ 'is' if summary.count == 1 else 'are' }} in stock now.
     {%- elif summary.buyable_count %} {{ summary.buyable_count }} {{ 'is' if summary.buyable_count == 1 else 'are' }} in stock now for {{ summary.buyable_cents|money }}.
     {%- else %} None is in stock now.{% endif %}</p>
   {% include "_cart_box.html" %}
+  <button type="button" class="btn btn-secondary btn-block bought-button" hx-get="/wishlist/bought" hx-include="#cart-box [name=max_priority]" hx-target="#sheet-body" hx-swap="innerHTML">I bought these</button>
   {% for group in groups %}
   <section class="wish-group">
     <h2 class="section-title">{{ group.label }} <span>{{ group.rows|length }}</span></h2>

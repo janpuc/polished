@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon with context %}
+{% set tab = "bottles" %}
+{% block title %}Bottle history | Polished{% endblock %}
+{% block content %}
+<header class="page-head">
+  <h1 class="title">Bottles</h1>
+  <a class="btn btn-text btn-icon" href="/lookup?scan=1" aria-label="Add a bottle by scanning">{{ icon("camera") }}</a>
+</header>
+{% set view = "history" %}{% include "_bottle_views.html" %}
+{% for year in years %}
+<section class="history-year">
+  <h2 class="year-line"><span class="year-name">{{ year.year }}:</span> {{ year.count_text }}{% if year.count > year.unpriced %}, {{ year.total_cents|money }}{% endif %}{% if year.unpriced %}<span class="year-note">{{ year.unpriced }} without a price</span>{% endif %}</h2>
+  {% for month in year.months %}
+  <section class="history-month">
+    <h3 class="section-title">{{ month.label }}
+      <span>{{ month.count_text }}{% if month.count > month.unpriced %}, {{ month.total_cents|money }}{% endif %}{% if month.unpriced %}, {{ month.unpriced }} without a price{% endif %}</span></h3>
+    <ul class="group">
+      {% for bottle in month.rows %}
+      <li>
+        <a class="row-link history-row{% if bottle.archived or bottle.state == 'empty' %} is-past{% endif %}" href="/shades/{{ bottle.shade_id }}">
+          {% if bottle.hero_image_url %}<img class="thumb thumb-sm" src="{{ bottle.hero_image_url|thumb(72, 96) }}" srcset="{{ bottle.hero_image_url|thumb(72, 96) }} 2x, {{ bottle.hero_image_url|thumb(108, 144) }} 3x" width="36" height="48" alt="" loading="lazy" decoding="async">{% else %}<span class="thumb thumb-sm thumb-empty" aria-hidden="true"></span>{% endif %}
+          <span class="row-body">
+            <span class="row-title">{{ bottle.title }}</span>
+            <span class="row-sub">
+              <span>{{ "Added" if bottle.dated_by_entry else "Bought" }} {{ bottle.date|day }}{% if bottle.printed_code %}, <span translate="no">{{ bottle.printed_code }}</span>{% endif %}{% if bottle.archived %}, archived{% elif bottle.state == 'empty' %}, empty{% endif %}</span>
+              {% if bottle.price_paid_cents is not none %}<span class="price">{{ bottle.price_paid_cents|money }}</span>{% endif %}
+            </span>
+          </span>
+        </a>
+      </li>
+      {% endfor %}
+    </ul>
+  </section>
+  {% endfor %}
+</section>
+{% else %}
+<div class="empty-state">
+  <div class="nail-glyph" aria-hidden="true"></div>
+  <h2>No purchases yet</h2>
+  <p>Bottles you add show up here, month by month, with what you paid.</p>
+  <a class="btn" href="/lookup?scan=1">Scan a bottle</a>
+</div>
+{% endfor %}
+{% endblock %}

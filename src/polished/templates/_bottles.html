@@ -1,11 +1,21 @@
 {# The bottles of one shade: the body of #bottles on the shade page. #}
+{% set current = bottles|select("owned_bottle")|list %}
+{% set past = bottles|reject("owned_bottle")|list %}
 <div id="bottles" class="bottles">
   {% if notice %}<p class="notice">{{ notice }}</p>{% endif %}
-  {% if bottles %}
+  {% if current %}
   <section class="bottles-section">
     <h2 class="section-title">Bottles</h2>
     <div class="group">
-      {% for bottle in bottles %}{% include "_bottle_card.html" %}{% endfor %}
+      {% for bottle in current %}{% include "_bottle_card.html" %}{% endfor %}
+    </div>
+  </section>
+  {% endif %}
+  {% if past %}
+  <section class="bottles-section bottles-past">
+    <h2 class="section-title">Past bottles</h2>
+    <div class="group">
+      {% for bottle in past %}{% include "_bottle_card.html" %}{% endfor %}
     </div>
   </section>
   {% endif %}

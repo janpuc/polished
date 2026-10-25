@@ -1,0 +1,42 @@
+{# The "I bought these" sheet, swapped into #sheet-body: the wishlist as checkable rows, a price
+   each and one date for all. A failed validation comes back here (HX-Retarget) with the messages
+   and what was typed. #}
+<form class="sheet-form" method="post" action="/wishlist/bought" hx-post="/wishlist/bought" hx-target="#wishlist" hx-swap="outerHTML">
+  <div class="grabber" aria-hidden="true"></div>
+  <header class="sheet-head">
+    <h2 tabindex="-1" autofocus>I bought these<span class="sheet-note">They move from the wishlist to your bottles.</span></h2>
+    <button type="button" class="btn btn-text" data-sheet-close>Cancel</button>
+  </header>
+  <div class="field">
+    <label for="bought_on">Bought on</label>
+    <input id="bought_on" name="bought_on" type="date" value="{{ bought_on }}">
+    {% if errors.bought_on %}<p class="field-error" role="alert">{{ errors.bought_on }}</p>{% endif %}
+  </div>
+  <fieldset class="buy-list">
+    <legend class="legend">Shades</legend>
+    {% if errors.none_ticked %}<p class="field-error" role="alert">{{ errors.none_ticked }}</p>{% endif %}
+    <ul class="group">
+      {% for item in rows %}
+      <li class="buy-row">
+        <label class="buy-pick">
+          <input type="checkbox" name="item" value="{{ item.id }}"{% if item.checked %} checked{% endif %}>
+          {% if item.hero_image_url %}<img class="thumb thumb-sm" src="{{ item.hero_image_url|thumb(72, 96) }}" srcset="{{ item.hero_image_url|thumb(72, 96) }} 2x, {{ item.hero_image_url|thumb(108, 144) }} 3x" width="36" height="48" alt="" loading="lazy" decoding="async">{% else %}<span class="thumb thumb-sm thumb-empty" aria-hidden="true"></span>{% endif %}
+          <span class="row-body">
+            <span class="row-title">{{ item.title }}</span>
+            {% if item.status is none %}<span class="row-flags"><span class="status status-manual">Added by hand</span></span>{% elif item.status.key != 'available' %}<span class="row-flags"><span class="status status-{{ item.status.key }}">{{ item.status.label }}</span></span>{% endif %}
+          </span>
+        </label>
+        <div class="buy-price">
+          <input name="price-{{ item.id }}" value="{{ item.price_field }}" inputmode="decimal" autocomplete="off" enterkeyhint="done" placeholder="Price…" aria-label="Price paid for {{ item.title }}, in dollars"{% if price_errors[item.id] %} aria-invalid="true"{% endif %}>
+        </div>
+        {% if price_errors[item.id] %}<p class="field-error buy-error" role="alert">{{ price_errors[item.id] }}</p>{% endif %}
+      </li>
+      {% else %}
+      <li class="buy-empty">Nothing on the wishlist.</li>
+      {% endfor %}
+    </ul>
+  </fieldset>
+  <div class="sheet-actions">
+    <button type="submit" class="btn btn-block">Add bottles</button>
+  </div>
+</form>

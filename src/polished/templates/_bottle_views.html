@@ -1,0 +1,5 @@
+{# The Collection | History switch at the top of both Bottles pages. #}
+<nav class="segmented segmented-nav" aria-label="Bottles view">
+  <a href="/bottles"{% if view == "collection" %} aria-current="page"{% endif %}>Collection</a>
+  <a href="/bottles/history"{% if view == "history" %} aria-current="page"{% endif %}>History</a>
+</nav>

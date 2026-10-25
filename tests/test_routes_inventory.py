@@ -462,3 +462,220 @@ def test_inventory_pages_need_a_login_when_oidc_is_on(oidc_client):
             "/auth/login"
         )
     assert oidc_client.post("/shades/1/bottles", data={"state": "full"}).status_code == 401
+
+
+# Purchase history and "I bought these"
+
+
+def seed_history(client, conn):
+    for handle, day, price in (
+        ("thirst-trap", "2026-10-03", "15.50"),
+        ("peely-base", "2026-10-20", ""),
+        ("hit-the-lights", "2026-02-14", "12.00"),
+    ):
+        add_bottle(client, sid(conn, handle), bought_on=day, price_paid=price)
+
+
+def test_history_is_a_page_with_years_months_totals_and_rows_linking_to_shades(seeded):
+    client, conn = seeded
+    seed_history(client, conn)
+    page = client.get("/bottles/history")
+    assert page.status_code == 200 and "<html" in page.text
+    assert "2026:</span> 3 bottles, $27.50" in page.text and "1 without a price" in page.text
+    assert page.text.index("October 2026") < page.text.index("February 2026")
+    assert "2 bottles, $15.50, 1 without a price" in page.text
+    assert titles_in(page.text) == ["Peely Base", "Thirst Trap", "Hit The Lights"]
+    assert f'href="/shades/{sid(conn, "thirst-trap")}"' in page.text
+    assert "Bought 3 Oct 2026" in page.text and "$15.50" in page.text
+    assert "·" not in page.text
+
+
+def test_history_keeps_empty_and_archived_bottles_and_says_when_it_used_the_entry_date(seeded):
+    client, conn = seeded
+    shade = sid(conn, "thirst-trap")
+    add_bottle(client, shade, bought_on="2026-10-03")
+    conn.execute("update bottle set state = 'empty'")
+    add_bottle(client, shade)
+    conn.execute("update bottle set archived = 1 where id = 2")
+    page = client.get("/bottles/history").text
+    assert page.count('class="row-link history-row') == 2
+    assert "empty" in page and "Added " in page and "archived" in page
+
+
+def test_an_empty_history_says_so_and_both_pages_carry_the_switch(client):
+    page = client.get("/bottles/history").text
+    assert "No purchases yet" in page
+    assert 'href="/bottles/history" aria-current="page"' in page
+    collection = client.get("/bottles").text
+    assert 'href="/bottles" aria-current="page"' in collection
+    assert 'href="/bottles/history"' in collection
+
+
+def test_a_shade_with_only_past_bottles_lists_them_under_past_bottles(seeded):
+    client, conn = seeded
+    shade = sid(conn, "thirst-trap")
+    add_bottle(client, shade, bought_on="2026-10-03", price_paid="15.50")
+    conn.execute("update bottle set state = 'empty'")
+    page = client.get(f"/shades/{shade}").text
+    assert "Past bottles" in page and "Bought 3 Oct 2026 for $15.50" in page
+    assert '<h2 class="section-title">Bottles</h2>' not in page
+    add_bottle(client, shade)
+    both = client.get(f"/shades/{shade}").text
+    assert both.index(">Bottles</h2>") < both.index("Past bottles")
+
+
+def wish_items(client, conn, *handles_and_priority):
+    for handle, priority in handles_and_priority:
+        client.post(f"/shades/{sid(conn, handle)}/wishlist", data={"priority": str(priority)})
+    return {r["shade_id"]: r["id"] for r in conn.execute("select id, shade_id from wishlist_item")}
+
+
+def test_the_wishlist_offers_i_bought_these_next_to_the_checkout_box(seeded):
+    client, conn = seeded
+    wish_items(client, conn, ("thirst-trap", 1))
+    page = client.get("/wishlist").text
+    assert "I bought these" in page and 'hx-get="/wishlist/bought"' in page
+    assert "/static/js/sheet.js" in page
+    assert page.index("cart-box") < page.index("I bought these")
+
+
+def test_the_sheet_ticks_buyable_items_in_the_checkout_selection_and_prefills_prices(seeded):
+    client, conn = seeded
+    ids = wish_items(
+        client,
+        conn,
+        ("thirst-trap", 1),
+        ("peely-base", 3),
+        ("last-stock", 1),
+    )
+    conn.execute("update shade set available = 0 where handle = 'last-stock'")
+    today = datetime.now(ZoneInfo("Europe/Warsaw")).date().isoformat()
+    sheet = client.get("/wishlist/bought?max_priority=1").text
+    assert "<html" not in sheet and f'value="{today}"' in sheet
+    checked = re.findall(r'name="item" value="(\d+)"( checked)?', sheet)
+    assert {i: bool(c) for i, c in checked} == {
+        str(ids[sid(conn, "thirst-trap")]): True,
+        str(ids[sid(conn, "peely-base")]): False,
+        str(ids[sid(conn, "last-stock")]): False,
+    }
+    assert f'name="price-{ids[sid(conn, "thirst-trap")]}" value="15.50"' in sheet
+    everything = client.get("/wishlist/bought").text
+    assert everything.count(" checked") == 2
+
+
+def test_the_sheet_uses_the_household_timezone_for_today(tmp_path):
+    settings = make_settings(tmp_path, timezone="Pacific/Kiritimati")
+    client = make_client(settings)
+    conn = connect(settings.db_path)
+    seed(conn, EXTRA)
+    wish_items(client, conn, ("thirst-trap", 1))
+    today = datetime.now(ZoneInfo("Pacific/Kiritimati")).date().isoformat()
+    assert f'value="{today}"' in client.get("/wishlist/bought").text
+    conn.close()
+
+
+def test_submitting_creates_bottles_removes_the_items_and_confirms(seeded):
+    client, conn = seeded
+    ids = wish_items(client, conn, ("thirst-trap", 1), ("peely-base", 1), ("hit-the-lights", 2))
+    a, b, c = (ids[sid(conn, h)] for h in ("thirst-trap", "peely-base", "hit-the-lights"))
+    response = client.post(
+        "/wishlist/bought",
+        headers=HX,
+        data={
+            "item": [str(a), str(b)],
+            "bought_on": "2026-10-25",
+            f"price-{a}": "15.50",
+            f"price-{b}": "",
+            f"price-{c}": "9",
+        },
+    )
+    assert response.status_code == 200 and response.headers["HX-Trigger"] == "sheetClose"
+    assert "<html" not in response.text and 'id="wishlist"' in response.text
+    assert (
+        "2 bottles added. See them in" in response.text
+        and 'href="/bottles/history"' in response.text
+    )
+    bought = conn.execute(
+        "select shade_id, state, bought_on, price_paid_cents from bottle order by id"
+    ).fetchall()
+    assert [tuple(r) for r in bought] == [
+        (sid(conn, "thirst-trap"), "full", "2026-10-25", 1550),
+        (sid(conn, "peely-base"), "full", "2026-10-25", None),
+    ]
+    assert [r[0] for r in conn.execute("select id from wishlist_item")] == [c]
+    assert "Hit The Lights" in response.text and "Thirst Trap" not in response.text
+
+
+def test_buying_the_last_item_leaves_the_empty_wishlist_with_the_confirmation(seeded):
+    client, conn = seeded
+    ids = wish_items(client, conn, ("thirst-trap", 1))
+    (item,) = ids.values()
+    text = client.post("/wishlist/bought", data={"item": str(item), "bought_on": "2026-10-25"}).text
+    assert "1 bottle added." in text and "Nothing on the wishlist" in text
+
+
+@pytest.mark.parametrize(
+    ("changes", "message"),
+    [
+        ({"bought_on": "yesterday"}, "Use a date like 2026-10-25."),
+        ({"price": "lots"}, "Use an amount like 15.50."),
+        ({"item": None}, "Tick the shades you bought."),
+    ],
+)
+def test_a_wrong_field_returns_the_sheet_with_a_message_and_changes_nothing(
+    seeded, changes, message
+):
+    client, conn = seeded
+    ids = wish_items(client, conn, ("thirst-trap", 1), ("peely-base", 1))
+    a, b = (ids[sid(conn, h)] for h in ("thirst-trap", "peely-base"))
+    data = {
+        "item": [str(a), str(b)],
+        "bought_on": changes.get("bought_on", "2026-10-25"),
+        f"price-{a}": changes.get("price", "15.50"),
+        f"price-{b}": "7.25",
+    }
+    if "item" in changes:
+        del data["item"]
+    response = client.post("/wishlist/bought", headers=HX, data=data)
+    assert response.status_code == 422
+    assert response.headers["HX-Retarget"] == "#sheet-body" and "HX-Trigger" not in response.headers
+    assert message in response.text and "I bought these" in response.text
+    assert 'value="7.25"' in response.text
+    assert conn.execute("select count(*) from bottle").fetchone()[0] == 0
+    assert conn.execute("select count(*) from wishlist_item").fetchone()[0] == 2
+
+
+def test_an_unknown_item_is_404_and_nothing_changes(seeded):
+    client, conn = seeded
+    ids = wish_items(client, conn, ("thirst-trap", 1))
+    (item,) = ids.values()
+    response = client.post(
+        "/wishlist/bought", data={"item": [str(item), "9999"], "bought_on": "2026-10-25"}
+    )
+    assert response.status_code == 404
+    assert (
+        client.post("/wishlist/bought", data={"item": "x", "bought_on": "2026-10-25"}).status_code
+        == 422
+    )
+    assert conn.execute("select count(*) from bottle").fetchone()[0] == 0
+    assert conn.execute("select count(*) from wishlist_item").fetchone()[0] == 1
+
+
+def test_marking_bought_needs_the_origin_header(seeded):
+    client, conn = seeded
+    ids = wish_items(client, conn, ("thirst-trap", 1))
+    (item,) = ids.values()
+    response = client.post(
+        "/wishlist/bought",
+        headers=NO_ORIGIN,
+        data={"item": str(item), "bought_on": "2026-10-25"},
+    )
+    assert response.status_code == 403
+    assert conn.execute("select count(*) from bottle").fetchone()[0] == 0
+    assert conn.execute("select count(*) from wishlist_item").fetchone()[0] == 1
+
+
+def test_history_and_bought_routes_need_a_login_when_oidc_is_on(oidc_client):
+    for path in ("/bottles/history", "/wishlist/bought"):
+        assert oidc_client.get(path).status_code in (302, 303, 401, 403)
+    assert oidc_client.post("/wishlist/bought").status_code in (302, 303, 401, 403)

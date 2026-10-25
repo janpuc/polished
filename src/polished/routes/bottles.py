@@ -133,6 +133,12 @@ def bottle_list(request: Request, conn: Conn, state: str = "", archived: int = 0
     return render(request, "bottles.html", context, partial="_bottle_groups.html")
 
 
+@router.get("/bottles/history")
+def purchase_history(request: Request, conn: Conn):
+    """Every bottle by month bought, archived and empty ones too."""
+    return render(request, "bottle_history.html", {"years": bottles.history(conn)})
+
+
 @router.get("/shades/{shade_id}/bottles/new")
 def new_bottle_sheet(
     request: Request, conn: Conn, shade_id: int, ctx: str = "shade", printed_code: str = ""

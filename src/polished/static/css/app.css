@@ -599,7 +599,8 @@ a.chip:hover,
 }
 
 .segmented .pick span,
-.segmented button {
+.segmented button,
+.segmented a {
   width: 100%;
   min-height: var(--tap);
   padding: 0 10px;
@@ -615,12 +616,20 @@ a.chip:hover,
   cursor: pointer;
 }
 
-.segmented .pick span {
+.segmented .pick span,
+.segmented a {
   display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.segmented a {
+  text-decoration: none;
 }
 
 .segmented .pick input:checked + span,
-.segmented button[aria-pressed="true"] {
+.segmented button[aria-pressed="true"],
+.segmented a[aria-current="page"] {
   background: var(--lift);
   background-clip: padding-box;
   box-shadow: 0 1px 3px rgb(31 21 38 / 0.14);
@@ -1341,6 +1350,13 @@ a.chip.is-on {
   margin-top: 28px;
 }
 
+.bottles-past .section-title {
+  color: var(--ink-2);
+  font-size: 1.0625rem;
+  line-height: 1.375rem;
+  font-weight: 500;
+}
+
 .bottles-section .section-title {
   margin-top: 0;
   margin-bottom: 8px;
@@ -1622,6 +1638,130 @@ a.chip.is-on {
   order: 1;
   flex: 1 1 100%;
   min-height: var(--tap);
+}
+
+.bought-button {
+  margin: 0 0 8px;
+}
+
+/* 11b. Purchase history and the "I bought these" sheet */
+.segmented-nav {
+  margin: 4px 0 0;
+}
+
+.history-year {
+  margin-top: 28px;
+}
+
+.year-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 6px;
+  font-size: 1.0625rem;
+  line-height: 1.375rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.year-name {
+  font-size: 1.75rem;
+  line-height: 2rem;
+  letter-spacing: -0.01em;
+}
+
+.year-note {
+  flex-basis: 100%;
+  color: var(--ink-2);
+  font-size: 0.9375rem;
+  line-height: 1.25rem;
+  font-weight: 400;
+}
+
+.history-month .section-title {
+  display: flex;
+  flex-direction: column;
+  margin: 20px 0 8px;
+}
+
+.history-month .section-title span {
+  color: var(--ink-2);
+  font-size: 0.9375rem;
+  line-height: 1.25rem;
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+}
+
+.history-row {
+  min-height: 72px;
+  margin: 0;
+  width: 100%;
+}
+
+.history-row.is-past .row-body {
+  opacity: 0.7;
+}
+
+.sheet-note {
+  display: block;
+  margin-top: 2px;
+  color: var(--ink-2);
+  font-size: 0.9375rem;
+  line-height: 1.25rem;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+
+.buy-list .group {
+  margin-top: 0;
+}
+
+.buy-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding-right: 12px;
+}
+
+.buy-pick {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  min-height: 72px;
+  padding-left: 12px;
+  cursor: pointer;
+}
+
+.buy-pick input {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+.buy-price {
+  flex: none;
+  width: 6.5rem;
+}
+
+.buy-price input {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.buy-error {
+  flex-basis: 100%;
+  margin: 0;
+  padding: 0 12px 10px 60px;
+}
+
+.buy-empty {
+  padding: 16px;
+  color: var(--ink-2);
 }
 
 /* 12. Lookup and scanner */

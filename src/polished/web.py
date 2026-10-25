@@ -7,6 +7,8 @@ from fastapi import Request
 from fastapi.templating import Jinja2Templates
 from starlette.responses import Response
 
+from .bottles import is_owned
+
 PACKAGE_DIR = Path(__file__).parent
 STATIC_DIR = PACKAGE_DIR / "static"
 
@@ -59,6 +61,7 @@ def day(value: str | None) -> str:
 
 templates = Jinja2Templates(directory=PACKAGE_DIR / "templates", context_processors=[_context])
 templates.env.filters.update(money=money, thumb=thumb, label=label, words=words, day=day)
+templates.env.tests["owned_bottle"] = is_owned
 
 
 def is_partial_request(request: Request) -> bool:

@@ -890,6 +890,7 @@ builds it.
 | Method | Path | Purpose | Response | Stage |
 |---|---|---|---|---|
 | GET | `/bottles` | My bottles grouped by shade; filters `state`, `archived` | full page / P | 4 |
+| GET | `/bottles/history` | Purchase history: years, months, rows; Collection / History switch | full page | history |
 | GET | `/shades/{id}/bottles/new` | Add-bottle form (P code field, state, date, price, notes) | P (sheet) | 4 |
 | POST | `/shades/{id}/bottles` | Create; learns the P code (stage 5) | P `#bottles`, `HX-Trigger: sheetClose` | 4 |
 | GET | `/bottles/{id}/edit` | Edit form | P (sheet) | 4 |
@@ -902,6 +903,8 @@ builds it.
 | POST | `/wishlist/{id}` | Priority (1 to 3) and note | P `#wishlist` | 4 |
 | POST | `/wishlist/{id}/delete` | Remove (`ctx=shade` from a shade page) | P `#wishlist` / action bar | 4 |
 | GET | `/wishlist/cart` | Permalink for buyable items up to `max_priority` | P cart box | 4 |
+| GET | `/wishlist/bought` | "I bought these" sheet; `max_priority` picks what starts ticked | P (sheet) | history |
+| POST | `/wishlist/bought` | `item` (ids, repeated), `price-<id>`, `bought_on`; one full bottle per item, items removed, one transaction | P `#wishlist` with a confirmation, `HX-Trigger: sheetClose`; 422 retargets the sheet; unknown item 404 | history |
 
 Cart permalink: `<POLISHED_STORE_URL>/cart/<variant_id>:1,<variant_id>:1,…` (default
 `https://holotaco.com/cart/…`), buyable items only (`shades.status().buyable`: not missing, and
@@ -1212,6 +1215,26 @@ carry the shade page's action bar as an out-of-band copy when `ctx=shade`, becau
     422 retargeted at `#save-error` in the footer. Save is disabled while the draft has no layer.
 67. **PLAN stage 7's acceptance `grep -c 'slot hl'` is stale:** the highlighted tile's class list is
     `slot slot-pos-N ring-n-M is-filled is-hl`; the check is `grep -c is-hl`.
+68. **Purchase history is a view of `bottle`, no new table or migration.** `bottles.history(conn)` returns
+    years -> months -> rows (newest first); `group_history` is the pure part. A bottle is dated by
+    `bought_on`, or by the date part of `created_at` (UTC, as stored) when that is empty, and such a row
+    says "Added 25 Oct 2026" where the others say "Bought ...". Totals add `price_paid_cents`; a bottle
+    without a price is counted and left out of the sum, and the heading says "2 without a price". Archived
+    and empty bottles are included (rows say "archived" or "empty"). `/bottles` and `/bottles/history`
+    share a Collection | History switch (`_bottle_views.html`, links styled as a segmented control).
+69. **"I bought these" is `wishlist.mark_bought(conn, [(item_id, price_cents)], bought_on)`** inside
+    `db.atomic`: it checks every item first (`LookupError` for an unknown one, `ValueError` for none, a
+    repeat or a bad date), then adds a full bottle and removes the item, so a failure leaves both tables as
+    they were. The route reads the raw form (`await request.form()`) because the price fields are named
+    `price-<id>`; unknown ids are 404 before validation, a bad price or date or nothing ticked is a 422
+    that re-renders the sheet with what was typed. The sheet's button sits under the checkout box and
+    includes its `max_priority` radios, so the rows that start ticked are the buyable ones the box
+    counts; the prices start at the shade's list price and the date at today in `POLISHED_TIMEZONE`.
+    The confirmation ("3 bottles added. See them in History.") is part of `#wishlist`, so it goes with
+    the next change to the list. `sheet.js` is now loaded on the wishlist page.
+70. **The shade page splits its bottles:** "Bottles" for owned ones and a quieter "Past bottles" for
+    archived and empty ones (before, they shared one list). A card changed in place stays where it is
+    until the page is loaded again. `is_owned` is a Jinja test (`owned_bottle`) for the split.
 
 ## 15. Home-ops manifests
 
