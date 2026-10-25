@@ -13,13 +13,13 @@
 </header>
 <div class="scan-actions">
   <button type="button" class="btn" data-scan-open>{{ icon("camera") }}Scan the barcode</button>
-  <label class="btn btn-secondary scan-photo" for="scan-photo">Take a photo of the barcode</label>
+  <label class="btn btn-text scan-photo" for="scan-photo">Take a photo of the barcode</label>
   <input id="scan-photo" class="visually-hidden" type="file" accept="image/*" capture="environment">
 </div>
 <p id="scan-note" class="notice" role="status" hidden></p>
 <form class="lookup-form" action="/lookup" method="get" role="search">
   <div class="field">
-    <label for="lookup-q">Or type the digits under the barcode, a P code like 259, or a name</label>
+    <label for="lookup-q">Or type the digits under the barcode, a P code, or a name</label>
     <input id="lookup-q" type="search" name="q" value="{{ q }}" inputmode="search" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="search" placeholder="810170284120, 259 or Spirit Fingers…"
            hx-get="/lookup/resolve" hx-vals='{"via": "typed"}' hx-trigger="input changed delay:300ms, search" hx-target="#lookup-result" hx-sync="this:replace">
   </div>

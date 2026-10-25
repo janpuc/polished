@@ -8,7 +8,7 @@
   <div class="builder-head">
     <div class="grabber" aria-hidden="true"></div>
     <header class="sheet-head">
-      <h2 tabindex="-1" autofocus>{{ s.wheel_name }}<span class="sheet-sub">Slot {{ s.position }}</span></h2>
+      <h2 tabindex="-1" autofocus>Slot {{ s.position }}<span class="sheet-sub">{{ s.wheel_name }}</span></h2>
       <button type="button" class="btn btn-text" hx-post="/stacks/{{ s.stack_id }}/cancel" hx-swap="none">Cancel</button>
     </header>
     {{ summary_line(s) }}

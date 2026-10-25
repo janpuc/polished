@@ -351,7 +351,9 @@ def test_search_rows_add_a_layer_and_owned_come_first(client, catalog, wheel):
     catalog.execute("insert into bottle (shade_id, state) values (?, 'full')", (flakie,))
     owned = client.get(f"/search?ctx=stack&stack_id={stack_id}&filter=owned")
     assert owned.status_code == 200 and "Flakie Holo Taco" in owned.text
-    assert "Spirit Fingers" not in owned.text and "Owned ×1" in owned.text
+    assert "Spirit Fingers" not in owned.text and "Owned ×" not in owned.text  # every row is owned
+    everything = client.get(f"/search?ctx=stack&stack_id={stack_id}&filter=all")
+    assert "Owned ×1" in everything.text
     assert (
         f'hx-post="/stacks/{stack_id}/layers"' in owned.text
         and f'{{"shade_id": {flakie}}}' in owned.text

@@ -1,0 +1,3 @@
+{# The "Owned ×N" pill in the shade page's subhead. The span is always there so the bottle
+   fragments can replace it out of band (with `oob_pill`) when the count changes. #}
+<span id="owned-pill"{% if oob_pill %} hx-swap-oob="true"{% endif %}>{% if shade.owned_count %}<span class="pill">Owned ×{{ shade.owned_count }}</span>{% endif %}</span>

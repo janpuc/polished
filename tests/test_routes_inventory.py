@@ -116,18 +116,20 @@ def test_a_state_change_is_one_post_and_returns_the_card(seeded):
     response = client.post(f"/bottles/{bottle}/state", data={"state": "low"}, headers=HX)
     assert response.status_code == 200 and "<html" not in response.text
     assert f'id="bottle-{bottle}"' in response.text and "P259" in response.text
-    pressed = re.findall(r'class="state-chip state-(\w+)" aria-pressed="true"', response.text)
-    assert pressed == ["low"]
+    assert re.findall(r'class="pill pill-level state-(\w+)"', response.text) == ["low"]
+    assert re.search(r"state-low\"[^>]*>Low<svg", response.text)
     assert conn.execute("select state from bottle").fetchone()[0] == "low"
 
 
-def test_emptying_the_last_bottle_turns_the_shade_page_action_back_to_i_have_this(seeded):
+def test_emptying_the_last_bottle_keeps_the_shade_page_action_after_the_last_bottle_is_emptied(
+    seeded,
+):
     client, conn = seeded
     shade = sid(conn, "thirst-trap")
     bottle = make_bottle(client, conn)
     assert "Add bottle" in client.get(f"/shades/{shade}").text
     response = client.post(f"/bottles/{bottle}/state", data={"state": "empty", "ctx": "shade"})
-    assert 'hx-swap-oob="true"' in response.text and "I have this" in response.text
+    assert 'hx-swap-oob="true"' in response.text and "Add bottle" in response.text
     assert "Owned ×" not in response.text
     on_list = client.post(f"/bottles/{bottle}/state", data={"state": "full", "ctx": "list"})
     assert "hx-swap-oob" not in on_list.text
@@ -196,7 +198,7 @@ def test_archive_and_restore(seeded):
     archived = client.post(f"/bottles/{bottle}/archive", data={"archived": "1"})
     assert "Archived" in archived.text and "Restore" in archived.text
     assert conn.execute("select archived from bottle").fetchone()[0] == 1
-    assert "I have this" in client.get(f"/shades/{shade}").text
+    assert "Add bottle" in client.get(f"/shades/{shade}").text
     restored = client.post(f"/bottles/{bottle}/archive", data={"archived": "0"})
     assert "Archive" in restored.text and "Restore" not in restored.text
     assert "Add bottle" in client.get(f"/shades/{shade}").text
@@ -208,7 +210,7 @@ def test_delete_removes_the_card_closes_the_sheet_and_updates_the_action_bar(see
     response = client.post(f"/bottles/{bottle}/delete", data={"ctx": "shade"}, headers=HX)
     assert response.status_code == 200
     assert response.headers["hx-trigger"] == "sheetClose"
-    assert f'id="bottle-{bottle}"' not in response.text and "I have this" in response.text
+    assert f'id="bottle-{bottle}"' not in response.text and "Add bottle" in response.text
     assert conn.execute("select count(*) from bottle").fetchone()[0] == 0
 
 
@@ -237,7 +239,7 @@ def test_the_shade_page_has_two_primary_actions_and_a_bottle_list(seeded):
     client, conn = seeded
     shade = sid(conn, "thirst-trap")
     page = client.get(f"/shades/{shade}").text
-    assert "I have this" in page and 'aria-pressed="false"' in page
+    assert "Add bottle" in page and 'aria-pressed="false"' in page
     assert f'hx-get="/shades/{shade}/bottles/new"' in page and 'hx-target="#sheet-body"' in page
     assert 'id="sheet-body"' in page and "/static/js/sheet.js" in page
     assert "Owned ×" not in page
@@ -430,7 +432,7 @@ def test_creating_a_manual_shade_redirects_to_it(seeded):
     assert response.headers["location"] == f"/shades/{shade['id']}"
     assert (shade["title"], shade["kind"], shade["is_topper"]) == ("Gifted Glow", "topcoat", 1)
     page = client.get(response.headers["location"]).text
-    assert "Gifted Glow" in page and "Added by hand" in page and "I have this" in page
+    assert "Gifted Glow" in page and "Added by hand" in page and "Add bottle" in page
     assert "View on holotaco.com" not in page
 
 
@@ -517,7 +519,7 @@ def test_a_shade_with_only_past_bottles_lists_them_under_past_bottles(seeded):
     add_bottle(client, shade, bought_on="2026-10-03", price_paid="15.50")
     conn.execute("update bottle set state = 'empty'")
     page = client.get(f"/shades/{shade}").text
-    assert "Past bottles" in page and "Bought 3 Oct 2026 for $15.50" in page
+    assert "Past bottles" in page and "Bought 3 Oct 2026" in page and "Paid $15.50." in page
     assert '<h2 class="section-title">Bottles</h2>' not in page
     add_bottle(client, shade)
     both = client.get(f"/shades/{shade}").text

@@ -213,6 +213,7 @@ create table shade (
   sku              text,                                      -- not unique: Shopify does not enforce it
   search_text      text not null,                             -- lowercase, accent-folded title + tag values
   hero_image_url   text,                                      -- images[position = 1].src
+  -- swatch_image_url text: added by 005 (4.3), the photo of the polish on a nail
   price_cents      integer,
   compare_at_cents integer,
   available        integer check (available in (0, 1)),       -- null for manual shades
@@ -380,6 +381,12 @@ group by ws.wheel_id, ws.position
 order by w.name, ws.position;
 ```
 
+`005_swatch_image.sql` (visual polish pass) is one statement: `alter table shade add column
+swatch_image_url text;`. It is the photo that shows the polish on a nail, chosen at sync time by
+`catalog/parse.py swatch_image_url(images, title)`; null when no photo qualifies, and the app then
+shows `hero_image_url` cropped to the glass (`object-position: 50% 68%`). A manual override column
+(`swatch_image_override`) would sit beside it later.
+
 ### 4.4 Later tables (sketch only, not created in v1)
 
 ```
@@ -437,6 +444,15 @@ failed page leaves the database untouched.
    `MANUAL_ALIASES = {"linear-holo-taco\u2122-birthday-gift": "linear-holo-taco",
    "royal-tea-blue-birthday-gift": "royal-tea-blue-2021"}`. (`aurora-unicorn-skin-birthday-gift`
    merges by handle because the target pool is all 372 shades, Top Coats included.)
+   `swatch_image_url` is picked by filename (the feed has no alt text): lowercase words of the
+   basename, split on punctuation, camelCase and digits, the shade's own title words dropped; a photo
+   is rejected when a word starts with bottle, brush, swipe, corner, side, collage, spill or gif;
+   ranks are macro, hand, swatch/nail/mani/ugc, then (older products, numbered page shots) pdp/layer
+   at position 2 or later; best rank, earliest position wins. On the 2026-10-25 snapshot: 248 macro,
+   40 hand, 40 swatch/nail/mani/ugc, 23 page shots, 21 none, so 351 of 372 shades have one. The
+   column is written for new and changed shades. The content hash includes the image sources, so a
+   shade from before migration 005 would stay without one: every sync also fills `swatch_image_url`
+   for any shade where it is null from the feed already in memory (no extra request, no hash change).
 2. **Hash** each product: sha256 over canonical JSON (sorted keys) of `title`, `handle`,
    `product_type`, sorted `tags`, `variants[0].sku`, `variants[0].id`, `variants[0].price`,
    `variants[0].compare_at_price`, `variants[0].available`, `published_at`, and the ordered image
@@ -691,7 +707,7 @@ auth gate → routes.
   rearranging is a database edit, renaming never invalidates a tag.
 - **Wheel page `/w/<slug>`** (the canonical page; `/wheels` links to it): the ring plus the list
   of docs/VISUAL.md 5, replacing the 4-column grid. The ring is slots 1..20 as nail tips around a
-  hub, a filled tip shows its stack's top layer, an empty slot shows its number inside a foil edge,
+  hub, a filled tip shows its stack's top layer as the shade's `swatch_image_url` (else the cropped bottle shot), lower layers as 6px bands from the same photos, the hub shows the filled count ("13") over "of 20 swatched" (the title above it already names the wheel), and a 12-slot ring is drawn at radius 112px, an empty slot shows its number inside a foil edge,
   a slot with an open draft shows a "draft" dot; below it a plain list of the filled slots reads
   each stack without squinting. Tapping a tip or a list row opens the stack builder (section 10). `?hl=<shade_id>` highlights every slot whose stack contains that shade
   and scrolls to the first (`#slot-12`), which is what "Swatched on" links on the shade page use.
@@ -1235,6 +1251,33 @@ carry the shade page's action bar as an out-of-band copy when `ctx=shade`, becau
 70. **The shade page splits its bottles:** "Bottles" for owned ones and a quieter "Past bottles" for
     archived and empty ones (before, they shared one list). A card changed in place stays where it is
     until the page is loaded again. `is_owned` is a Jinja test (`owned_bottle`) for the split.
+71. **Swatch photo per shade** (visual polish pass, advisor review 2026-10-25, `docs/advice/fable-review-2026-10-25.md`):
+    migration `005_swatch_image.sql`, `parse.swatch_image_url(images, title="")` and a sync backfill (4.3, 5.2).
+    Tips, mini tips, layer tips and the ring's bands use `swatch_image_url or hero_image_url` through the
+    `tip_img` macro in `_tip_img.html`; the hero fallback gets class `is-bottle` (crop to the glass). The
+    heuristic differs from the review in three ways: whole words (so `InsideJob` is not a "side" shot),
+    the shade's own title words are ignored (so `BottleService` files qualify), and a fourth rank for
+    older products whose files are numbered page shots (`pdp`, `layer`, position 2 or later), which lifts
+    coverage from 306 to 351 of 372. `wheels.slot_grid`/`slot_tile` layers and `stacks.layers` carry the
+    column. The picker, shade rows, shelf and wishlist keep the bottle shot on purpose: they identify a bottle.
+72. **Bottle card:** the four-segment level control left the card; it shows one pill ("Half ›") that opens the
+    edit sheet, which holds the segmented control. The `Edit` text button went (the pill is the way in); the
+    title is the P code, else "Bought 12 Mar 2026", else "Bottle", and "No P code." moves to the caption with
+    the price ("Paid $13.00."). `POST /bottles/<id>/state` stays, unused by the card.
+73. **Owned pill on the shade page** lives in the subhead after the price (`_owned_pill.html`, a span that
+    bottle fragments replace out of band), the shade-page button is always "Add bottle", and "In stock" is
+    not shown (silence is in stock, as in the rows).
+74. **Builder layer rows:** no "N coats" text, the red remove icon is `--ink-2` (red only while pressed), and
+    the move arrows show only from 3 layers (`.rail:not(:has(li:nth-child(3)))`). The sheet title is
+    "Slot 12" with the wheel name as the caption.
+75. **Wishlist rows:** the note input sits behind an "Add a note" disclosure (open when a note exists) and
+    Remove is `--ink-2`. The checkout "I bought these" sheet puts a "$" inside each price field.
+76. **Smaller presentation changes:** wheel page "Archive wheel" is accent text, not red; the Owned pill is
+    not shown in picker rows under the Owned filter; the tag page shows "Open the wheel" under the intro;
+    the lookup page has one primary (the photo option is a text button); the slot list shows a date only
+    when it differs from the row above; the Bottles empty state offers "Add a bottle" (to `/lookup`); the
+    offline and signed-out marks use `apple-touch-icon.png`; the segmented thumb is lighter (2px border,
+    `0 1px 2px` shadow); the builder search focus ring is inset.
 
 ## 15. Home-ops manifests
 

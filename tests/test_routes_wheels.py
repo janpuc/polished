@@ -245,3 +245,19 @@ def test_shade_page_lists_where_the_shade_is_swatched(catalog, client):
     assert "Swatched on" in page and "Holos, slot 12" in page
     assert f'href="/w/{slug}?hl={black}#slot-12"' in page
     assert "Swatched on" not in client.get(f"/shades/{shade_id(catalog, 'flakie-holo-taco')}").text
+
+
+def test_a_tip_shows_the_swatch_photo_and_crops_the_bottle_shot_when_there_is_none(client, catalog):
+    catalog.execute(
+        "update shade set swatch_image_url = 'https://cdn.shopify.com/x/t_macro1.jpg?v=1'"
+        " where handle = 'thirst-trap'"
+    )
+    wheel_id = make_wheel(client)
+    swatch(catalog, wheel_id, 1, "thirst-trap")
+    swatch(catalog, wheel_id, 2, "peely-base")
+    slug = wheels.get(catalog, wheel_id)["slug"]
+    page = client.get(f"/w/{slug}").text
+    tile = lambda n: re.search(rf'id="slot-{n}".*?</div>', page, re.S).group(0)  # noqa: E731
+    assert "t_macro1.jpg" in tile(1) and 'class="is-bottle"' not in tile(1)
+    assert 'class="is-bottle"' in tile(2)
+    assert ">1<" in page and "of 20 swatched" in page  # the hub shows the count, not the name twice

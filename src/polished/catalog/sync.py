@@ -29,6 +29,7 @@ from .parse import (
     parse_compare_at_cents,
     parse_price_cents,
     search_text,
+    swatch_image_url,
     tag_pairs,
 )
 
@@ -124,6 +125,7 @@ def _upsert_shade(conn: sqlite3.Connection, product_row_id: int, parsed: _Parsed
         "sku": variant.get("sku"),
         "search_text": search_text(product["title"], product["handle"], [v for _, v in pairs]),
         "hero_image_url": hero_image_url(product.get("images", [])),
+        "swatch_image_url": swatch_image_url(product.get("images", []), product["title"]),
         "price_cents": parse_price_cents(variant.get("price")),
         "compare_at_cents": parse_compare_at_cents(variant.get("compare_at_price")),
         "available": int(bool(variant.get("available"))),
@@ -216,6 +218,16 @@ def apply_feed(
             (run_id,),
         ).fetchone()
 
+        # Shades from before migration 005 have no swatch photo and an unchanged hash, so the loop
+        # below fills them from the feed in memory.
+        unswatched = {
+            row["product_id"]
+            for row in conn.execute(
+                "select product_id from shade where swatch_image_url is null"
+                " and product_id is not null"
+            )
+        }
+
         for shopify_id, parsed in parsed_products.items():
             product, variant = parsed.product, parsed.variant
             row = existing.get(shopify_id)
@@ -266,6 +278,13 @@ def apply_feed(
                     counts.new_shades += 1
                 else:
                     counts.changed_shades += 1
+            elif parsed.role == "shade" and product_row_id in unswatched:
+                swatch = swatch_image_url(product.get("images", []), product["title"])
+                if swatch is not None:
+                    conn.execute(
+                        "update shade set swatch_image_url = ? where product_id = ?",
+                        (swatch, product_row_id),
+                    )
 
         counts.unresolved_aliases = _resolve_aliases(conn)
 

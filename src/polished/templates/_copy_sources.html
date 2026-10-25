@@ -1,6 +1,7 @@
 {# Saved swatches to copy into the draft, swapped over the search results. Tapping one replaces
    the draft's layers with copies of its layers (never the stack itself, DESIGN 10.6). #}
 {% from "_icons.html" import icon with context %}
+{% from "_tip_img.html" import tip_img %}
 <div id="copy-sources" class="copy-sources">
   <div class="copy-head">
     <h3 class="copy-title">Copy from a saved swatch</h3>
@@ -22,7 +23,7 @@
             <span class="row-sub"><span>{% if source.name %}{{ source.summary }}. {% endif %}{{ source.wheel_name }}, slot {{ source.position }}</span></span>
           </span>
           <span class="mini-tips" aria-hidden="true">
-            {% for layer in source.layers[-3:] %}<span class="tip-mini">{% if layer.hero_image_url %}<img src="{{ layer.hero_image_url|thumb(72, 96) }}" width="24" height="32" alt="" loading="lazy" decoding="async">{% endif %}</span>{% endfor %}
+            {% for layer in source.layers[-3:] %}<span class="tip-mini">{{ tip_img(layer, 102, 168, 24, 32) }}</span>{% endfor %}
           </span>
           <span class="pick-plus" aria-hidden="true">{{ icon("plus") }}</span>
         </button>

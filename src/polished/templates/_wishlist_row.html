@@ -18,7 +18,10 @@
       <label class="pick"><input type="radio" name="priority" value="{{ p }}"{% if item.priority == p %} checked{% endif %} hx-post="/wishlist/{{ item.id }}" hx-include="closest form" hx-trigger="change" hx-target="#wishlist" hx-swap="outerHTML"><span>{{ {1: "Want most", 2: "Would like", 3: "Maybe"}[p] }}</span></label>
       {% endfor %}
     </div>
-    <input class="wish-note" type="text" name="note" value="{{ item.note or '' }}" maxlength="200" autocomplete="off" placeholder="Add a note…" aria-label="Note for {{ item.title }}" enterkeyhint="done" hx-post="/wishlist/{{ item.id }}" hx-include="closest form" hx-trigger="change" hx-swap="none">
-    <button type="button" class="btn btn-text btn-danger" hx-post="/wishlist/{{ item.id }}/delete" hx-vals='{"ctx": "list"}' hx-target="#wishlist" hx-swap="outerHTML">Remove</button>
+    <details class="wish-note-box"{% if item.note %} open{% endif %}>
+      <summary>{{ "Note" if item.note else "Add a note" }}</summary>
+      <input class="wish-note" type="text" name="note" value="{{ item.note or '' }}" maxlength="200" autocomplete="off" placeholder="Why this one…" aria-label="Note for {{ item.title }}" enterkeyhint="done" hx-post="/wishlist/{{ item.id }}" hx-include="closest form" hx-trigger="change" hx-swap="none">
+    </details>
+    <button type="button" class="btn btn-text wish-remove" hx-post="/wishlist/{{ item.id }}/delete" hx-vals='{"ctx": "list"}' hx-target="#wishlist" hx-swap="outerHTML">Remove</button>
   </form>
 </li>

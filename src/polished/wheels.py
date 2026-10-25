@@ -177,7 +177,7 @@ def _tiles(conn: sqlite3.Connection, wheel: dict, positions: range) -> list[dict
 
 def slot_grid(conn: sqlite3.Connection, wheel: dict) -> list[dict]:
     """One tile per position 1..slot_count: position, filled, has_draft, the saved stack's
-    summary and layers (with shade title, hero_image_url, coats, label), note and painted_on.
+    summary and layers (with shade title, hero_image_url, swatch_image_url, coats, label), note and painted_on.
     Empty slots have no row and come back empty."""
     return _tiles(conn, wheel, range(1, wheel["slot_count"] + 1))
 

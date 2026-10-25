@@ -27,7 +27,8 @@
           </span>
         </label>
         <div class="buy-price">
-          <input name="price-{{ item.id }}" value="{{ item.price_field }}" inputmode="decimal" autocomplete="off" enterkeyhint="done" placeholder="Price…" aria-label="Price paid for {{ item.title }}, in dollars"{% if price_errors[item.id] %} aria-invalid="true"{% endif %}>
+          <span class="buy-currency" aria-hidden="true">$</span>
+          <input name="price-{{ item.id }}" value="{{ item.price_field }}" inputmode="decimal" autocomplete="off" enterkeyhint="done" placeholder="0.00" aria-label="Price paid for {{ item.title }}, in dollars"{% if price_errors[item.id] %} aria-invalid="true"{% endif %}>
         </div>
         {% if price_errors[item.id] %}<p class="field-error buy-error" role="alert">{{ price_errors[item.id] }}</p>{% endif %}
       </li>

@@ -18,7 +18,8 @@
   <span class="price">{{ shade.price_cents|money }}</span>
   {% if shade.on_sale %}<s>{{ shade.compare_at_cents|money }}</s> <span class="pill">Sale</span>{% endif %}
   {% endif %}
-  {% if shade.status is none %}<span class="status status-manual">Added by hand</span>{% else %}<span class="status status-{{ shade.status.key }}">{{ shade.status.label }}</span>{% endif %}
+  {% if shade.status is none %}<span class="status status-manual">Added by hand</span>{% elif shade.status.key != 'available' %}<span class="status status-{{ shade.status.key }}">{{ shade.status.label }}</span>{% endif %}
+  {% include "_owned_pill.html" %}
 </p>
 {% include "_shade_actions.html" %}
 {% include "_bottles.html" %}

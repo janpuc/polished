@@ -2,11 +2,11 @@
    out of band (`oob`) from the bottle fragments, because bottles decide whether the shade is owned. #}
 {% from "_icons.html" import icon with context %}
 <div id="shade-actions" class="actions actions-wrap"{% if oob %} hx-swap-oob="true"{% endif %}>
-  <button type="button" class="btn action-primary" hx-get="/shades/{{ shade.id }}/bottles/new" hx-target="#sheet-body" hx-swap="innerHTML">{{ icon("plus") }}{% if shade.owned_count %}Add bottle{% else %}I have this{% endif %}</button>
+  <button type="button" class="btn action-primary" hx-get="/shades/{{ shade.id }}/bottles/new" hx-target="#sheet-body" hx-swap="innerHTML">{{ icon("plus") }}Add bottle</button>
   {% if wish %}
   <button type="button" class="btn btn-secondary action-wish is-on" aria-pressed="true" aria-label="On the wishlist, tap to remove" hx-post="/wishlist/{{ wish.id }}/delete" hx-vals='{"ctx": "shade"}' hx-target="#shade-actions" hx-swap="outerHTML">{{ icon("heart", "is-filled") }}Wishlist</button>
   {% else %}
   <button type="button" class="btn btn-secondary action-wish" aria-pressed="false" aria-label="Add to the wishlist" hx-post="/shades/{{ shade.id }}/wishlist" hx-target="#shade-actions" hx-swap="outerHTML">{{ icon("heart") }}Wishlist</button>
   {% endif %}
-  {% if shade.owned_count %}<p class="actions-note"><span class="pill">Owned ×{{ shade.owned_count }}</span></p>{% endif %}
 </div>
+{% if oob %}{% with oob_pill = true %}{% include "_owned_pill.html" %}{% endwith %}{% endif %}

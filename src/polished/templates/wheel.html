@@ -29,8 +29,8 @@
 {% endif %}
 <div class="ring{% if hl %} has-hl{% endif %}" role="group" aria-label="{{ wheel.name }}, {{ filled_count }} of {{ wheel.slot_count }} swatched">
   <div class="hub">
-    <span id="hub-name" class="hub-name">{{ wheel.name }}</span>
-    <span id="hub-count" class="hub-count">{{ filled_count }} of {{ wheel.slot_count }} swatched</span>
+    <span id="hub-name" class="hub-name">{{ filled_count }}</span>
+    <span id="hub-count" class="hub-count">of {{ wheel.slot_count }} swatched</span>
   </div>
   {% for tile in tiles %}
   {% include "_slot_tile.html" %}
@@ -52,7 +52,7 @@
   <li>
     <form method="post" action="/wheels/{{ wheel.id }}/archive">
       <input type="hidden" name="archived" value="1">
-      <button type="submit" class="btn btn-text btn-danger group-button" hx-post="/wheels/{{ wheel.id }}/archive" hx-include="closest form" hx-confirm="Archive this wheel? Its tag keeps working and you can restore it.">Archive wheel</button>
+      <button type="submit" class="btn btn-text group-button" hx-post="/wheels/{{ wheel.id }}/archive" hx-include="closest form" hx-confirm="Archive this wheel? Its tag keeps working and you can restore it.">Archive wheel</button>
     </form>
   </li>
   {% endif %}

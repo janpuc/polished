@@ -3,6 +3,7 @@
    after a layer was added, the empty results come along out of band. The name and note form is
    not in here, so typed text survives every edit. Context: routes/_builder.py layers_context. #}
 {% from "_icons.html" import icon with context %}
+{% from "_tip_img.html" import tip_img %}
 {% from "_stack_parts.html" import summary_line, save_button %}
 <div id="stack-layers" class="stack-layers" hx-target="#stack-layers" hx-swap="outerHTML">
   {% if notice %}<p class="notice" role="status">{{ notice }}</p>{% endif %}
@@ -12,8 +13,8 @@
     {% set base = "/stacks/" ~ s.stack_id ~ "/layers/" ~ layer.id %}
     <li id="layer-{{ layer.id }}" class="layer{% if layer.id == new_layer_id %} is-new{% endif %}">
       <span class="layer-label">{{ layer.label }}</span>
-      <span class="layer-tip" aria-hidden="true">{% if layer.hero_image_url %}<img src="{{ layer.hero_image_url|thumb(96, 132) }}" width="32" height="44" alt="" decoding="async">{% endif %}</span>
-      <span class="layer-line"><span class="layer-name">{{ layer.title }}</span>{% if layer.coats > 1 %}<span class="layer-coats">{{ layer.coats }} coats</span>{% endif %}</span>
+      <span class="layer-tip" aria-hidden="true">{{ tip_img(layer, 102, 168, 32, 44, false) }}</span>
+      <span class="layer-line"><span class="layer-name">{{ layer.title }}</span></span>
       <div class="layer-controls">
         <div class="stepper" role="group" aria-label="Coats of {{ layer.title }}">
           <button type="button" class="step" hx-post="{{ base }}/coats" hx-vals='{"delta": -1}' aria-label="Fewer coats"{% if layer.coats <= 1 %} disabled{% endif %}>{{ icon("minus", "icon-sm") }}</button>

@@ -1,22 +1,24 @@
-{# One bottle: its P code, level (one tap each), purchase details, Edit and Archive. `ctx` is
-   "shade" on the shade page (the action bar follows the bottles) or "list" on /bottles. #}
+{% from "_icons.html" import icon with context %}
+{# One bottle: a title (its P code, else when it was bought), the level as one pill that opens
+   the edit sheet, purchase details and Archive. The level control lives in the sheet
+   (_bottle_form.html). `ctx` is "shade" on the shade page (the action bar follows the bottles) or
+   "list" on /bottles. #}
 <article id="bottle-{{ bottle.id }}" class="bottle{% if bottle.archived %} is-archived{% endif %}">
   <div class="bottle-head">
-    <span class="bottle-code">{% if bottle.printed_code %}<span translate="no">{{ bottle.printed_code }}</span>{% else %}<span class="muted">No P code</span>{% endif %}</span>
+    <span class="bottle-code">
+      {%- if bottle.printed_code %}<span translate="no">{{ bottle.printed_code }}</span>
+      {%- elif bottle.bought_on %}Bought {{ bottle.bought_on|day }}
+      {%- else %}Bottle{% endif -%}
+    </span>
     {% if bottle.archived %}<span class="pill">Archived</span>{% endif %}
-    <button type="button" class="btn btn-text" hx-get="/bottles/{{ bottle.id }}/edit?ctx={{ ctx }}" hx-target="#sheet-body" hx-swap="innerHTML">Edit</button>
+    <button type="button" class="pill pill-level state-{{ bottle.state }}" hx-get="/bottles/{{ bottle.id }}/edit?ctx={{ ctx }}" hx-target="#sheet-body" hx-swap="innerHTML" aria-label="Level: {{ bottle.state|capitalize }}. Edit this bottle">{{ bottle.state|capitalize }}{{ icon("chevron-right", "icon-sm") }}</button>
     <button type="button" class="btn btn-text" hx-post="/bottles/{{ bottle.id }}/archive" hx-vals='{"archived": "{{ 0 if bottle.archived else 1 }}", "ctx": "{{ ctx }}"}' hx-target="#bottle-{{ bottle.id }}" hx-swap="outerHTML">{% if bottle.archived %}Restore{% else %}Archive{% endif %}</button>
   </div>
-  <div class="segmented state-chips" role="group" aria-label="Bottle level">
-    {% for key, text in [("full", "Full"), ("half", "Half"), ("low", "Low"), ("empty", "Empty")] %}
-    <button type="button" class="state-chip state-{{ key }}" aria-pressed="{{ 'true' if bottle.state == key else 'false' }}" hx-post="/bottles/{{ bottle.id }}/state" hx-vals='{"state": "{{ key }}", "ctx": "{{ ctx }}"}' hx-target="#bottle-{{ bottle.id }}" hx-swap="outerHTML">{{ text }}</button>
-    {% endfor %}
-  </div>
-  {% if bottle.bought_on or bottle.price_paid_cents is not none or bottle.opened_on or bottle.notes %}
+  {% set bought_in_meta = bottle.printed_code and (bottle.bought_on or bottle.price_paid_cents is not none) %}
+  {% if not bottle.printed_code or bought_in_meta or bottle.opened_on or bottle.notes %}
   <p class="bottle-meta">
-    {%- if bottle.bought_on or bottle.price_paid_cents is not none %}
-    {% if bottle.bought_on %}Bought {{ bottle.bought_on|day }}{% else %}Bought{% endif %}{% if bottle.price_paid_cents is not none %} for {{ bottle.price_paid_cents|money }}{% endif %}.
-    {%- endif %}
+    {%- if not bottle.printed_code %}No P code.{% if bottle.price_paid_cents is not none %} Paid {{ bottle.price_paid_cents|money }}.{% endif %}{% endif %}
+    {%- if bought_in_meta %} {% if bottle.bought_on %}Bought {{ bottle.bought_on|day }}{% else %}Bought{% endif %}{% if bottle.price_paid_cents is not none %} for {{ bottle.price_paid_cents|money }}{% endif %}.{% endif %}
     {%- if bottle.opened_on %} Opened {{ bottle.opened_on|day }}.{% endif %}
     {%- if bottle.notes %}<br>{{ bottle.notes }}{% endif %}
   </p>

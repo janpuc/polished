@@ -34,6 +34,7 @@ def test_migrations_apply_once_and_a_second_run_applies_nothing(tmp_path):
         "002_inventory.sql",
         "003_identifiers.sql",
         "004_wheels_stacks.sql",
+        "005_swatch_image.sql",
     ]
     assert migrate(db) == []
     conn = sqlite3.connect(db)
@@ -42,6 +43,7 @@ def test_migrations_apply_once_and_a_second_run_applies_nothing(tmp_path):
         (2, "002_inventory.sql"),
         (3, "003_identifiers.sql"),
         (4, "004_wheels_stacks.sql"),
+        (5, "005_swatch_image.sql"),
     ]
     conn.close()
 
@@ -98,6 +100,7 @@ def test_package_ships_the_migrations():
         "002_inventory.sql",
         "003_identifiers.sql",
         "004_wheels_stacks.sql",
+        "005_swatch_image.sql",
     ]
 
 
@@ -110,8 +113,10 @@ def test_002_inventory_applies_on_top_of_a_synced_001_database(tmp_path):
     db = str(tmp_path / "polished.db")
     only_001 = tmp_path / "only_001"
     only_001.mkdir()
-    (only_001 / "001_catalog.sql").write_text((MIGRATIONS / "001_catalog.sql").read_text())
-    assert migrate(db, only_001) == ["001_catalog.sql"]
+    # 005 rides along because the sync writes shade.swatch_image_url.
+    for name in ("001_catalog.sql", "005_swatch_image.sql"):
+        (only_001 / name).write_text((MIGRATIONS / name).read_text())
+    assert migrate(db, only_001) == ["001_catalog.sql", "005_swatch_image.sql"]
     conn = connect(db)
     apply(conn, load_feed())
     shades = conn.execute("select count(*) from shade").fetchone()[0]
