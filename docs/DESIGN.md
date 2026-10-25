@@ -51,7 +51,7 @@ products) and `research/barcodes.json`. Appendix A reproduces every number.
 | Prices | strings such as `"15.50"`; currency is not in the feed (USD assumed) |
 | `updated_at` | `2026-10-25` on all 526 products: useless as a change signal |
 | Tags on shades | `finish:` on 346 (13 values), `color:` on 361 (25 values), `collection:` on all 372 (67 values). 26 shades have no finish tag, 11 no colour |
-| Toppers | 9 `Top Coat` products, plus polish tagged `color:clear`: 14 shades carry that tag (1 Top Coat, 3 Base Coats, 10 listed as polish, two of those clear bases: `sticky-base`, `pink-smoothing-base`) |
+| Toppers | 9 `Top Coat` products, plus polish tagged `toppers` (Holo Taco's own topper tag: 44 single shades, 8 of them Top Coats) or `color:clear`: 14 shades carry that tag (1 Top Coat, 3 Base Coats, 10 listed as polish, two of those clear bases: `sticky-base`, `pink-smoothing-base`) |
 | Images | 3 to 20 per shade (median 10), all on `cdn.shopify.com`, `position` 1 is the bottle hero, every `src` carries `?v=<timestamp>`, `alt` is null on all 6096 images |
 | Catalog barcodes (per-product `.json`, 488 fetched, 1 failed) | 362 valid GTINs (12 digits; prefixes 810170 ×264, 810065 ×88, 850017 ×10), 126 nine-digit values that fail the check. One valid value is shared by two products. **The Spirit Fingers bottle reads `810170284120`, which is not in the catalog at all** (catalog says `810065564276`) |
 
@@ -110,8 +110,9 @@ catalog/
   parse.py           price parsing, tag splitting, shade kind, is_topper, hero image
   hashing.py         content_hash()
   fetch.py           polite Shopify client: fetch_feed(), rate limiter, User-Agent, 429 handling
-  sync.py            run_sync(): apply the feed in one transaction, absence accounting, sync_run row
-  scheduler.py       next_run_at(), background loop, startup catch-up, single-flight
+  sync.py            apply_feed(): the feed in one transaction, absence accounting; SyncRunner: lock,
+                     sync_run row, fetch or files, cooldown
+  scheduler.py       next_run_at(), catchup_due(), close_stale_runs(), Scheduler loop
 shades.py            list/filter/search queries, status derivation, detail, manual shades
 bottles.py           bottle CRUD, owned rules
 wishlist.py          wishlist CRUD, totals, cart permalink
@@ -189,7 +190,7 @@ create table shade (
   compare_at_cents integer,
   available        integer check (available in (0, 1)),       -- null for manual shades
   published_at     text,
-  is_topper        integer not null default 0,                -- topcoat, or polish tagged color:clear
+  is_topper        integer not null default 0,                -- topcoat, or polish tagged toppers or color:clear
   retired          integer not null default 0,                -- tag collection:retirement
   retiring         integer not null default 0,                -- tag collection:soon-retiring
   created_at       text not null default (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
@@ -423,7 +424,7 @@ failed page leaves the database untouched.
    the decimal string, `compare_at` null when absent or `0`, `available`, `published_at`);
    recompute `search_text` (title, handle words, tag values; lowercase, accent-folded);
    replace the `shade_tag` rows from the `finish:`, `color:`, `collection:` tags; set
-   `retired`, `retiring`, `is_topper` (kind `topcoat`, or kind `polish` and tag `color:clear`:
+   `retired`, `retiring`, `is_topper` (kind `topcoat`, or kind `polish` and tag `toppers` or `color:clear`:
    known false positives `sticky-base` and `pink-smoothing-base`, harmless in a layer picker).
 5. **Resolve aliases** for `role = alias` products with no `shade_alias` row: target handle
    (stripped suffix, or the manual map) looked up among `shade.handle`. Found → insert the
@@ -900,6 +901,21 @@ tested against this store; stage 4 ends with a manual check by Jan, and the box 
     (section 8.3), a signed-out `POST` without an `Origin` is 403 and with a good one 401.
 13. **htmx is pinned to 2.0.11** (the 2.x line `htmx-config` in section 3.2 is written for; htmx 4
     exists on npm and is not used). Source and checksum are in `static/vendor/VERSIONS.txt`.
+14. **Single flight also reads the `running` row (stage 2).** `SyncRunner.begin()` takes the
+    `asyncio.Lock`, then in one transaction refuses (409) if a `running` row younger than an hour
+    exists (a run in another process, e.g. the CLI), refuses a manual run (429) inside the
+    cooldown, and inserts the `running` row. A `running` row older than an hour never blocks, even
+    before the startup sweep has closed it. The CLI (`trigger='cli'`) skips the cooldown.
+15. **An empty feed is an error**, not a run: `apply_feed` raises before touching the database
+    when no product has a variant, so a broken response can never become the baseline of the 70%
+    trust check. Redirects are followed only within the shop's own site (`holotaco.com`, with or
+    without `www.`), at most three hops, each one throttled like a request.
+16. **The 409 and 429 of `POST /sync/run` are mostly unreachable from the page.** htmx 2 does not
+    swap 4xx responses by default, so the status box disables "Sync now" while a run is going or
+    the cooldown lasts; the status codes (with the message in the partial) still answer races and
+    plain `curl`. A form posted without HTMX is redirected (303) to `/sync`.
+17. **The fixture has 16 products**, not "about 14": the unresolved-alias case (a manual-alias
+    gift whose shade is absent) and the `color:clear` topper needed two more.
 
 ## 15. Home-ops manifests
 

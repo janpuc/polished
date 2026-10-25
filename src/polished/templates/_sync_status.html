@@ -1,0 +1,36 @@
+<section id="sync-status"{% if running %} hx-get="/sync/status" hx-trigger="every 2s" hx-swap="outerHTML"{% endif %}>
+  {% if error %}<p class="notice" role="alert">{{ error }}</p>{% endif %}
+  {% if running %}
+  <p>A sync is running…</p>
+  {% else %}
+  <form method="post" action="/sync/run" hx-post="/sync/run" hx-target="#sync-status" hx-swap="outerHTML">
+    <button type="submit"{% if cooldown_min %} disabled{% endif %}>Sync now</button>
+  </form>
+  {% if cooldown_min %}<p class="muted">A manual sync is possible again in {{ cooldown_min }} min.</p>{% endif %}
+  {% endif %}
+
+  <h2>Recent runs</h2>
+  {% if runs %}
+  <ul class="runs">
+    {% for run in runs %}
+    <li class="run run-{{ run.status }}">
+      <strong>{{ run.started_local }}</strong>
+      <span class="muted">{{ run.trigger }}</span>
+      <span class="status">{{ run.status }}</span>
+      {% if run.status == 'ok' %}
+      <div class="muted">
+        {{ run.products_seen }} products in {{ run.pages_fetched }} page{{ '' if run.pages_fetched == 1 else 's' }},
+        {{ run.new_shades }} new, {{ run.changed_shades }} changed shades,
+        {{ run.newly_missing }} newly missing, {{ run.returned }} returned,
+        {{ run.unresolved_aliases }} unresolved aliases
+      </div>
+      {% elif run.error %}
+      <div class="muted">{{ run.error }}</div>
+      {% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="muted">No sync has run yet.</p>
+  {% endif %}
+</section>

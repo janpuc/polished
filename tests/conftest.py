@@ -1,4 +1,5 @@
 import base64
+import copy
 import json
 import os
 import socket
@@ -9,12 +10,14 @@ import pytest
 from fastapi.testclient import TestClient
 
 from polished.config import Settings
+from polished.db import connect
 from polished.migrate import migrate
 from polished.server import create_app
 
 LOCAL_URL = "http://localhost:8080"
 OIDC_URL = "https://polished.example.test"
 SECRET = "test-secret-test-secret-test-secret-0"
+FIXTURES = Path(__file__).parent / "fixtures"
 
 
 @pytest.fixture(autouse=True)
@@ -110,3 +113,52 @@ def oidc_app_settings(tmp_path) -> Settings:
 def oidc_client(oidc_app_settings) -> TestClient:
     """AUTH_MODE=oidc app; nobody is signed in."""
     return make_client(oidc_app_settings)
+
+
+class FakeClock:
+    """A monotonic clock whose sleep() advances it instead of waiting."""
+
+    def __init__(self):
+        self.time = 1000.0
+        self.sleeps: list[float] = []
+
+    def __call__(self) -> float:
+        return self.time
+
+    async def sleep(self, seconds: float) -> None:
+        self.sleeps.append(seconds)
+        self.time += seconds
+
+
+def load_feed() -> list[dict]:
+    """The products of tests/fixtures/feed_trimmed.json (a fresh copy every call)."""
+    return json.loads((FIXTURES / "feed_trimmed.json").read_text(encoding="utf-8"))["products"]
+
+
+def synthetic_products(count: int, start: int = 0) -> list[dict]:
+    """`count` distinct shade-like products, for tests that need full 250-product pages."""
+    template = next(p for p in load_feed() if p["handle"] == "thirst-trap")
+    products = []
+    for number in range(start, start + count):
+        product = copy.deepcopy(template)
+        product["id"] = 9_000_000_000 + number
+        product["handle"] = f"synthetic-{number}"
+        product["title"] = f"Synthetic {number}"
+        product["variants"][0]["id"] = 8_000_000_000 + number
+        product["variants"][0]["sku"] = f"HL-{number:05d}-NP"
+        products.append(product)
+    return products
+
+
+@pytest.fixture
+def feed() -> list[dict]:
+    return load_feed()
+
+
+@pytest.fixture
+def conn(settings):
+    """A migrated database, opened the way the app opens it."""
+    migrate(settings.db_path)
+    connection = connect(settings.db_path)
+    yield connection
+    connection.close()

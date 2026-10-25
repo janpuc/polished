@@ -4,9 +4,9 @@ A self-hosted nail polish inventory for one household, fed by the
 [Holo Taco](https://holotaco.com) catalog. Server-rendered FastAPI + Jinja2 + HTMX on one SQLite
 file, with Pocket ID sign-in.
 
-Status: stage 1 of the v1 build (skeleton, storage and authentication). It serves `/healthz`, the
-sign-in flow, a placeholder home page and the catalog schema; the catalog sync, browse, bottles,
-scanner and wheels come in later stages. The brief is in [`docs/BRIEF.md`](docs/BRIEF.md), the
+Status: stage 2 of the v1 build (skeleton, storage, authentication and the catalog sync). It
+serves `/healthz`, the sign-in flow, a placeholder home page, the `/sync` page and the daily
+catalog sync; browse, bottles, scanner and wheels come in later stages. The brief is in [`docs/BRIEF.md`](docs/BRIEF.md), the
 design in [`docs/DESIGN.md`](docs/DESIGN.md) and the build plan in [`docs/PLAN.md`](docs/PLAN.md).
 
 ## Running locally
@@ -16,6 +16,7 @@ uv sync --extra dev
 export POLISHED_DB_PATH=./data/polished.db POLISHED_AUTH_MODE=none \
        POLISHED_PUBLIC_URL=http://localhost:8080
 uv run python -m polished migrate
+uv run python -m polished sync --from-files tests/fixtures/feed_trimmed.json   # offline
 uv run python -m polished serve    # http://localhost:8080
 uv run pytest -q
 uv run ruff check && uv run ruff format --check
@@ -32,10 +33,22 @@ export POLISHED_DB_PATH=$(mktemp -d)/polished.db POLISHED_AUTH_MODE=none \
        POLISHED_PUBLIC_URL=http://localhost:8080 POLISHED_SYNC_ENABLED=false \
        POLISHED_SESSION_SECRET=dev-secret-dev-secret-dev-secret-00
 uv run python -m polished migrate
+uv run python -m polished sync --from-files tests/fixtures/feed_trimmed.json
 (uv run python -m polished serve & echo $! > /tmp/polished.pid); sleep 2
 curl -fsS localhost:8080/healthz      # {"status":"ok","version":"dev","schema":1}
+curl -fsS localhost:8080/sync         # the run just made
 kill $(cat /tmp/polished.pid)
 ```
+
+## Catalog sync
+
+The app syncs the shop's public `products.json` feed once a day (06:00 local plus up to 30
+minutes of jitter), once at startup if the last good run is older than 30 hours, and on demand
+from `/sync`. That is 3 requests a day, at least a second apart, with an identifying User-Agent.
+`python -m polished sync` does one live run; `sync --from-files PAGE.json ...` applies local
+pages with the same code and no network (use this for development: `tests/fixtures/` holds a
+trimmed feed, and a full snapshot of three pages works too). A 429 or 5xx stops the run with
+nothing written. Shades are never deleted.
 
 ## Settings
 
@@ -53,8 +66,8 @@ from the environment.
 | `POLISHED_SESSION_SECRET` | unset | At least 32 characters; required in `oidc` mode (a random one is made per start in `none` mode) |
 | `POLISHED_SESSION_DAYS`, `POLISHED_SESSION_MAX_DAYS` | `30`, `90` | Cookie lifetime, and the absolute session age after which sign-in is repeated |
 | `POLISHED_HOST`, `POLISHED_PORT` | `0.0.0.0`, `8080` | Listener |
-| `POLISHED_STORE_URL` | `https://holotaco.com` | Shop base for the feed and cart permalinks (used from stage 2) |
-| `POLISHED_SYNC_ENABLED` | `true` | Daily catalog sync on or off (used from stage 2) |
+| `POLISHED_STORE_URL` | `https://holotaco.com` | Shop base for the feed and cart permalinks |
+| `POLISHED_SYNC_ENABLED` | `true` | Daily catalog sync on or off (the button and the CLI still work) |
 | `POLISHED_SYNC_HOUR`, `POLISHED_SYNC_JITTER_MIN` | `6`, `30` | Daily run, local time, plus up to this many minutes of jitter |
 | `POLISHED_SYNC_MIN_INTERVAL_S` | `1.0` | Gap between requests to the store; values below `1.0` are refused |
 | `POLISHED_SYNC_MANUAL_COOLDOWN_S` | `3600` | Minimum time between runs started from the page |

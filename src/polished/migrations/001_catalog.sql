@@ -41,7 +41,7 @@ create table shade (
   compare_at_cents integer,
   available        integer check (available in (0, 1)),       -- null for manual shades
   published_at     text,
-  is_topper        integer not null default 0,                -- topcoat, or polish tagged color:clear
+  is_topper        integer not null default 0,                -- topcoat, or polish tagged toppers or color:clear
   retired          integer not null default 0,                -- tag collection:retirement
   retiring         integer not null default 0,                -- tag collection:soon-retiring
   created_at       text not null default (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))

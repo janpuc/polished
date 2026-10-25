@@ -1,0 +1,660 @@
+{
+ "products": [
+  {
+   "id": 7528225767514,
+   "title": "Thirst Trap",
+   "handle": "thirst-trap",
+   "published_at": "2025-10-04T11:28:02-04:00",
+   "updated_at": "2026-10-25T04:05:38-04:00",
+   "product_type": "Nail Polish",
+   "tags": [
+    "all-products",
+    "bfcm-2025-excluded",
+    "byob-special-effect",
+    "collection:holoween",
+    "collection:metallic",
+    "color:red",
+    "finish:flakie",
+    "flakes",
+    "metallic",
+    "nail-polish",
+    "notified:under-150",
+    "polish",
+    "red"
+   ],
+   "variants": [
+    {
+     "id": 42093180747866,
+     "sku": "HL-00364-NP",
+     "price": "15.50",
+     "compare_at_price": "15.50",
+     "available": true,
+     "position": 1
+    }
+   ],
+   "images": [
+    {
+     "position": 1,
+     "src": "https://cdn.shopify.com/s/files/1/0050/3001/9162/files/0009_HT-Holoween-SoloBottleHero-ThirstTrap.jpg?v=1760456220"
+    },
+    {
+     "position": 2,
+     "src": "https://cdn.shopify.com/s/files/1/0050/3001/9162/files/HT-Holoween-PDPs-ThirstTrap-hand2_d26f87d7-af15-40a2-8158-bfb8d10530cd.jpg?v=1760456220"
+    }
+   ]
+  },
+  {
+   "id": 7721232400474,
+   "title": "Thirst Trap (Birthday Gift)",
+   "handle": "thirst-trap-birthday-gift",
+   "published_at": "2026-01-07T09:10:01-05:00",
+   "updated_at": "2026-10-25T04:05:38-04:00",
+   "product_type": "Birthday Gift",
+   "tags": [
+    "bundle:product",
+    "exclude-review",
+    "google:excluded",
+    "loyalty:birthday-gift",
+    "notified:under-150",
+    "product-bundle",
+    "review:exclude"
+   ],
+   "variants": [
+    {
+     "id": 42730392617050,
+     "sku": "HL-00130-HB",
+     "price": "15.00",
+     "compare_at_price": "15.00",
+     "available": true,
+     "position": 1
+    }
+   ],
+   "images": [
+    {
+     "position": 1,
+     "src": "https://cdn.shopify.com/s/files/1/0050/3001/9162/files/0009_HT-Holoween-SoloBottleHero-ThirstTrap.jpg?v=1760456220"
+    },
+    {
+     "position": 2,
+     "src": "https://cdn.shopify.com/s/files/1/0050/3001/9162/files/HT-Holoween-PDPs-ThirstTrap-hand2_d26f87d7-af15-40a2-8158-bfb8d10530cd.jpg?v=1760456220"
+    }
+   ]
+  },
+  {
+   "id": 6652201828442,
+   "title": "Gold Play Button",
+   "handle": "gold-play-button",
+   "published_at": "2023-11-01T11:30:03-04:00",
+   "updated_at": "2026-10-25T04:05:29-04:00",
+   "product_type": "Nail Polish",
+   "tags": [
+    "all-products",
+    "blackfriday2022",
+    "collection:glitter",
+    "collection:holographic",
+    "collection:holographic-glitter",
+    "collection:limited-and-seasonal",
+    "collection:retirement",
+    "color:gold",
+    "color:yellow",
+    "cristmas-collection",
+    "finish:glitter",
+    "finish:holographic",
+    "glitter",
+    "gold",
+    "holographic",
+    "nail-polish",
+    "polish"
+   ],
+   "variants": [
+    {
+     "id": 39609431654490,
+     "sku": "HLT-NP-1121-HLDY-B05-R",
+     "price": "15.00",
+     "compare_at_price": "15.00",
+     "available": false,
+     "position": 1
+    }
+   ],
+   "images": [
+    {
+     "position": 1,
+     "src": "https://cdn.shopify.com/s/files/1/0050/3001/9162/products/HT-Bottle_0005_GOLDPLAYBUTTON.jpg?v=1646261701"
+    },
+    {
+     "position": 2,
+     "src": "https://cdn.shopify.com/s/files/1/0050/3001/9162/products/HT-Cristmas-PDP-goldplaybutton-2.jpg?v=1646261701"
+    }
+   ]
+  },
+  {
+   "id": 7934076321882,
+   "title": "Hit The Lights",
+   "handle": "hit-the-lights",
+   "published_at": "2026-09-22T15:17:44-04:00",
+   "updated_at": "2026-10-25T04:05:38-04:00",
+   "product_type": "Nail Polish",
+   "tags": [
+    "all-products",
+    "blue",
+    "collection:7th-anniversary",
+    "collection:glitter",
+    "collection:limited-and-seasonal",
+    "collection:limited-edition",
+    "collection:reflective",
+    "color:blue",
+    "color:gold",
+    "finish:reflective",
+    "glitter",
+    "gold",
+    "nail-polish",
+    "polish",
+    "reflective",
+    "status:no-restock"
+   ],
+   "variants": [
+    {
+     "id": 43440969613402,
+     "sku": "HL-00456-NP",
+     "price": "15.00",
+     "compare_at_price": "15.00",
+     "available": false,
+     "position": 1
+    }
+   ],
+   "images": [
+    {
+     "position": 1,
+     "src": "https://cdn.shopify.com/s/files/1/0050/3001/9162/files/0038_HT---Jackpot---Bottle-Heroes---Hit-The-Lights.png?v=1782945217"
+    },
+    {
+     "position": 2,
+     "src": "https://cdn.shopify.com/s/files/1/0050/3001/9162/files/DSC_2686_hand2_HitTheLights_sq_b12564c3-3097-401f-94b1-65b1b046bfe0.jpg?v=1782945217"
+    }
+   ]
+  },
+  {
+   "id": 7068184641626,
+   "title": "Jam Session",
+   "handle": "jam-session",
+   "published_at": "2024-05-25T11:28:01-04:00",
+   "updated_at": "2026-10-25T04:05:29-04:00",
+   "product_type": "Nail Polish",
+   "tags": [
+    "all-products",
+    "blackfriday2024",
+    "collection:crushed-holographic",
+    "collection:holographic",
+    "collection:rock-candy",
+    "collection:shimmer",
+    "collection:soon-retiring",
+    "color:orange",
+    "color:red",
+    "finish:holographic",
+    "finish:iridescent",
+    "finish:shimmer",
+    "holographic",
+    "nail-polish",
+    "notified:under-150",
+    "orange",
+    "polish",
+    "red"
+   ],
+   "variants": [
+    {
+     "id": 40922028408922,
+     "sku": "HL-00221-NP",
+     "price": "15.50",
+     "compare_at_price": "15.50",
+     "available": false,
+     "position": 1
+    }
+   ],
+   "images": [
+    {
+     "position": 1,
+     "src": "https://cdn.shopify.com/s/files/1/0050/3001/9162/files/HT-Bottle-JamSession-Stylized.jpg?v=1767074115"
+    },
+    {
+     "position": 2,
+     "src": "https://cdn.shopify.com/s/files/1/0050/3001/9162/files/HT-RockCandy-PDPs-JamSession-hand2.jpg?v=1771273315"
+    }
+   ]
+  },
+  {
+   "id": 6849307967578,
+   "title": "Rest In Peach",
+   "handle": "rest-in-peach",
+   "published_at": "2023-03-22T11:28:01-04:00",
+   "updated_at": "2026-10-25T04:05:29-04:00",
+   "product_type": "Nail Polish",
+   "tags": [
+    "all-products",
+    "blackfriday2023",
+    "collection:creme",
+    "collection:pastel-and-dont-tell",
+    "collection:soon-retiring",
+    "color:orange",
+    "creme",
+    "finish:creme",
+    "nail-polish",
+    "orange",
+    "pastel",
+    "pastel-and-dont-tell",
+    "polish",
+    "polish-mountain"
+   ],
+   "variants": [
+    {
+     "id": 40243922305114,
+     "sku": "HL-00151-NP",
+     "price": "13.50",
+     "compare_at_price": "16.50",
+     "available": true,
+     "position": 1
+    }
+   ],
+   "images": [
+    {
+     "position": 1,
+     "src": "https://cdn.shopify.com/s/files/1/0050/3001/9162/files/HT-Bottle-RestInPeach-Black_c65fffad-6651-4dbb-bfc8-6d85b10b7b51.jpg?v=1770734984"
+    },
+    {
+     "position": 2,
+     "src": "https://cdn.shopify.com/s/files/1/0050/3001/9162/products/HT-Pastel-_0013_DSC_0904_hand2_restinpeach_sq.jpg?v=1770734984"
+    }
+   ]
+  },
+  {
+   "id": 4584467464282,
+   "title": "Aurora Unicorn Skin™",
+   "handle": "aurora-unicorn-skin",
+   "published_at": "2020-03-15T11:24:36-04:00",
+   "updated_at": "2026-10-25T04:05:39-04:00",
+   "product_type": "Top Coat",
+   "tags": [
+    "all-products",
+    "blackfriday2022",
+    "byob-topper",
+    "collection:iridescent",
+    "collection:unicorn-skin",
+    "color:blue",
+    "color:pink",
+    "color:purple",
+    "finish:flakie",
+    "finish:iridescent",
+    "flakes",
+    "iridescent",
+    "nail-polish",
+    "tacotuesday2023",
+    "top-coat",
+    "toppers",
+    "unicorn-skin-collection"
+   ],
+   "variants": [
+    {
+     "id": 31972443750490,
+     "sku": "HLT-NP-0220-UNIC-B03-R",
+     "price": "14.50",
+     "compare_at_price": "14.50",
+     "available": true,
+     "position": 1
+    }
+   ],
+   "images": [
+    {
+     "position": 1,
+     "src": "https://cdn.shopify.com/s/files/1/0050/3001/9162/files/HT-Bottle-AuroraUnicornSkin-Black_23c30047-a41f-4fc8-8bc3-d09161df24cc.jpg?v=1770735818"
+    },
+    {
+     "position": 2,
+     "src": "https://cdn.shopify.com/s/files/1/0050/3001/9162/products/holo-taco-unicorn-aurora-indigo-hand-bottle-3.jpg?v=1770735818"
+    }
+   ]
+  },
+  {
+   "id": 6838612197466,
+   "title": "Aurora Unicorn Skin (Birthday Gift)",
+   "handle": "aurora-unicorn-skin-birthday-gift",
+   "published_at": "2026-06-30T12:37:21-04:00",
+   "updated_at": "2026-10-25T04:05:38-04:00",
+   "product_type": "Birthday Gift",
+   "tags": [
+    "bundle:product",
+    "exclude-review",
+    "google:excluded",
+    "loyalty:birthday-gift",
+    "product-bundle",
+    "review:exclude"
+   ],
+   "variants": [
+    {
+     "id": 40215831642202,
+     "sku": "HL-00023-HB",
+     "price": "14.00",
+     "compare_at_price": "13.00",
+     "available": true,
+     "position": 1
+    }
+   ],
+   "images": [
+    {
+     "position": 1,
+     "src": "https://cdn.shopify.com/s/files/1/0050/3001/9162/files/HT-Bottle-AuroraUnicornSkin-Black_658c717a-6f78-443d-bef8-5947d66804ca.jpg?v=1771275019"
+    },
+    {
+     "position": 2,
+     "src": "https://cdn.shopify.com/s/files/1/0050/3001/9162/products/holo-taco-unicorn-aurora-indigo-hand-bottle-3_0f849874-7eac-4b12-b82f-df3d69d610c0.jpg?v=1771275019"
+    }
+   ]
+  },
+  {
+   "id": 4294613663834,
+   "title": "Peely Base",
+   "handle": "peely-base",
+   "published_at": "2021-04-02T11:04:03-04:00",
+   "updated_at": "2026-10-25T04:05:29-04:00",
+   "product_type": "Base Coat",
+   "tags": [
+    "all-products",
+    "base-coat",
+    "blackfriday2022",
+    "byob-base",
+    "collection:essentials",
+    "color:clear",
+    "nail-polish",
+    "peel-off",
+    "top-and-base-coats",
+    "type:essentials"
+   ],
+   "variants": [
+    {
+     "id": 30936560795738,
+     "sku": "HLT-BT-1909-HLTB-B01-R",
+     "price": "13.50",
+     "compare_at_price": "13.50",
+     "available": true,
+     "position": 1
+    }
+   ],
+   "images": [
+    {
+     "position": 1,
+     "src": "https://cdn.shopify.com/s/files/1/0050/3001/9162/files/HT-Bottle-PeelyBase-Black.jpg?v=1765267286"
+    },
+    {
+     "position": 2,
+     "src": "https://cdn.shopify.com/s/files/1/0050/3001/9162/files/HT-NailEssentials-PDPs-Peely-Brush-7.jpg?v=1765267286"
+    }
+   ]
+  },
+  {
+   "id": 6911598067802,
+   "title": "Sticky Base",
+   "handle": "sticky-base",
+   "published_at": "2025-08-08T11:28:04-04:00",
+   "updated_at": "2026-10-25T04:05:38-04:00",
+   "product_type": "Nail Polish",
+   "tags": [
+    "all-products",
+    "base-coat",
+    "byob-base",
+    "collection:camping",
+    "collection:essentials",
+    "collection:trending",
+    "color:clear",
+    "nail-polish",
+    "polish",
+    "top-and-base-coats",
+    "type:essentials"
+   ],
+   "variants": [
+    {
+     "id": 40383979421786,
+     "sku": "HL-00197-NP",
+     "price": "13.50",
+     "compare_at_price": "13.50",
+     "available": true,
+     "position": 1
+    }
+   ],
+   "images": [
+    {
+     "position": 1,
+     "src": "https://cdn.shopify.com/s/files/1/0050/3001/9162/files/HT-Bottle-StickyBase-Black.jpg?v=1765267147"
+    },
+    {
+     "position": 2,
+     "src": "https://cdn.shopify.com/s/files/1/0050/3001/9162/files/HT-PDPs-StickyBase-hand2-Ben.jpg?v=1765267147"
+    }
+   ]
+  },
+  {
+   "id": 8142220656730,
+   "title": "Brainrot Collection",
+   "handle": "brainrot-collection",
+   "published_at": "2026-10-16T09:41:53-04:00",
+   "updated_at": "2026-10-25T04:05:38-04:00",
+   "product_type": "Nail Polish",
+   "tags": [
+    "all-products",
+    "bundle:product",
+    "bundles-sets",
+    "collection:brainrot",
+    "collection:limited-and-seasonal",
+    "collection:limited-edition",
+    "nail-polish",
+    "polish",
+    "product-bundle"
+   ],
+   "variants": [
+    {
+     "id": 44045797130330,
+     "sku": "44045797130330",
+     "price": "99.00",
+     "compare_at_price": "109.00",
+     "available": true,
+     "position": 1
+    }
+   ],
+   "images": [
+    {
+     "position": 1,
+     "src": "https://cdn.shopify.com/s/files/1/0050/3001/9162/files/HT-PDP-_0010_HT-Brainrot-HeroFull-NoPopups.jpg?v=1791325320"
+    },
+    {
+     "position": 2,
+     "src": "https://cdn.shopify.com/s/files/1/0050/3001/9162/files/Brainrot_skittle_mani_aanchysnails_4.jpg?v=1791488687"
+    }
+   ]
+  },
+  {
+   "id": 7902307909722,
+   "title": "Coastal Crèmes Collection",
+   "handle": "coastal-cremes-collection",
+   "published_at": "2026-06-18T09:48:50-04:00",
+   "updated_at": "2026-10-25T04:05:38-04:00",
+   "product_type": "Nail Polish",
+   "tags": [
+    "all-products",
+    "bundles-sets",
+    "collection:coastal-cremes",
+    "collection:creme",
+    "collection:trending",
+    "creme",
+    "nail-polish",
+    "polish"
+   ],
+   "variants": [
+    {
+     "id": 43332535091290,
+     "sku": "HT-00144-ST",
+     "price": "92.00",
+     "compare_at_price": "108.00",
+     "available": true,
+     "position": 1
+    }
+   ],
+   "images": [
+    {
+     "position": 1,
+     "src": "https://cdn.shopify.com/s/files/1/0050/3001/9162/files/HT_-_Coastal_Cremes_-_Collection.jpg?v=1781149738"
+    },
+    {
+     "position": 2,
+     "src": "https://cdn.shopify.com/s/files/1/0050/3001/9162/files/DSC_1558_coastalcremes_hand2_skittle_sq.jpg?v=1781149811"
+    }
+   ]
+  },
+  {
+   "id": 6538594451546,
+   "title": "Royal-Tea Blue",
+   "handle": "royal-tea-blue-2021",
+   "published_at": "2023-12-03T11:28:01-05:00",
+   "updated_at": "2026-10-25T04:05:29-04:00",
+   "product_type": "Nail Polish",
+   "tags": [
+    "all-products",
+    "blackfriday2022",
+    "blue",
+    "byob-creme",
+    "collection:creme",
+    "color:blue",
+    "creme",
+    "finish:creme",
+    "nail-polish",
+    "polish",
+    "polish-mountain"
+   ],
+   "variants": [
+    {
+     "id": 39257267372122,
+     "sku": "HLT-NP-0321-TOPP-B05-R",
+     "price": "13.50",
+     "compare_at_price": "13.50",
+     "available": true,
+     "position": 1
+    }
+   ],
+   "images": [
+    {
+     "position": 1,
+     "src": "https://cdn.shopify.com/s/files/1/0050/3001/9162/files/HT-Bottle-Royal-Tea-Black_af78c5d3-4512-4e02-8983-399b02fcf94c.jpg?v=1770735109"
+    },
+    {
+     "position": 2,
+     "src": "https://cdn.shopify.com/s/files/1/0050/3001/9162/products/MC-PDP-13_d5e0404f-c123-4bcf-8dd2-1d2d5a045912.jpg?v=1771273865"
+    }
+   ]
+  },
+  {
+   "id": 7254118662234,
+   "title": "Royal-Tea Blue (Birthday Gift)",
+   "handle": "royal-tea-blue-birthday-gift",
+   "published_at": "2024-07-03T20:32:44-04:00",
+   "updated_at": "2026-10-25T04:05:29-04:00",
+   "product_type": "Birthday Gift",
+   "tags": [
+    "bundle:product",
+    "exclude-review",
+    "google:excluded",
+    "loyalty:birthday-gift",
+    "product-bundle",
+    "review:exclude"
+   ],
+   "variants": [
+    {
+     "id": 41296061038682,
+     "sku": "HL-00073-HB",
+     "price": "13.00",
+     "compare_at_price": "13.00",
+     "available": true,
+     "position": 1
+    }
+   ],
+   "images": [
+    {
+     "position": 1,
+     "src": "https://cdn.shopify.com/s/files/1/0050/3001/9162/files/HT-Bottle-Royal-Tea-Black_a4a72a43-d195-4dbe-8e9c-9c544277308a.jpg?v=1771273865"
+    },
+    {
+     "position": 2,
+     "src": "https://cdn.shopify.com/s/files/1/0050/3001/9162/products/MC-PDP-13_d5e0404f-c123-4bcf-8dd2-1d2d5a045912.jpg?v=1771273865"
+    }
+   ]
+  },
+  {
+   "id": 6829673316442,
+   "title": "Linear Holo Taco™ (Birthday Gift)",
+   "handle": "linear-holo-taco™-birthday-gift",
+   "published_at": "2026-05-15T10:38:27-04:00",
+   "updated_at": "2026-10-25T04:05:38-04:00",
+   "product_type": "Birthday Gift",
+   "tags": [
+    "exclude-review",
+    "google:excluded",
+    "loyalty:birthday-gift",
+    "product-bundle",
+    "review:exclude"
+   ],
+   "variants": [
+    {
+     "id": 40194299691098,
+     "sku": "HL-00015-HB",
+     "price": "14.00",
+     "compare_at_price": "14.00",
+     "available": true,
+     "position": 1
+    }
+   ],
+   "images": [
+    {
+     "position": 1,
+     "src": "https://cdn.shopify.com/s/files/1/0050/3001/9162/files/HT-Bottle-LinearHoloTaco-Black.jpg?v=1771275134"
+    },
+    {
+     "position": 2,
+     "src": "https://cdn.shopify.com/s/files/1/0050/3001/9162/products/holotaco-hand-w-bottle-linear-holo-taco-on-black_09edcacd-e1b2-441b-8157-171a605363b0.jpg?v=1771275134"
+    }
+   ]
+  },
+  {
+   "id": 7676047884378,
+   "title": "Super Magnet",
+   "handle": "super-magnet",
+   "published_at": "2026-10-01T11:28:02-04:00",
+   "updated_at": "2026-10-25T04:05:38-04:00",
+   "product_type": "Accessories",
+   "tags": [
+    "accessories",
+    "all-products",
+    "collection:magnetic",
+    "collection:magnetic-attraction",
+    "nail-tools",
+    "product:magnet",
+    "restrict:magnet",
+    "restrict:qty-limit-5"
+   ],
+   "variants": [
+    {
+     "id": 42577232429146,
+     "sku": "HL-00103-MT",
+     "price": "23.50",
+     "compare_at_price": "23.50",
+     "available": true,
+     "position": 1
+    }
+   ],
+   "images": [
+    {
+     "position": 1,
+     "src": "https://cdn.shopify.com/s/files/1/0050/3001/9162/files/HT-PDPs-SuperMagnet-Angled.jpg?v=1769230728"
+    },
+    {
+     "position": 2,
+     "src": "https://cdn.shopify.com/s/files/1/0050/3001/9162/files/HT-PDPs-SuperMagnet_c3fc9cc3-382d-413c-98a9-31457b393b4c.jpg?v=1769231053"
+    }
+   ]
+  }
+ ]
+}
