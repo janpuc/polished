@@ -9,8 +9,28 @@
          hx-target="#search-results" hx-sync="this:replace">
 </form>
 <div id="search-results" aria-live="polite"></div>
+<div class="stats">
+  <a class="stat" href="/bottles"><strong>{{ counts.bottles }}</strong><span>bottle{{ '' if counts.bottles == 1 else 's' }}</span></a>
+  <a class="stat" href="/shades?owned=owned"><strong>{{ counts.shades }}</strong><span>shade{{ '' if counts.shades == 1 else 's' }} owned</span></a>
+  <a class="stat" href="/wishlist"><strong>{{ wishlist.count }}</strong><span>wishlist{% if wishlist.count %} · {{ wishlist.total_cents|money }}{% endif %}</span></a>
+</div>
+{% if recent %}
+<h2>Recent bottles</h2>
+<ul class="shade-list">
+  {% for bottle in recent %}
+  <li class="shade-row"><a class="row-link" href="/shades/{{ bottle.shade_id }}">
+    {% if bottle.hero_image_url %}<img class="thumb" src="{{ bottle.hero_image_url|thumb(112) }}" srcset="{{ bottle.hero_image_url|thumb(112) }} 2x, {{ bottle.hero_image_url|thumb(168) }} 3x" width="56" height="56" alt="" loading="lazy" decoding="async">{% else %}<span class="thumb thumb-empty" aria-hidden="true"></span>{% endif %}
+    <span class="row-body">
+      <span class="row-title">{{ bottle.title }}</span>
+      <span class="row-foot"><span class="state-tag state-{{ bottle.state }}">{{ bottle.state|label }}</span>{% if bottle.printed_code %}<span class="muted">{{ bottle.printed_code }}</span>{% endif %}<span class="muted">{{ bottle.created_at[:10] }}</span></span>
+    </span>
+  </a></li>
+  {% endfor %}
+</ul>
+{% endif %}
 <ul class="links">
   <li><a href="/shades">Browse all shades</a></li>
+  <li><a href="/shades/new">Add a shade by hand</a></li>
   <li><a href="/shades?kind=topper">Toppers</a></li>
   <li><a href="/shades?status=buyable&amp;sort=newest">New and in stock</a></li>
   <li><a href="/sync">Catalog sync</a></li>

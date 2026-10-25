@@ -1,0 +1,19 @@
+{# The checkout button and its fallback. Swapped as a whole by the priority chips. #}
+<section id="cart-box" class="cart-box">
+  <form class="cart-priority" action="/wishlist/cart" method="get" hx-get="/wishlist/cart" hx-trigger="change" hx-target="#cart-box" hx-swap="outerHTML">
+    <span class="muted">Include</span>
+    {% for p, text in [(1, "Want most"), (2, "Up to would like"), (3, "Everything")] %}
+    <label class="pick"><input type="radio" name="max_priority" value="{{ p }}"{% if cart.max_priority == p %} checked{% endif %}><span>{{ text }}</span></label>
+    {% endfor %}
+    <noscript><button type="submit" class="secondary">Update</button></noscript>
+  </form>
+  {% if cart.url %}
+  <p class="cart-total"><strong>{{ cart.items|length }}</strong> in stock · <strong>{{ cart.total_cents|money }}</strong>{% if cart.skipped %} <span class="muted">({{ cart.skipped }} not buyable now)</span>{% endif %}</p>
+  <a class="button cart-button" href="{{ cart.url }}" target="_blank" rel="noopener">Open in Holo Taco checkout</a>
+  <p class="muted cart-hint">Opens the Holo Taco checkout with these {{ cart.items|length }} shade{{ '' if cart.items|length == 1 else 's' }}, one of each.</p>
+  <button type="button" class="secondary" data-copy="#cart-list">Copy the list</button>
+  <textarea id="cart-list" class="cart-list" readonly rows="{{ [cart.items|length, 6]|min }}" aria-label="Shade names to copy">{{ cart.names }}</textarea>
+  {% else %}
+  <p class="muted">Nothing on this part of the list is in stock right now{% if cart.skipped %} ({{ cart.skipped }} not buyable){% endif %}.</p>
+  {% endif %}
+</section>

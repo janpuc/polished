@@ -5,7 +5,7 @@ from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, Query, Request
 
-from .. import shades
+from .. import bottles, shades, wishlist
 from ..db import get_conn
 from ..web import render
 
@@ -17,7 +17,13 @@ Conn = Annotated[sqlite3.Connection, Depends(get_conn)]
 @router.get("/")
 def home(request: Request, conn: Conn):
     total = conn.execute("select count(*) from shade").fetchone()[0]
-    return render(request, "home.html", {"shade_count": total})
+    context = {
+        "shade_count": total,
+        "counts": bottles.counts(conn),
+        "wishlist": wishlist.summary(wishlist.items(conn)),
+        "recent": bottles.recent(conn),
+    }
+    return render(request, "home.html", context)
 
 
 @router.get("/search")

@@ -8,6 +8,8 @@
     <span class="row-foot">
       {% if shade.status %}<span class="status status-{{ shade.status.key }}">{{ shade.status.label }}</span>{% else %}<span class="status status-manual">Added by hand</span>{% endif %}
       {% if shade.price_cents is not none %}<span class="price">{{ shade.price_cents|money }}</span>{% endif %}
+      {% if shade.owned_count %}<span class="owned-badge">owned ×{{ shade.owned_count }}</span>{% endif %}
+      {% if shade.wishlisted %}<span class="heart" role="img" aria-label="On the wishlist">♥</span>{% endif %}
     </span>
   </span>
 </a></li>

@@ -1,0 +1,23 @@
+{# One bottle: state chips (one tap each), P code, purchase details, Edit and Archive. `ctx` is
+   "shade" on the shade page (the action bar follows the bottles) or "list" on /bottles. #}
+<article id="bottle-{{ bottle.id }}" class="bottle{% if bottle.archived %} is-archived{% endif %}">
+  <div class="bottle-head">
+    <span class="bottle-code">{% if bottle.printed_code %}{{ bottle.printed_code }}{% else %}<span class="muted">No P code</span>{% endif %}</span>
+    {% if bottle.archived %}<span class="chip">Archived</span>{% endif %}
+    <button type="button" class="link-button" hx-get="/bottles/{{ bottle.id }}/edit?ctx={{ ctx }}" hx-target="#sheet-body" hx-swap="innerHTML">Edit</button>
+  </div>
+  <div class="state-chips" role="group" aria-label="Bottle level">
+    {% for key, text in [("full", "Full"), ("half", "Half"), ("low", "Low"), ("empty", "Empty")] %}
+    <button type="button" class="state-chip state-{{ key }}" aria-pressed="{{ 'true' if bottle.state == key else 'false' }}" hx-post="/bottles/{{ bottle.id }}/state" hx-vals='{"state": "{{ key }}", "ctx": "{{ ctx }}"}' hx-target="#bottle-{{ bottle.id }}" hx-swap="outerHTML">{{ text }}</button>
+    {% endfor %}
+  </div>
+  {% if bottle.bought_on or bottle.price_paid_cents is not none or bottle.opened_on or bottle.notes %}
+  <p class="bottle-meta muted">
+    {% if bottle.bought_on %}Bought {{ bottle.bought_on }}{% endif %}
+    {% if bottle.price_paid_cents is not none %}{{ bottle.price_paid_cents|money }}{% endif %}
+    {% if bottle.opened_on %}· opened {{ bottle.opened_on }}{% endif %}
+    {% if bottle.notes %}<br>{{ bottle.notes }}{% endif %}
+  </p>
+  {% endif %}
+  <button type="button" class="secondary small" hx-post="/bottles/{{ bottle.id }}/archive" hx-vals='{"archived": "{{ 0 if bottle.archived else 1 }}", "ctx": "{{ ctx }}"}' hx-target="#bottle-{{ bottle.id }}" hx-swap="outerHTML">{% if bottle.archived %}Restore{% else %}Archive{% endif %}</button>
+</article>

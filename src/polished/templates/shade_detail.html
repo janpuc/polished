@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% block title %}{{ shade.title }} · Polished{% endblock %}
+{% block scripts %}<script type="module" src="/static/js/sheet.js?v={{ version }}"></script>{% endblock %}
 {% block content %}
 <p class="back"><a href="/shades">‹ Shades</a></p>
 {% if shade.images %}
@@ -17,6 +18,8 @@
   {% if shade.on_sale %}<s class="muted">{{ shade.compare_at_cents|money }}</s> <span class="chip chip-sale">Sale</span>{% endif %}
   {% endif %}
 </p>
+{% include "_shade_actions.html" %}
+{% include "_bottles.html" %}
 <p class="chips">
   {% if shade.is_topper %}<span class="chip chip-topper">Topper</span>{% endif %}
   {% if shade.kind == 'basecoat' %}<span class="chip">Base coat</span>{% endif %}

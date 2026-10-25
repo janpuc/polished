@@ -1,0 +1,12 @@
+{# Bottles grouped by shade: the body of #bottle-groups. #}
+{% for group in groups %}
+<section class="bottle-group">
+  <a class="group-head" href="/shades/{{ group.shade_id }}">
+    {% if group.hero_image_url %}<img class="thumb thumb-small" src="{{ group.hero_image_url|thumb(80) }}" width="40" height="40" alt="" loading="lazy" decoding="async">{% else %}<span class="thumb thumb-small thumb-empty" aria-hidden="true"></span>{% endif %}
+    <span class="row-title">{{ group.title }}</span>
+  </a>
+  {% for bottle in group.bottles %}{% include "_bottle_card.html" %}{% endfor %}
+</section>
+{% else %}
+<p class="empty muted">{% if archived %}No archived bottles.{% elif state %}No bottles at this level.{% else %}No bottles yet. Open a shade and tap “I have this”.{% endif %}</p>
+{% endfor %}

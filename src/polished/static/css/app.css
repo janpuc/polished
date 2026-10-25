@@ -92,7 +92,7 @@ button {
   padding: 0 0.5rem;
 }
 
-input, select {
+input, select, textarea {
   min-height: var(--tap);
   padding: 0 0.75rem;
   border: 1px solid var(--line);
@@ -321,3 +321,226 @@ a.chip { display: inline-flex; align-items: center; min-height: var(--tap); padd
 .detail-meta { display: flex; flex-wrap: wrap; gap: 0.25rem 0.75rem; align-items: baseline; margin: 0 0 0.5rem; font-size: 1.1rem; }
 
 .sku { font-size: 0.85rem; }
+
+/* Owned and wishlist marks on shade rows and the shade page. */
+.owned-badge {
+  padding: 0 0.5rem;
+  border: 1px solid var(--ok);
+  border-radius: 999px;
+  color: var(--ok);
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: capitalize;
+  white-space: nowrap;
+}
+
+.heart { color: var(--accent); }
+
+.page-head { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; }
+
+.head-link { font-size: 0.95rem; font-weight: 400; display: inline-flex; align-items: center; min-height: var(--tap); }
+
+textarea { padding: 0.5rem 0.75rem; resize: vertical; }
+
+.field input, .field textarea { width: 100%; }
+
+.field-error { margin: 0; color: var(--bad); font-size: 0.9rem; }
+
+button.small { min-height: 36px; padding: 0 0.9rem; font-size: 0.9rem; }
+
+button.danger, .danger { color: var(--bad); }
+
+/* The two primary actions of a shade page: big, side by side, under the thumb. */
+.actions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 0.75rem 0 0.25rem; }
+
+.action-primary {
+  flex: 2 1 10rem;
+  min-height: 52px;
+  font-size: 1.05rem;
+}
+
+.action-wish {
+  flex: 1 1 7rem;
+  min-height: 52px;
+  background: var(--surface);
+  color: var(--accent);
+  border: 1px solid var(--accent);
+}
+
+.action-wish.is-on { background: var(--accent); color: var(--accent-fg); }
+
+.actions-note { flex: 1 1 100%; margin: 0; }
+
+/* Bottles. */
+.bottles h2 { margin-top: 1rem; }
+
+.bottle {
+  margin: 0.5rem 0;
+  padding: 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.bottle.is-archived { opacity: 0.65; }
+
+.bottle-head { display: flex; align-items: center; gap: 0.5rem; }
+
+.bottle-code { flex: 1; font-weight: 700; font-size: 1.1rem; letter-spacing: 0.02em; }
+
+.state-chips { display: flex; gap: 0.35rem; margin: 0.35rem 0; }
+
+.state-chip {
+  flex: 1;
+  padding: 0;
+  background: var(--bg);
+  color: var(--fg);
+  border: 1px solid var(--line);
+  font-weight: 500;
+}
+
+.state-chip[aria-pressed="true"] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-fg);
+  font-weight: 700;
+}
+
+.state-chip.state-empty[aria-pressed="true"] { background: var(--muted); border-color: var(--muted); }
+
+.bottle-meta { margin: 0.25rem 0 0.5rem; font-size: 0.9rem; }
+
+.state-tag { font-weight: 600; }
+
+.state-tag.state-empty { color: var(--muted); }
+
+.bottle-group { margin-bottom: 1.25rem; }
+
+.group-head {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: var(--tap);
+  color: inherit;
+  text-decoration: none;
+}
+
+.thumb-small { width: 40px; height: 40px; }
+
+.filter-chips { display: flex; flex-wrap: wrap; gap: 0.4rem; margin: 0.5rem 0; }
+
+.chip-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--tap);
+  padding: 0 0.9rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--fg);
+  text-decoration: none;
+}
+
+.chip-link.is-on { background: var(--accent); border-color: var(--accent); color: var(--accent-fg); font-weight: 600; }
+
+/* Home. */
+.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; margin: 1rem 0 0; }
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 4.5rem;
+  padding: 0.5rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: inherit;
+  text-align: center;
+  text-decoration: none;
+  font-size: 0.85rem;
+}
+
+.stat strong { font-size: 1.5rem; line-height: 1.2; color: var(--accent); }
+
+/* The shared bottom sheet. No padding on the dialog: a click on the dialog itself is the backdrop. */
+.sheet {
+  width: 100%;
+  max-width: 40rem;
+  max-height: 100dvh;
+  margin: auto auto 0;
+  padding: 0;
+  border: 0;
+  border-radius: 16px 16px 0 0;
+  background: var(--surface);
+  color: var(--fg);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.sheet::backdrop { background: rgb(0 0 0 / 0.5); }
+
+.sheet-form { padding: 0 1rem; }
+
+.sheet-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; padding-top: 0.5rem; }
+
+.sheet-head h2 { margin: 0.5rem 0 0.75rem; font-size: 1.2rem; }
+
+.sheet-sub { display: block; font-size: 0.9rem; font-weight: 400; color: var(--muted); }
+
+.state-pick { border: 0; margin: 0 0 0.75rem; padding: 0; display: flex; flex-wrap: wrap; gap: 0.4rem; }
+
+.state-pick legend { width: 100%; padding: 0; font-size: 0.85rem; font-weight: 600; color: var(--muted); }
+
+.more-fields { margin-bottom: 0.75rem; }
+
+.more-fields summary { display: flex; align-items: center; min-height: var(--tap); cursor: pointer; font-weight: 600; }
+
+.sheet-actions {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  padding: 0.5rem 0 calc(0.5rem + env(safe-area-inset-bottom));
+  background: var(--surface);
+}
+
+.sheet-actions .action-primary { flex: 1; }
+
+.plain-form .action-primary { width: 100%; }
+
+/* Wishlist. */
+.wish-summary { margin: 0 0 0.75rem; font-size: 1.05rem; }
+
+.cart-box {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  padding: 0.75rem;
+  border: 2px solid var(--accent);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.cart-priority { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; }
+
+.cart-total { margin: 0; font-size: 1.05rem; }
+
+.cart-button { min-height: 56px; font-size: 1.1rem; }
+
+.cart-hint { margin: 0; font-size: 0.85rem; }
+
+.cart-list { width: 100%; font: inherit; font-size: 0.85rem; background: var(--bg); color: var(--fg); }
+
+.wish-group h2 { margin-top: 1.5rem; }
+
+.wish-row { border-bottom: 1px solid var(--line); list-style: none; }
+
+.wish-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; padding-bottom: 0.5rem; }
+
+.prio-pick { display: flex; gap: 0.25rem; }
+
+.prio-pick .pick span { padding: 0 1rem; }
+
+.wish-note { flex: 1 1 8rem; min-width: 0; }

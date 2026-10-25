@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Shades · Polished{% endblock %}
 {% block content %}
-<h1>Shades</h1>
+<h1 class="page-head">Shades <a class="head-link" href="/shades/new">Add by hand</a></h1>
 <form id="shade-filters" class="search-bar" action="/shades" method="get" role="search"
       hx-get="/shades" hx-trigger="input from:#q delay:200ms, change" hx-target="#shade-list"
       hx-swap="innerHTML" hx-push-url="true" hx-sync="this:replace">
@@ -24,6 +24,13 @@
           <label class="pick"><input type="radio" name="status" value=""{% if not query.status %} checked{% endif %}><span>Any</span></label>
           {% for value, text in [("buyable", "Buyable"), ("retired", "Retired"), ("sold_out", "Sold out")] %}
           <label class="pick"><input type="radio" name="status" value="{{ value }}"{% if query.status == value %} checked{% endif %}><span>{{ text }}</span></label>
+          {% endfor %}
+        </fieldset>
+        <fieldset>
+          <legend>Mine</legend>
+          <label class="pick"><input type="radio" name="owned" value=""{% if not query.owned %} checked{% endif %}><span>Any</span></label>
+          {% for value, text in [("owned", "Owned"), ("not_owned", "Not owned"), ("wishlist", "Wishlist")] %}
+          <label class="pick"><input type="radio" name="owned" value="{{ value }}"{% if query.owned == value %} checked{% endif %}><span>{{ text }}</span></label>
           {% endfor %}
         </fieldset>
         <fieldset>

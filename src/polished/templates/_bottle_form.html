@@ -1,0 +1,52 @@
+{# The add / edit bottle sheet, swapped into #sheet-body. A failed validation comes back here
+   (HX-Retarget) with the messages and what was typed. #}
+{% if bottle %}
+<form class="sheet-form" method="post" action="/bottles/{{ bottle.id }}" hx-post="/bottles/{{ bottle.id }}" hx-target="#bottle-{{ bottle.id }}" hx-swap="outerHTML">
+  <input type="hidden" name="ctx" value="{{ ctx }}">
+{% else %}
+<form class="sheet-form" method="post" action="/shades/{{ shade_id }}/bottles" hx-post="/shades/{{ shade_id }}/bottles" hx-target="#bottles" hx-swap="outerHTML">
+{% endif %}
+  <header class="sheet-head">
+    <h2>{% if bottle %}Edit bottle{% else %}Add bottle{% endif %}<span class="sheet-sub">{{ shade_title }}</span></h2>
+    <button type="button" class="link-button" data-sheet-close>Cancel</button>
+  </header>
+  <fieldset class="state-pick">
+    <legend>Level</legend>
+    {% for key, text in states.items() %}
+    <label class="pick"><input type="radio" name="state" value="{{ key }}"{% if values.state == key %} checked{% endif %}><span>{{ text }}</span></label>
+    {% endfor %}
+    {% if errors.state %}<p class="field-error" role="alert">{{ errors.state }}</p>{% endif %}
+  </fieldset>
+  <div class="field">
+    <label for="printed_code">P code</label>
+    <input id="printed_code" name="printed_code" value="{{ values.printed_code or '' }}" inputmode="numeric" enterkeyhint="done" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="12" placeholder="259 (stored as P259)">
+  </div>
+  <div class="field">
+    <label for="bought_on">Bought on</label>
+    <input id="bought_on" name="bought_on" type="date" value="{{ values.bought_on or '' }}">
+    {% if errors.bought_on %}<p class="field-error" role="alert">{{ errors.bought_on }}</p>{% endif %}
+  </div>
+  <details class="more-fields"{% if values.price_paid or values.opened_on or values.notes or errors.price_paid or errors.opened_on %} open{% endif %}>
+    <summary>More details</summary>
+    <div class="field">
+      <label for="price_paid">Price paid ($)</label>
+      <input id="price_paid" name="price_paid" value="{{ values.price_paid or '' }}" inputmode="decimal" autocomplete="off" placeholder="15.50">
+      {% if errors.price_paid %}<p class="field-error" role="alert">{{ errors.price_paid }}</p>{% endif %}
+    </div>
+    <div class="field">
+      <label for="opened_on">Opened on</label>
+      <input id="opened_on" name="opened_on" type="date" value="{{ values.opened_on or '' }}">
+      {% if errors.opened_on %}<p class="field-error" role="alert">{{ errors.opened_on }}</p>{% endif %}
+    </div>
+    <div class="field">
+      <label for="notes">Notes</label>
+      <textarea id="notes" name="notes" rows="2" maxlength="500">{{ values.notes or '' }}</textarea>
+    </div>
+  </details>
+  <div class="sheet-actions">
+    <button type="submit" class="action-primary">{% if bottle %}Save{% else %}Save bottle{% endif %}</button>
+  </div>
+  {% if bottle %}
+  <button type="button" class="link-button danger" hx-post="/bottles/{{ bottle.id }}/delete" hx-vals='{"ctx": "{{ ctx }}"}' hx-confirm="Delete this bottle entry? Use Archive to keep it." hx-target="#bottle-{{ bottle.id }}" hx-swap="outerHTML">Delete this entry</button>
+  {% endif %}
+</form>

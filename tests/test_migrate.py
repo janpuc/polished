@@ -29,11 +29,12 @@ def names(db_path: str, kind: str) -> set[str]:
 
 def test_migrations_apply_once_and_a_second_run_applies_nothing(tmp_path):
     db = str(tmp_path / "polished.db")
-    assert migrate(db) == ["001_catalog.sql"]
+    assert migrate(db) == ["001_catalog.sql", "002_inventory.sql"]
     assert migrate(db) == []
     conn = sqlite3.connect(db)
     assert conn.execute("select version, name from schema_version").fetchall() == [
-        (1, "001_catalog.sql")
+        (1, "001_catalog.sql"),
+        (2, "002_inventory.sql"),
     ]
     conn.close()
 
@@ -85,4 +86,54 @@ def test_a_failing_migration_leaves_nothing_behind(tmp_path):
 
 
 def test_package_ships_the_migrations():
-    assert [p.name for p in MIGRATIONS.iterdir() if p.name.endswith(".sql")] == ["001_catalog.sql"]
+    assert sorted(p.name for p in MIGRATIONS.iterdir() if p.name.endswith(".sql")) == [
+        "001_catalog.sql",
+        "002_inventory.sql",
+    ]
+
+
+def test_002_inventory_applies_on_top_of_a_synced_001_database(tmp_path):
+    from conftest import load_feed
+    from shade_data import apply
+
+    from polished.db import connect
+
+    db = str(tmp_path / "polished.db")
+    only_001 = tmp_path / "only_001"
+    only_001.mkdir()
+    (only_001 / "001_catalog.sql").write_text((MIGRATIONS / "001_catalog.sql").read_text())
+    assert migrate(db, only_001) == ["001_catalog.sql"]
+    conn = connect(db)
+    apply(conn, load_feed())
+    shades = conn.execute("select count(*) from shade").fetchone()[0]
+    assert shades == 9
+    assert "bottle" not in names(db, "table")
+
+    assert migrate(db) == ["002_inventory.sql"]
+    assert names(db, "table") >= {"bottle", "wishlist_item"}
+    assert names(db, "index") >= {"bottle_shade", "bottle_printed_code"}
+    assert "shade_status" in names(db, "view")
+    assert conn.execute("select count(*) from shade").fetchone()[0] == shades
+    status = conn.execute("select * from shade_status").fetchall()
+    assert len(status) == shades
+    assert {(r["owned_count"], r["bottle_count"], r["wishlisted"]) for r in status} == {(0, 0, 0)}
+
+    conn.execute("insert into bottle (shade_id) values (1)")
+    conn.execute("insert into wishlist_item (shade_id) values (2)")
+    assert conn.execute("select state, archived from bottle").fetchone()[:] == ("full", 0)
+    assert (
+        conn.execute("select owned_count from shade_status where shade_id = 1").fetchone()[0] == 1
+    )
+    assert conn.execute("select wishlisted from shade_status where shade_id = 2").fetchone()[0] == 1
+    conn.close()
+    assert migrate(db) == []
+
+
+def test_002_inventory_enforces_its_checks(tmp_path):
+    db = str(tmp_path / "polished.db")
+    migrate(db)
+    conn = sqlite3.connect(db)
+    conn.execute("pragma foreign_keys = on")
+    with pytest.raises(sqlite3.IntegrityError):
+        conn.execute("insert into bottle (shade_id) values (1)")  # no such shade
+    conn.close()

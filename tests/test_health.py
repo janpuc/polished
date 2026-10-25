@@ -10,7 +10,7 @@ from polished.server import create_app
 def test_healthz_reports_status_version_and_schema(client):
     response = client.get("/healthz")
     assert response.status_code == 200
-    assert response.json() == {"status": "ok", "version": "dev", "schema": 1}
+    assert response.json() == {"status": "ok", "version": "dev", "schema": 2}
 
 
 def test_healthz_on_a_database_that_was_never_migrated_reports_schema_0(tmp_path):

@@ -1,0 +1,7 @@
+{% extends "base.html" %}
+{% block title %}Wishlist · Polished{% endblock %}
+{% block scripts %}<script type="module" src="/static/js/copy.js?v={{ version }}"></script>{% endblock %}
+{% block content %}
+<h1>Wishlist</h1>
+{% include "_wishlist.html" %}
+{% endblock %}

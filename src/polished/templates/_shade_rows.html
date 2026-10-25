@@ -5,7 +5,7 @@
 {% endif %}
 {% for shade in result.rows %}{% include "_shade_row.html" %}
 {% else %}
-<li class="empty muted">No shades match these filters.</li>
+<li class="empty muted">No shades match these filters. <a href="/shades/new{% if query.q %}?title={{ query.q|urlencode }}{% endif %}">Add one by hand</a></li>
 {% endfor %}
 {% if more_url %}
 <li class="more"><button type="button" class="secondary" hx-get="{{ more_url }}" hx-target="closest li" hx-swap="outerHTML">Load more</button></li>

@@ -13,15 +13,21 @@ SEARCH_LIMIT = 30
 
 KINDS = ("polish", "topper", "base")
 STATUSES = ("buyable", "retired", "sold_out")
+OWNED = ("any", "owned", "not_owned", "wishlist")
 SORTS = ("name", "newest", "price")
 
-# shade s left join product p. Same conditions as status() below, so a filter and a row's
+# shade s left join product p left join shade_status ss. Same conditions as status() below, so a filter and a row's
 # status never disagree (tests/test_shades.py checks it on every shade).
 _LISTED = "p.missing_since is null"
 STATUS_SQL = {
     "buyable": f"{_LISTED} and s.available = 1",
     "retired": f"{_LISTED} and s.retired = 1",
     "sold_out": f"{_LISTED} and s.retired = 0 and s.available = 0",
+}
+OWNED_SQL = {
+    "owned": "ss.owned_count > 0",
+    "not_owned": "ss.owned_count = 0",
+    "wishlist": "ss.wishlisted = 1",
 }
 KIND_SQL = {
     "polish": "s.kind = 'polish' and s.is_topper = 0",
@@ -36,7 +42,10 @@ ORDER_SQL = {
 }
 _NOT_WORD = re.compile(r"[\W_]+")
 
-FROM = "from shade s left join product p on p.id = s.product_id"
+FROM = (
+    "from shade s left join product p on p.id = s.product_id"
+    " left join shade_status ss on ss.shade_id = s.id"
+)
 
 
 @dataclass(frozen=True)
@@ -93,6 +102,7 @@ class ShadeQuery:
     kind: str = ""
     status: str = ""
     sort: str = "name"
+    owned: str = ""  # "" means any
 
     @classmethod
     def from_params(
@@ -104,6 +114,7 @@ class ShadeQuery:
         kind: str | None = None,
         status: str | None = None,
         sort: str | None = None,
+        owned: str | None = None,
     ) -> "ShadeQuery":
         return cls(
             q=(q or "").strip()[:100],
@@ -113,6 +124,7 @@ class ShadeQuery:
             kind=_pick(kind, KINDS),
             status=_pick(status, STATUSES),
             sort=_pick(sort, SORTS, "name"),
+            owned=_pick(owned, OWNED[1:]),
         )
 
     def filter_count(self) -> int:
@@ -123,13 +135,14 @@ class ShadeQuery:
             + bool(self.collection)
             + bool(self.kind)
             + bool(self.status)
+            + bool(self.owned)
         )
 
     def params(self, page: int = 1) -> list[tuple[str, str]]:
         """Only what differs from the defaults, for a Load more URL."""
         pairs = [("q", self.q)] if self.q else []
         pairs += [("finish", v) for v in self.finish] + [("color", v) for v in self.color]
-        for name in ("collection", "kind", "status"):
+        for name in ("collection", "kind", "status", "owned"):
             if getattr(self, name):
                 pairs.append((name, getattr(self, name)))
         if self.sort != "name":
@@ -172,19 +185,23 @@ def _where(query: ShadeQuery) -> tuple[str, list]:
         where.append(KIND_SQL[query.kind])
     if query.status:
         where.append(STATUS_SQL[query.status])
+    if query.owned:
+        where.append(OWNED_SQL[query.owned])
     return (" where " + " and ".join(where)) if where else "", args
 
 
-def _order(query: ShadeQuery) -> tuple[str, list]:
+def _order(query: ShadeQuery, owned_first: bool = False) -> tuple[str, list]:
     """A search by name puts titles that start with the query first (search_text starts with the
-    folded title), then alphabetical."""
+    folded title), then alphabetical. The home search ranks shades the household has first,
+    then wishlisted ones (`owned_first`, DESIGN 6)."""
     words = tokens(query.q)
+    ranks = "(ss.owned_count > 0) desc, ss.wishlisted desc, " if owned_first else ""
     if words and query.sort == "name":
         return (
-            "(s.search_text like ?) desc, " + ORDER_SQL["name"],
+            ranks + "(s.search_text like ?) desc, " + ORDER_SQL["name"],
             [" ".join(words) + "%"],
         )
-    return ORDER_SQL[query.sort], []
+    return ranks + ORDER_SQL[query.sort], []
 
 
 def _with_finishes(conn: sqlite3.Connection, rows: list[sqlite3.Row]) -> list[dict]:
@@ -204,17 +221,22 @@ def _with_finishes(conn: sqlite3.Connection, rows: list[sqlite3.Row]) -> list[di
 
 
 def list_shades(
-    conn: sqlite3.Connection, query: ShadeQuery, page: int = 1, size: int = PAGE_SIZE
+    conn: sqlite3.Connection,
+    query: ShadeQuery,
+    page: int = 1,
+    size: int = PAGE_SIZE,
+    owned_first: bool = False,
 ) -> ShadePage:
-    """One page of shades: rows with a Status and their finish values, and the total."""
+    """One page of shades: rows with a Status, their finish values and the owned count and
+    wishlist flag, and the total."""
     page = max(page, 1)
     where, args = _where(query)
-    order, order_args = _order(query)
+    order, order_args = _order(query, owned_first)
     total = conn.execute(f"select count(*) {FROM}{where}", args).fetchone()[0]
     rows = conn.execute(
         "select s.id, s.title, s.kind, s.source, s.hero_image_url, s.price_cents,"
         " s.compare_at_cents, s.available, s.retired, s.retiring, s.is_topper,"
-        f" p.missing_since {FROM}{where} order by {order} limit ? offset ?",
+        f" p.missing_since, ss.owned_count, ss.wishlisted {FROM}{where} order by {order} limit ? offset ?",
         [*args, *order_args, size, (page - 1) * size],
     ).fetchall()
     return ShadePage(
@@ -227,7 +249,7 @@ def list_shades(
 
 def search(conn: sqlite3.Connection, text: str, limit: int = SEARCH_LIMIT) -> ShadePage:
     """The home typeahead: the first `limit` matches of a name search."""
-    return list_shades(conn, ShadeQuery.from_params(q=text), size=limit)
+    return list_shades(conn, ShadeQuery.from_params(q=text), size=limit, owned_first=True)
 
 
 def facets(conn: sqlite3.Connection) -> dict[str, list[str]]:
@@ -252,7 +274,9 @@ def get_shade(conn: sqlite3.Connection, shade_id: int) -> dict | None:
     """Everything the detail page shows: the shade, its status, tags by namespace, all product
     images (from the product's raw feed JSON), and the product handle for the shop link."""
     row = conn.execute(
-        f"select s.*, p.missing_since, p.raw_json {FROM} where s.id = ?", (shade_id,)
+        "select s.*, p.missing_since, p.raw_json, ss.owned_count, ss.bottle_count, ss.wishlisted"
+        f" {FROM} where s.id = ?",
+        (shade_id,),
     ).fetchone()
     if row is None:
         return None
@@ -271,3 +295,25 @@ def get_shade(conn: sqlite3.Connection, shade_id: int) -> dict | None:
         tags[tag["ns"]].append(tag["value"])
     shade.update(status=status(shade), on_sale=on_sale(shade), images=images, tags=tags)
     return shade
+
+
+MANUAL_KINDS = {  # form value -> (shade.kind, shade.is_topper)
+    "polish": ("polish", 0),
+    "topper": ("topcoat", 1),
+    "base": ("basecoat", 0),
+}
+
+
+def create_manual(conn: sqlite3.Connection, title: str, kind: str) -> int:
+    """A shade added by hand (a gifted bottle that is not in the catalog): no product, no price,
+    no availability. `kind` is one of KINDS. Returns the shade id."""
+    title = " ".join(title.split())
+    if not title:
+        raise ValueError("a shade needs a title")
+    shade_kind, is_topper = MANUAL_KINDS[kind]
+    cursor = conn.execute(
+        "insert into shade (source, kind, title, search_text, is_topper)"
+        " values ('manual', ?, ?, ?, ?)",
+        (shade_kind, title, fold(title), is_topper),
+    )
+    return cursor.lastrowid

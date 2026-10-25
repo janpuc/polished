@@ -1,0 +1,20 @@
+{# Everything on the wishlist page that a change can alter: totals, checkout box, groups. #}
+<div id="wishlist">
+  {% if summary.count %}
+  <p class="wish-summary">
+    <strong>{{ summary.count }}</strong> shade{{ '' if summary.count == 1 else 's' }} · <strong>{{ summary.total_cents|money }}</strong> in total
+    <span class="muted"> · {{ summary.buyable_count }} buyable now, {{ summary.buyable_cents|money }}</span>
+  </p>
+  {% include "_cart_box.html" %}
+  {% for group in groups %}
+  <section class="wish-group">
+    <h2>{{ group.label }} <span class="muted">({{ group.rows|length }})</span></h2>
+    <ul class="shade-list">
+      {% for item in group.rows %}{% include "_wishlist_row.html" %}{% endfor %}
+    </ul>
+  </section>
+  {% endfor %}
+  {% else %}
+  <p class="empty muted">Nothing on the wishlist yet. Open a shade and tap “♡ Wishlist”.</p>
+  {% endif %}
+</div>

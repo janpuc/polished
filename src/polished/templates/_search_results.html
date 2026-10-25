@@ -1,5 +1,5 @@
 {% if result is none %}{% elif not result.rows %}
-<p class="muted empty">Nothing matches “{{ q }}”.</p>
+<p class="muted empty">Nothing matches “{{ q }}”. <a href="/shades/new?title={{ q|urlencode }}">Add it by hand</a></p>
 {% else %}
 <ul class="shade-list">
   {% for shade in result.rows %}{% include "_shade_row.html" %}

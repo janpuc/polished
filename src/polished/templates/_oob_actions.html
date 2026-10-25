@@ -1,0 +1,2 @@
+{# The shade page's action bar as an out-of-band swap; empty where there is no such page. #}
+{% if oob_actions %}{% with oob=true %}{% include "_shade_actions.html" %}{% endwith %}{% endif %}

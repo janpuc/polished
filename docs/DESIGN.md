@@ -117,7 +117,7 @@ shades.py            list/filter/search queries, status derivation, detail, manu
 bottles.py           bottle CRUD, owned rules
 wishlist.py          wishlist CRUD, totals, cart permalink
 gtin.py              normalise_gtin(), check digit
-identifiers.py       resolve(), learn(), printed-code normalisation
+identifiers.py       resolve(), learn(), printed-code normalisation (stage 4: normalise_printed only)
 stacks.py            draft/commit, layers, templates, summary(), default_coats()
 wheels.py            wheel CRUD, slug generation, slot grid, tag URL, QR
 routes/              home.py shades.py bottles.py wishlist.py lookup.py wheels.py stacks.py
@@ -135,6 +135,8 @@ tests (`tests/test_<module>.py`) independent of HTTP.
 `HX-History-Restore-Request`; otherwise the full page. History restore must be a full page, and
 `htmx-config` sets `historyCacheSize: 0` so private pages are not snapshotted into localStorage
 and `includeIndicatorStyles: false` so HTMX injects no inline `<style>` (the CSP forbids it).
+`responseHandling` also swaps a 422, so a form that fails validation can show its messages
+(deviation 25); every other 4xx and 5xx is still not swapped.
 All HTML responses carry `Cache-Control: private, no-cache` and `Vary: HX-Request,
 HX-History-Restore-Request`, so Safari's back button never shows a partial.
 `render(request, page, context, status_code, partial=None)` in `web.py` implements the rule: with a
@@ -479,10 +481,11 @@ raises; the fixture README says so.
 - `search_text` is lowercase, accent-folded (`NFKD`, marks stripped), punctuation to spaces.
   A query is tokenised the same way (`shades.tokens`: folded, split on anything that is not a
   letter or digit); every token must match as `LIKE '%token%'`. 372 rows: no FTS5.
-- Ranking in the picker and the home search: owned first, then wishlisted, then the rest; within
-  a group, titles starting with the query first, then alphabetical. Limit 30. Stage 3 has no
-  owned or wishlist groups yet: a title starting with the query, then alphabetical. The same
-  order applies to `/shades?q=` when sorted by name.
+- Ranking in the picker and the home search: owned first (`owned_count > 0`), then wishlisted,
+  then the rest; within a group, titles starting with the query first, then alphabetical. Limit
+  30. Stage 4 does this for the home search (`shades.search`); the pickers arrive with stages 5
+  and 7. `/shades?q=` keeps the plain order (a title starting with the query, then alphabetical)
+  when sorted by name.
 - Filters on `/shades`, one GET form (so the URL is the state and works without JavaScript):
   `finish` and `color` (multi-select, any-of within a namespace, AND between filters),
   `collection` (one), `kind` (`polish|topper|base`; `topper` is `shade.is_topper`, `polish` is a
@@ -496,7 +499,9 @@ raises; the fixture README says so.
   list. A change or 200 ms of typing sends the form with `hx-get`, the fragment (rows, Load more
   and the two counts as out-of-band spans) replaces `#shade-list`, and `hx-push-url` keeps the URL.
 - A shade row (`_shade_row.html`, one line, class `shade-row`) shows the hero thumbnail, title,
-  up to three finish chips (plus "Topper"), the status label and the price; it opens the shade.
+  up to three finish chips (plus "Topper"), the status label, the price, an "owned ×N" badge
+  when `shade_status.owned_count` is above 0 and a ♥ when the shade is wishlisted; it opens the
+  shade.
 - The detail page shows the images (every `images[]` entry of the product's stored feed JSON) in
   a horizontally scrolling, scroll-snapped strip, the status, price (with the compare-at price and
   a "Sale" chip when `price < compare_at`), finish, colour and collection chips that link back to
@@ -850,20 +855,35 @@ builds it.
 | GET | `/shades/{id}/bottles/new` | Add-bottle form (P code field, state, date, price, notes) | P (sheet) | 4 |
 | POST | `/shades/{id}/bottles` | Create; learns the P code (stage 5) | P `#bottles`, `HX-Trigger: sheetClose` | 4 |
 | GET | `/bottles/{id}/edit` | Edit form | P (sheet) | 4 |
-| POST | `/bottles/{id}` | Update | P `#bottles` | 4 |
+| POST | `/bottles/{id}` | Update | P bottle card, `HX-Trigger: sheetClose` | 4 |
 | POST | `/bottles/{id}/state` | Set full / half / low / empty | P bottle card | 4 |
-| POST | `/bottles/{id}/archive` | `archived=0/1` | P | 4 |
-| POST | `/bottles/{id}/delete` | Hard delete a mistaken entry (`hx-confirm`) | P | 4 |
+| POST | `/bottles/{id}/archive` | `archived=0/1` | P bottle card | 4 |
+| POST | `/bottles/{id}/delete` | Hard delete a mistaken entry (`hx-confirm`) | P (empty) + `sheetClose` | 4 |
 | GET | `/wishlist` | Items by priority, total (all, and buyable), cart box | full page | 4 |
-| POST | `/shades/{id}/wishlist` | Add (priority 2) | P button | 4 |
-| POST | `/wishlist/{id}` | Priority (1 to 3) and note | P row | 4 |
-| POST | `/wishlist/{id}/delete` | Remove | P | 4 |
+| POST | `/shades/{id}/wishlist` | Add (`priority`, default 2; an existing item is kept) | P action bar | 4 |
+| POST | `/wishlist/{id}` | Priority (1 to 3) and note | P `#wishlist` | 4 |
+| POST | `/wishlist/{id}/delete` | Remove (`ctx=shade` from a shade page) | P `#wishlist` / action bar | 4 |
 | GET | `/wishlist/cart` | Permalink for buyable items up to `max_priority` | P cart box | 4 |
 
-Cart permalink: `https://holotaco.com/cart/<variant_id>:1,<variant_id>:1,…`, buyable items only
-(`available` and not missing), quantity 1, opened with `target="_blank" rel="noopener"`. Not yet
-tested against this store; stage 4 ends with a manual check by Jan, and the box also offers
-"Copy the list" as a fallback.
+Cart permalink: `<POLISHED_STORE_URL>/cart/<variant_id>:1,<variant_id>:1,…` (default
+`https://holotaco.com/cart/…`), buyable items only (`shades.status().buyable`: not missing, and
+available), quantity 1, in list order (priority 1 first, then the order added), opened with
+`target="_blank" rel="noopener"`. `max_priority` (1 to 3, default and out-of-range 3) limits it to
+the first priorities. Verified 2026-10-25 with one request: `https://holotaco.com/cart/16924152004698:1`
+answers 301 to `https://www.holotaco.com/cart/16924152004698:1?cart_link_id=…`, then 302 to
+`https://www.holotaco.com/checkouts/cn/…`. So the permalink opens the Shopify **checkout** with the
+items in it, not the cart page; the button reads "Open in Holo Taco checkout". The box also offers
+"Copy the list" (the shade names, one per line, for ordering by hand) as a fallback, and shows the
+count and total of what the link carries and how many items on that part of the list are not buyable.
+
+Every route in this section except `GET /bottles` and `GET /wishlist` answers with its fragment
+whether or not `HX-Request` is set, as `/search` does. A bottle
+form that fails validation answers 422 with `HX-Retarget: #sheet-body`, so the messages appear in
+the sheet. `POST /wishlist/{id}` and `/wishlist/{id}/delete` return the whole `#wishlist` body
+(totals, checkout box and groups all change with a priority), not one row; the delete from a shade
+page (`ctx=shade`) returns the shade's action bar instead. Bottle cards and the new bottle list
+carry the shade page's action bar as an out-of-band copy when `ctx=shade`, because the bar's
+"I have this" / "+ Add bottle" label and the "owned ×N" badge follow the bottles.
 
 ### 13.4 Identifier lookup
 
@@ -969,6 +989,41 @@ tested against this store; stage 4 ends with a manual check by Jan, and the box 
     `finish=holographic&status=buyable` counts 0 rows). `tests/test_routes_browse.py` adds
     synthetic in-stock holographic shades for the last; the local snapshot answers all three
     (Spirit Fingers found, 22 "black" rows, 62 buyable holographic, 48 toppers of 372).
+
+24. **Fragment routes answer with the fragment even without `HX-Request`** (stage 4), as `/search`
+    does: bottle and wishlist POSTs, the add and edit sheets and `/wishlist/cart`. PLAN.md's curl
+    checks send no `HX-Request` and expect the partial (`P259` in the body). Only `/bottles`,
+    `/wishlist`, `/shades/new` and the shade pages follow the page-or-partial rule of 3.2.
+25. **A 422 is swapped by htmx** (stage 4). `htmx-config` gets a `responseHandling` list that is
+    htmx's default plus `422`, because a bottle form with a bad price or date comes back with its
+    messages and `HX-Retarget: #sheet-body` (deviation 16 still holds for 409 and 429).
+26. **The P code is normalised on save, and a code that does not look like one is kept** (stage 4).
+    PLAN.md says "stored uppercase, normalised later"; the acceptance check and the quick-entry UX
+    need `259` to be stored as `P259` now. `identifiers.normalise_printed` (7.1) exists with only
+    that function; stage 5 adds `resolve()` and `learn()`. A value that fails the 7.1 pattern
+    (`^[A-Z]{1,2}\d{1,5}$`) is stored uppercase without spaces instead of being refused, since the
+    format of every code a bottle may carry is not known and a bottle is never lost over its code.
+    The field uses `inputmode="numeric"`, so it shows and takes the digits only (`P259` is shown as
+    `259`).
+27. **The wishlist routes return the whole `#wishlist` body, not a row** (stage 4), and the checkout
+    box falls back to "Everything" after a change, because a priority or a removal changes the
+    groups, the totals and the permalink together. A note edit swaps nothing.
+28. **Stage 4 has more templates and one more script than PLAN.md lists:** `_bottle_card.html`,
+    `_bottle_groups.html`, `_bottle_swap.html` (card plus the out-of-band action bar),
+    `_oob_actions.html`, `_shade_actions.html` (the two primary buttons), `_wishlist.html`,
+    `_wishlist_row.html`, and `static/js/copy.js` ("Copy the list"). `sheet.js` is loaded by the
+    shade page and `/bottles`, `copy.js` by `/wishlist`; the `<dialog id="sheet">` is in
+    `base.html`. Deleting a bottle lives in its edit sheet (`hx-confirm`), archiving on the card.
+29. **The trimmed fixture cannot show a permalink from shade 2 alone:** shade 2 is Gold Play
+    Button (retired, sold out), so PLAN.md's `wishlist/cart` check prints nothing for it, which is
+    the buyable-only rule at work. Adding a buyable shade (1 or 6) prints the permalink; the
+    snapshot (372 shades) prints one for several. `tests/test_wishlist.py` checks the exact string
+    with sold-out, retired-unavailable, no-longer-listed and manual shades in the list.
+30. **`POST /shades` answers 302 and a shade added by hand has `kind` polish, topcoat or basecoat**
+    for the form values polish, topper, base (a topper is a `topcoat` with `is_topper = 1`), so the
+    kind filter of 6 finds it. The form is a plain POST, not HTMX.
+31. **The top bar gains Bottles and Wishlist** next to Shades, and the shade list gains "Add by
+    hand" (also offered by an empty search).
 
 ## 15. Home-ops manifests
 

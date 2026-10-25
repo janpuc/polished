@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="htmx-config" content='{"historyCacheSize": 0, "includeIndicatorStyles": false}'>
+  <meta name="htmx-config" content='{"historyCacheSize": 0, "includeIndicatorStyles": false, "responseHandling": [{"code": "204", "swap": false}, {"code": "[23]..", "swap": true}, {"code": "422", "swap": true}, {"code": "[45]..", "swap": false, "error": true}, {"code": "...", "swap": true}]}'>
   <meta name="theme-color" content="#fbf8fb" media="(prefers-color-scheme: light)">
   <meta name="theme-color" content="#17121a" media="(prefers-color-scheme: dark)">
   <meta name="mobile-web-app-capable" content="yes">
@@ -17,6 +17,7 @@
   <link rel="stylesheet" href="/static/css/app.css?v={{ version }}">
   <script src="/static/vendor/htmx.min.js?v={{ version }}" defer></script>
   <script type="module" src="/static/js/register-sw.js?v={{ version }}"></script>
+  {% block scripts %}{% endblock %}
 </head>
 <body>
   {% block topbar %}
@@ -24,6 +25,8 @@
     <a class="brand" href="/">Polished</a>
     <nav>
       <a class="nav-link" href="/shades">Shades</a>
+      <a class="nav-link" href="/bottles">Bottles</a>
+      <a class="nav-link" href="/wishlist">Wishlist</a>
       {% if user %}
       <form method="post" action="/auth/logout">
         <button type="submit" class="link-button">Sign out</button>
@@ -35,5 +38,8 @@
   <main id="main">
     {% block content %}{% endblock %}
   </main>
+  <dialog id="sheet" class="sheet" aria-label="Details">
+    <div id="sheet-body"></div>
+  </dialog>
 </body>
 </html>
