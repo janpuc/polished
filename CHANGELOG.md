@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.5.0](https://github.com/janpuc/polished/compare/v0.4.0...v0.5.0) (2026-10-26)
+
+
+### Features
+
+* **api:** /api/v1 read endpoints, per-device tokens with the app's PKCE sign-in, apple-app-site-association, UI-test reset ([c6a7475](https://github.com/janpuc/polished/commit/c6a747550997293a0e439b8466673cce93b9d6c9))
+* v3 web look (lit tips, Fraunces display roles, warm palette, level arc, date field), /api/v1 writes, wear log, https sign-in callback for the app ([9a0fde3](https://github.com/janpuc/polished/commit/9a0fde377263e9d09c40c2a42cf22982ac0cf9e9))
+
+
+### Documentation
+
+* native app spec (SwiftUI for iPhone, iPad and iPhone Duo, /api/v1 contract, tip renderer port, TestFlight) ([e6fad41](https://github.com/janpuc/polished/commit/e6fad417747dd671ce1b3d4dfe8ab768365aac9c))
+* native target iOS 27.1, App Store Connect name and API key location ([07e5285](https://github.com/janpuc/polished/commit/07e5285fd1993092caeddeb8f4685659993d0b62))
+
 ## [0.4.0](https://github.com/janpuc/polished/compare/v0.3.0...v0.4.0) (2026-10-26)
 
 
