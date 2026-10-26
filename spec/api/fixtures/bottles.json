@@ -1,0 +1,244 @@
+{
+  "request": {
+    "method": "GET",
+    "path": "/api/v1/bottles"
+  },
+  "status": 200,
+  "body": {
+    "groups": [
+      {
+        "shade": {
+          "id": 14,
+          "title": "Flakie Holo Taco",
+          "kind": "topcoat",
+          "source": "holotaco",
+          "is_topper": true,
+          "price_cents": 1450,
+          "compare_at_cents": 1450,
+          "status": {
+            "key": "available",
+            "label": "In stock",
+            "buyable": true
+          },
+          "finishes": [
+            "flakie",
+            "holographic"
+          ],
+          "owned_count": 1,
+          "wishlisted": false,
+          "hero_image_url": "https://cdn.shopify.com/s/files/1/0050/3001/9162/files/HT-Bottle-AuroraUnicornSkin-Black_23c30047-a41f-4fc8-8bc3-d09161df24cc.jpg?v=1770735818",
+          "released_on": null,
+          "official_collection": null,
+          "marks": [],
+          "tip": {
+            "id": 14,
+            "hex": "#d1478b",
+            "hex2": null,
+            "finishes": [
+              "flakie",
+              "holographic"
+            ],
+            "topper": true,
+            "clear": false,
+            "coats": 1,
+            "colours": [],
+            "revision": "b74a65e152"
+          }
+        },
+        "bottles": [
+          {
+            "id": 3,
+            "shade_id": 14,
+            "state": "full",
+            "printed_code": null,
+            "bought_on": "2026-10-01",
+            "price_paid_cents": 1650,
+            "opened_on": null,
+            "notes": null,
+            "archived": false,
+            "created_at": "2026-10-01T08:15:30Z",
+            "updated_at": "2026-10-01T08:15:30Z"
+          }
+        ]
+      },
+      {
+        "shade": {
+          "id": 12,
+          "title": "One-Coat Black",
+          "kind": "polish",
+          "source": "holotaco",
+          "is_topper": false,
+          "price_cents": 1550,
+          "compare_at_cents": 1550,
+          "status": {
+            "key": "available",
+            "label": "In stock",
+            "buyable": true
+          },
+          "finishes": [
+            "creme"
+          ],
+          "owned_count": 1,
+          "wishlisted": false,
+          "hero_image_url": "https://cdn.shopify.com/s/files/1/0050/3001/9162/files/0009_HT-Holoween-SoloBottleHero-ThirstTrap.jpg?v=1760456220",
+          "released_on": null,
+          "official_collection": null,
+          "marks": [],
+          "tip": {
+            "id": 12,
+            "hex": "#111111",
+            "hex2": null,
+            "finishes": [
+              "creme"
+            ],
+            "topper": false,
+            "clear": false,
+            "coats": 1,
+            "colours": [
+              "black"
+            ],
+            "revision": "a27c6f2038"
+          }
+        },
+        "bottles": [
+          {
+            "id": 2,
+            "shade_id": 12,
+            "state": "full",
+            "printed_code": null,
+            "bought_on": "2026-08-02",
+            "price_paid_cents": 1200,
+            "opened_on": null,
+            "notes": null,
+            "archived": false,
+            "created_at": "2026-08-02T18:40:00Z",
+            "updated_at": "2026-08-02T18:40:00Z"
+          }
+        ]
+      },
+      {
+        "shade": {
+          "id": 13,
+          "title": "Spirit Fingers",
+          "kind": "polish",
+          "source": "holotaco",
+          "is_topper": false,
+          "price_cents": 1550,
+          "compare_at_cents": 1550,
+          "status": {
+            "key": "available",
+            "label": "In stock",
+            "buyable": true
+          },
+          "finishes": [
+            "glitter"
+          ],
+          "owned_count": 2,
+          "wishlisted": false,
+          "hero_image_url": "https://cdn.shopify.com/s/files/1/0050/3001/9162/files/HT-Bottle-JamSession-Stylized.jpg?v=1767074115",
+          "released_on": null,
+          "official_collection": null,
+          "marks": [],
+          "tip": {
+            "id": 13,
+            "hex": "#a647d1",
+            "hex2": null,
+            "finishes": [
+              "glitter"
+            ],
+            "topper": false,
+            "clear": false,
+            "coats": 1,
+            "colours": [
+              "orange"
+            ],
+            "revision": "009e6d1af8"
+          }
+        },
+        "bottles": [
+          {
+            "id": 5,
+            "shade_id": 13,
+            "state": "full",
+            "printed_code": null,
+            "bought_on": "2025-12-24",
+            "price_paid_cents": null,
+            "opened_on": null,
+            "notes": null,
+            "archived": false,
+            "created_at": "2025-12-24T09:00:00Z",
+            "updated_at": "2025-12-24T09:00:00Z"
+          },
+          {
+            "id": 1,
+            "shade_id": 13,
+            "state": "half",
+            "printed_code": "P259",
+            "bought_on": "2026-07-21",
+            "price_paid_cents": 1550,
+            "opened_on": "2026-10-05",
+            "notes": null,
+            "archived": false,
+            "created_at": "2026-07-21T10:02:11Z",
+            "updated_at": "2026-07-21T10:02:11Z"
+          }
+        ]
+      },
+      {
+        "shade": {
+          "id": 1,
+          "title": "Thirst Trap",
+          "kind": "polish",
+          "source": "holotaco",
+          "is_topper": false,
+          "price_cents": 1550,
+          "compare_at_cents": 1550,
+          "status": {
+            "key": "available",
+            "label": "In stock",
+            "buyable": true
+          },
+          "finishes": [
+            "flakie"
+          ],
+          "owned_count": 1,
+          "wishlisted": false,
+          "hero_image_url": "https://cdn.shopify.com/s/files/1/0050/3001/9162/files/0009_HT-Holoween-SoloBottleHero-ThirstTrap.jpg?v=1760456220",
+          "released_on": "2025-10-04",
+          "official_collection": "Holoween Collection",
+          "marks": [],
+          "tip": {
+            "id": 1,
+            "hex": "#d1b947",
+            "hex2": null,
+            "finishes": [
+              "flakie"
+            ],
+            "topper": false,
+            "clear": false,
+            "coats": 1,
+            "colours": [
+              "red"
+            ],
+            "revision": "2a0c3309f5"
+          }
+        },
+        "bottles": [
+          {
+            "id": 4,
+            "shade_id": 1,
+            "state": "low",
+            "printed_code": null,
+            "bought_on": null,
+            "price_paid_cents": null,
+            "opened_on": null,
+            "notes": "A gift",
+            "archived": false,
+            "created_at": "2026-10-12T20:00:00Z",
+            "updated_at": "2026-10-12T20:00:00Z"
+          }
+        ]
+      }
+    ]
+  }
+}

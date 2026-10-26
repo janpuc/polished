@@ -1,0 +1,318 @@
+{
+  "request": {
+    "method": "GET",
+    "path": "/api/v1/wheels/1"
+  },
+  "status": 200,
+  "body": {
+    "id": 1,
+    "slug": "k3m9xq",
+    "name": "Holos",
+    "slot_count": 20,
+    "archived": false,
+    "filled": 2,
+    "drafts": 1,
+    "tag_url": "http://localhost:8080/w/k3m9xq",
+    "created_at": "2026-10-01T09:00:00Z",
+    "tiles": [
+      {
+        "position": 1,
+        "filled": false,
+        "has_draft": false,
+        "stack_id": null,
+        "draft_stack_id": null,
+        "summary": "",
+        "layers": [],
+        "painted_on": null,
+        "note": null
+      },
+      {
+        "position": 2,
+        "filled": false,
+        "has_draft": false,
+        "stack_id": null,
+        "draft_stack_id": null,
+        "summary": "",
+        "layers": [],
+        "painted_on": null,
+        "note": null
+      },
+      {
+        "position": 3,
+        "filled": false,
+        "has_draft": false,
+        "stack_id": null,
+        "draft_stack_id": null,
+        "summary": "",
+        "layers": [],
+        "painted_on": null,
+        "note": null
+      },
+      {
+        "position": 4,
+        "filled": false,
+        "has_draft": false,
+        "stack_id": null,
+        "draft_stack_id": null,
+        "summary": "",
+        "layers": [],
+        "painted_on": null,
+        "note": null
+      },
+      {
+        "position": 5,
+        "filled": false,
+        "has_draft": false,
+        "stack_id": null,
+        "draft_stack_id": null,
+        "summary": "",
+        "layers": [],
+        "painted_on": null,
+        "note": null
+      },
+      {
+        "position": 6,
+        "filled": false,
+        "has_draft": false,
+        "stack_id": null,
+        "draft_stack_id": null,
+        "summary": "",
+        "layers": [],
+        "painted_on": null,
+        "note": null
+      },
+      {
+        "position": 7,
+        "filled": false,
+        "has_draft": false,
+        "stack_id": null,
+        "draft_stack_id": null,
+        "summary": "",
+        "layers": [],
+        "painted_on": null,
+        "note": null
+      },
+      {
+        "position": 8,
+        "filled": false,
+        "has_draft": false,
+        "stack_id": null,
+        "draft_stack_id": null,
+        "summary": "",
+        "layers": [],
+        "painted_on": null,
+        "note": null
+      },
+      {
+        "position": 9,
+        "filled": false,
+        "has_draft": false,
+        "stack_id": null,
+        "draft_stack_id": null,
+        "summary": "",
+        "layers": [],
+        "painted_on": null,
+        "note": null
+      },
+      {
+        "position": 10,
+        "filled": false,
+        "has_draft": false,
+        "stack_id": null,
+        "draft_stack_id": null,
+        "summary": "",
+        "layers": [],
+        "painted_on": null,
+        "note": null
+      },
+      {
+        "position": 11,
+        "filled": false,
+        "has_draft": false,
+        "stack_id": null,
+        "draft_stack_id": null,
+        "summary": "",
+        "layers": [],
+        "painted_on": null,
+        "note": null
+      },
+      {
+        "position": 12,
+        "filled": true,
+        "has_draft": false,
+        "stack_id": 1,
+        "draft_stack_id": null,
+        "summary": "One-Coat Black ×2 + Flakie Holo Taco",
+        "layers": [
+          {
+            "id": 1,
+            "ord": 1,
+            "shade_id": 12,
+            "title": "One-Coat Black",
+            "coats": 2,
+            "label": "Base",
+            "tip": {
+              "id": 12,
+              "hex": "#111111",
+              "hex2": null,
+              "finishes": [
+                "creme"
+              ],
+              "topper": false,
+              "clear": false,
+              "coats": 2,
+              "colours": [
+                "black"
+              ],
+              "revision": "50a724030c"
+            }
+          },
+          {
+            "id": 2,
+            "ord": 2,
+            "shade_id": 14,
+            "title": "Flakie Holo Taco",
+            "coats": 1,
+            "label": "Top",
+            "tip": {
+              "id": 14,
+              "hex": "#d1478b",
+              "hex2": null,
+              "finishes": [
+                "flakie",
+                "holographic"
+              ],
+              "topper": true,
+              "clear": false,
+              "coats": 1,
+              "colours": [],
+              "revision": "b74a65e152"
+            }
+          }
+        ],
+        "painted_on": "2026-10-20",
+        "note": null
+      },
+      {
+        "position": 13,
+        "filled": true,
+        "has_draft": false,
+        "stack_id": 2,
+        "draft_stack_id": null,
+        "summary": "Spirit Fingers ×2",
+        "layers": [
+          {
+            "id": 3,
+            "ord": 1,
+            "shade_id": 13,
+            "title": "Spirit Fingers",
+            "coats": 2,
+            "label": "",
+            "tip": {
+              "id": 13,
+              "hex": "#a647d1",
+              "hex2": null,
+              "finishes": [
+                "glitter"
+              ],
+              "topper": false,
+              "clear": false,
+              "coats": 2,
+              "colours": [
+                "orange"
+              ],
+              "revision": "d26f07fe62"
+            }
+          }
+        ],
+        "painted_on": "2026-10-22",
+        "note": "Two coats, dried fast"
+      },
+      {
+        "position": 14,
+        "filled": false,
+        "has_draft": true,
+        "stack_id": null,
+        "draft_stack_id": 3,
+        "summary": "",
+        "layers": [],
+        "painted_on": null,
+        "note": null
+      },
+      {
+        "position": 15,
+        "filled": false,
+        "has_draft": false,
+        "stack_id": null,
+        "draft_stack_id": null,
+        "summary": "",
+        "layers": [],
+        "painted_on": null,
+        "note": null
+      },
+      {
+        "position": 16,
+        "filled": false,
+        "has_draft": false,
+        "stack_id": null,
+        "draft_stack_id": null,
+        "summary": "",
+        "layers": [],
+        "painted_on": null,
+        "note": null
+      },
+      {
+        "position": 17,
+        "filled": false,
+        "has_draft": false,
+        "stack_id": null,
+        "draft_stack_id": null,
+        "summary": "",
+        "layers": [],
+        "painted_on": null,
+        "note": null
+      },
+      {
+        "position": 18,
+        "filled": false,
+        "has_draft": false,
+        "stack_id": null,
+        "draft_stack_id": null,
+        "summary": "",
+        "layers": [],
+        "painted_on": null,
+        "note": null
+      },
+      {
+        "position": 19,
+        "filled": false,
+        "has_draft": false,
+        "stack_id": null,
+        "draft_stack_id": null,
+        "summary": "",
+        "layers": [],
+        "painted_on": null,
+        "note": null
+      },
+      {
+        "position": 20,
+        "filled": false,
+        "has_draft": false,
+        "stack_id": null,
+        "draft_stack_id": null,
+        "summary": "",
+        "layers": [],
+        "painted_on": null,
+        "note": null
+      }
+    ],
+    "filled_count": 2,
+    "others": [
+      {
+        "id": 2,
+        "name": "Toppers",
+        "slug": "7b2vdc"
+      }
+    ]
+  }
+}

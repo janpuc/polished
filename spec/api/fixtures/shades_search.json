@@ -1,0 +1,109 @@
+{
+  "request": {
+    "method": "GET",
+    "path": "/api/v1/shades?q=magentic%20taco"
+  },
+  "status": 200,
+  "body": {
+    "items": [
+      {
+        "id": 10,
+        "title": "Magnetic Taco",
+        "kind": "polish",
+        "source": "holotaco",
+        "is_topper": false,
+        "price_cents": 1550,
+        "compare_at_cents": 1550,
+        "status": {
+          "key": "available",
+          "label": "In stock",
+          "buyable": true
+        },
+        "finishes": [
+          "magnetic"
+        ],
+        "owned_count": 0,
+        "wishlisted": false,
+        "hero_image_url": "https://cdn.shopify.com/s/files/1/0050/3001/9162/files/0009_HT-Holoween-SoloBottleHero-ThirstTrap.jpg?v=1760456220",
+        "released_on": null,
+        "official_collection": null,
+        "marks": [
+          [
+            0,
+            8
+          ],
+          [
+            9,
+            13
+          ]
+        ],
+        "tip": {
+          "id": 10,
+          "hex": "#47d166",
+          "hex2": null,
+          "finishes": [
+            "magnetic"
+          ],
+          "topper": false,
+          "clear": false,
+          "coats": 1,
+          "colours": [
+            "blue"
+          ],
+          "revision": "f8fa9a0d4e"
+        }
+      },
+      {
+        "id": 11,
+        "title": "Holo Magnetic Taco",
+        "kind": "polish",
+        "source": "holotaco",
+        "is_topper": false,
+        "price_cents": 1550,
+        "compare_at_cents": 1550,
+        "status": {
+          "key": "available",
+          "label": "In stock",
+          "buyable": true
+        },
+        "finishes": [
+          "magnetic"
+        ],
+        "owned_count": 0,
+        "wishlisted": false,
+        "hero_image_url": "https://cdn.shopify.com/s/files/1/0050/3001/9162/files/0009_HT-Holoween-SoloBottleHero-ThirstTrap.jpg?v=1760456220",
+        "released_on": null,
+        "official_collection": null,
+        "marks": [
+          [
+            5,
+            13
+          ],
+          [
+            14,
+            18
+          ]
+        ],
+        "tip": {
+          "id": 11,
+          "hex": "#47cbd1",
+          "hex2": null,
+          "finishes": [
+            "magnetic"
+          ],
+          "topper": false,
+          "clear": false,
+          "coats": 1,
+          "colours": [
+            "purple"
+          ],
+          "revision": "7c2c9e5a0d"
+        }
+      }
+    ],
+    "total": 2,
+    "page": 1,
+    "has_more": false,
+    "fuzzy": true
+  }
+}

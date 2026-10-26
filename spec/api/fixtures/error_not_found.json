@@ -1,0 +1,13 @@
+{
+  "request": {
+    "method": "GET",
+    "path": "/api/v1/shades/999999"
+  },
+  "status": 404,
+  "body": {
+    "error": {
+      "code": "not_found",
+      "message": "No such shade."
+    }
+  }
+}

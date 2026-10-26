@@ -1,0 +1,101 @@
+{
+  "request": {
+    "method": "GET",
+    "path": "/api/v1/stacks/copy-sources"
+  },
+  "status": 200,
+  "body": {
+    "items": [
+      {
+        "stack_id": 2,
+        "wheel_name": "Holos",
+        "wheel_slug": "k3m9xq",
+        "position": 13,
+        "name": null,
+        "painted_on": "2026-10-22",
+        "summary": "Spirit Fingers ×2",
+        "layers": [
+          {
+            "id": 3,
+            "ord": 1,
+            "shade_id": 13,
+            "title": "Spirit Fingers",
+            "coats": 2,
+            "label": "",
+            "tip": {
+              "id": 13,
+              "hex": "#a647d1",
+              "hex2": null,
+              "finishes": [
+                "glitter"
+              ],
+              "topper": false,
+              "clear": false,
+              "coats": 2,
+              "colours": [
+                "orange"
+              ],
+              "revision": "d26f07fe62"
+            }
+          }
+        ]
+      },
+      {
+        "stack_id": 1,
+        "wheel_name": "Holos",
+        "wheel_slug": "k3m9xq",
+        "position": 12,
+        "name": null,
+        "painted_on": "2026-10-20",
+        "summary": "One-Coat Black ×2 + Flakie Holo Taco",
+        "layers": [
+          {
+            "id": 1,
+            "ord": 1,
+            "shade_id": 12,
+            "title": "One-Coat Black",
+            "coats": 2,
+            "label": "Base",
+            "tip": {
+              "id": 12,
+              "hex": "#111111",
+              "hex2": null,
+              "finishes": [
+                "creme"
+              ],
+              "topper": false,
+              "clear": false,
+              "coats": 2,
+              "colours": [
+                "black"
+              ],
+              "revision": "50a724030c"
+            }
+          },
+          {
+            "id": 2,
+            "ord": 2,
+            "shade_id": 14,
+            "title": "Flakie Holo Taco",
+            "coats": 1,
+            "label": "Top",
+            "tip": {
+              "id": 14,
+              "hex": "#d1478b",
+              "hex2": null,
+              "finishes": [
+                "flakie",
+                "holographic"
+              ],
+              "topper": true,
+              "clear": false,
+              "coats": 1,
+              "colours": [],
+              "revision": "b74a65e152"
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

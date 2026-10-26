@@ -1,0 +1,99 @@
+{
+  "request": {
+    "method": "GET",
+    "path": "/api/v1/stacks/3"
+  },
+  "status": 200,
+  "body": {
+    "stack_id": 3,
+    "wheel": {
+      "id": 1,
+      "slug": "k3m9xq",
+      "name": "Holos"
+    },
+    "position": 14,
+    "name": null,
+    "note": null,
+    "painted_on": null,
+    "layers": [
+      {
+        "id": 4,
+        "ord": 1,
+        "shade_id": 12,
+        "title": "One-Coat Black",
+        "coats": 2,
+        "label": "Base",
+        "tip": {
+          "id": 12,
+          "hex": "#111111",
+          "hex2": null,
+          "finishes": [
+            "creme"
+          ],
+          "topper": false,
+          "clear": false,
+          "coats": 2,
+          "colours": [
+            "black"
+          ],
+          "revision": "50a724030c"
+        }
+      },
+      {
+        "id": 5,
+        "ord": 2,
+        "shade_id": 14,
+        "title": "Flakie Holo Taco",
+        "coats": 1,
+        "label": "Top",
+        "tip": {
+          "id": 14,
+          "hex": "#d1478b",
+          "hex2": null,
+          "finishes": [
+            "flakie",
+            "holographic"
+          ],
+          "topper": true,
+          "clear": false,
+          "coats": 1,
+          "colours": [],
+          "revision": "b74a65e152"
+        }
+      }
+    ],
+    "summary": "One-Coat Black ×2 + Flakie Holo Taco",
+    "full": false,
+    "tip": [
+      {
+        "id": 12,
+        "hex": "#111111",
+        "hex2": null,
+        "finishes": [
+          "creme"
+        ],
+        "topper": false,
+        "clear": false,
+        "coats": 2,
+        "colours": [
+          "black"
+        ],
+        "revision": "50a724030c"
+      },
+      {
+        "id": 14,
+        "hex": "#d1478b",
+        "hex2": null,
+        "finishes": [
+          "flakie",
+          "holographic"
+        ],
+        "topper": true,
+        "clear": false,
+        "coats": 1,
+        "colours": [],
+        "revision": "b74a65e152"
+      }
+    ]
+  }
+}

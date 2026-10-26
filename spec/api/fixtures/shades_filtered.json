@@ -1,0 +1,53 @@
+{
+  "request": {
+    "method": "GET",
+    "path": "/api/v1/shades?finish=holographic&owned=owned&sort=newest"
+  },
+  "status": 200,
+  "body": {
+    "items": [
+      {
+        "id": 14,
+        "title": "Flakie Holo Taco",
+        "kind": "topcoat",
+        "source": "holotaco",
+        "is_topper": true,
+        "price_cents": 1450,
+        "compare_at_cents": 1450,
+        "status": {
+          "key": "available",
+          "label": "In stock",
+          "buyable": true
+        },
+        "finishes": [
+          "flakie",
+          "holographic"
+        ],
+        "owned_count": 1,
+        "wishlisted": false,
+        "hero_image_url": "https://cdn.shopify.com/s/files/1/0050/3001/9162/files/HT-Bottle-AuroraUnicornSkin-Black_23c30047-a41f-4fc8-8bc3-d09161df24cc.jpg?v=1770735818",
+        "released_on": null,
+        "official_collection": null,
+        "marks": [],
+        "tip": {
+          "id": 14,
+          "hex": "#d1478b",
+          "hex2": null,
+          "finishes": [
+            "flakie",
+            "holographic"
+          ],
+          "topper": true,
+          "clear": false,
+          "coats": 1,
+          "colours": [],
+          "revision": "b74a65e152"
+        }
+      }
+    ],
+    "total": 1,
+    "page": 1,
+    "has_more": false,
+    "fuzzy": false
+  }
+}

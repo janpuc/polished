@@ -1,0 +1,15 @@
+{
+  "request": {
+    "method": "POST",
+    "path": "/api/v1/auth/exchange"
+  },
+  "status": 200,
+  "body": {
+    "token": "example-token-0123456789abcdefghijklmnopqrstuvwxyz",
+    "token_id": 1,
+    "user": {
+      "sub": "u-nikola",
+      "name": "Nikola Example"
+    }
+  }
+}

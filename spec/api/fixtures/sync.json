@@ -1,0 +1,43 @@
+{
+  "request": {
+    "method": "GET",
+    "path": "/api/v1/sync"
+  },
+  "status": 200,
+  "body": {
+    "running": false,
+    "last": {
+      "id": 1,
+      "started_at": "2026-10-26T04:00:12Z",
+      "finished_at": "2026-10-26T04:01:20Z",
+      "status": "ok",
+      "trigger": "cli",
+      "pages_fetched": 1,
+      "products_seen": 24,
+      "new_shades": 17,
+      "changed_shades": 0,
+      "newly_missing": 0,
+      "returned": 0,
+      "unresolved_aliases": 1,
+      "error": null
+    },
+    "runs": [
+      {
+        "id": 1,
+        "started_at": "2026-10-26T04:00:12Z",
+        "finished_at": "2026-10-26T04:01:20Z",
+        "status": "ok",
+        "trigger": "cli",
+        "pages_fetched": 1,
+        "products_seen": 24,
+        "new_shades": 17,
+        "changed_shades": 0,
+        "newly_missing": 0,
+        "returned": 0,
+        "unresolved_aliases": 1,
+        "error": null
+      }
+    ],
+    "cooldown_until": null
+  }
+}

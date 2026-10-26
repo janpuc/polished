@@ -1,0 +1,15 @@
+{
+  "request": {
+    "method": "GET",
+    "path": "/api/v1/lookup?q=5901234123457&via=scan"
+  },
+  "status": 200,
+  "body": {
+    "outcome": "unknown_code",
+    "code": "5901234123457",
+    "kind": null,
+    "shade": null,
+    "identifier_id": null,
+    "results": null
+  }
+}

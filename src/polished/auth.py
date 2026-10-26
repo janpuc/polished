@@ -1,5 +1,7 @@
 """Pocket ID sign-in with authlib, the session, and the deny-by-default gate (DESIGN 8)."""
 
+import asyncio
+import hmac
 import logging
 import time
 from urllib.parse import quote, urlsplit
@@ -10,10 +12,13 @@ from authlib.integrations.starlette_client import OAuth
 from fastapi import APIRouter, Request
 from joserfc.errors import JoseError
 from starlette.requests import Request as StarletteRequest
-from starlette.responses import PlainTextResponse, RedirectResponse, Response
+from starlette.responses import JSONResponse, PlainTextResponse, RedirectResponse, Response
 from starlette.types import ASGIApp, Receive, Scope, Send
 
+from .api import auth as api_tokens
 from .config import Settings
+from .db import connect
+from .security import is_api_path
 from .web import render
 
 log = logging.getLogger("polished.auth")
@@ -32,8 +37,18 @@ PUBLIC_PATHS = frozenset(
         "/auth/callback",
         "/auth/logout",
         "/auth/signed-out",
+        "/auth/app/start",
+        # The app's universal links fetch this unsigned; the route exists only when
+        # POLISHED_APPLE_TEAM_ID is set, and the reset only in AUTH_MODE=none (both 404 otherwise).
+        "/.well-known/apple-app-site-association",
+        "/__test/reset",
     }
 )
+# /api/v1 takes a Bearer token and nothing else; the exchange is how the app gets its first one.
+API_PUBLIC_PATHS = frozenset({"/api/v1/auth/exchange"})
+APP_LOGIN_MAX_AGE_S = 600
+APP_FINISH_PATH = "/auth/app/finish"
+APP_CALLBACK = "polished://auth"
 PUBLIC_PREFIXES = ("/static/",)
 
 router = APIRouter(prefix="/auth")
@@ -73,9 +88,24 @@ def build_oidc_client(settings: Settings):
     return oauth.pocketid
 
 
+def bearer_token(request: StarletteRequest) -> str | None:
+    scheme, _, token = request.headers.get("authorization", "").partition(" ")
+    return token.strip() or None if scheme.lower() == "bearer" else None
+
+
+def unauthorized_json() -> JSONResponse:
+    return JSONResponse(
+        {"error": {"code": "unauthorized", "message": "Sign in again."}},
+        status_code=401,
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+
+
 class AuthGateMiddleware:
     """Deny by default. Everything outside PUBLIC_PATHS needs a valid session, or the dev user
-    in AUTH_MODE=none. Sits inside SessionMiddleware."""
+    in AUTH_MODE=none. Sits inside SessionMiddleware. /api/v1 is the exception: there the cookie
+    is ignored, a Bearer token (or, in AUTH_MODE=none, POLISHED_DEV_TOKEN) is required, and the
+    answer to anything else is a 401 in JSON, never a redirect."""
 
     def __init__(self, app: ASGIApp, settings: Settings):
         self.app = app
@@ -86,14 +116,47 @@ class AuthGateMiddleware:
             await self.app(scope, receive, send)
             return
         request = StarletteRequest(scope, receive)
+        path = request.url.path
+        if is_api_path(path):
+            await self._api(request, scope, receive, send)
+            return
         user = self._user(request)
         if user is not None:
             request.state.user = user
-        path = request.url.path
         if user is not None or path in PUBLIC_PATHS or path.startswith(PUBLIC_PREFIXES):
             await self.app(scope, receive, send)
             return
         await self._deny(request)(scope, receive, send)
+
+    async def _api(self, request: StarletteRequest, scope: Scope, receive: Receive, send: Send):
+        if request.url.path not in API_PUBLIC_PATHS:
+            user = await self._token_user(request)
+            if user is None:
+                await unauthorized_json()(scope, receive, send)
+                return
+            request.state.user = user
+        await self.app(scope, receive, send)
+
+    async def _token_user(self, request: StarletteRequest) -> dict | None:
+        token = bearer_token(request)
+        if token is None:
+            return None
+        dev_token = self.settings.dev_token
+        # Settings refuse a dev token outside AUTH_MODE=none (loopback only); checked again here.
+        if (
+            dev_token is not None
+            and self.settings.auth_mode == "none"
+            and hmac.compare_digest(token.encode(), dev_token.get_secret_value().encode())
+        ):
+            return {**DEV_USER, "token_id": None}
+        return await asyncio.to_thread(self._lookup_token, token)
+
+    def _lookup_token(self, token: str) -> dict | None:
+        conn = connect(self.settings.db_path)
+        try:
+            return api_tokens.authenticate(conn, token)
+        finally:
+            conn.close()
 
     def _user(self, request: StarletteRequest) -> dict | None:
         if self.settings.auth_mode == "none":
@@ -228,8 +291,11 @@ async def callback(request: Request):
         )
 
     target = safe_next(request.session.pop("login_next", None))
+    app_login = request.session.get("app_login")
     now = int(time.time())
     request.session.clear()
+    if app_login:
+        request.session["app_login"] = app_login
     request.session.update(
         {
             "sub": sub,
@@ -253,3 +319,42 @@ def logout(request: Request):
 @router.get("/signed-out")
 def signed_out(request: Request):
     return render(request, "signed_out.html")
+
+
+@router.get("/app/start")
+def app_start(request: Request, challenge: str = "", device: str = ""):
+    """The native app opens this in ASWebAuthenticationSession (docs/NATIVE.md 2.4): remember its
+    PKCE challenge in the web session, then sign in as usual and come back to /auth/app/finish."""
+    if not api_tokens.CHALLENGE.fullmatch(challenge):
+        return _message_page(
+            request, 400, "Sign-in can't start", "Open Polished on your phone and try again."
+        )
+    request.session["app_login"] = {
+        "challenge": challenge,
+        "device": api_tokens.clean_device_name(device),
+        "iat": int(time.time()),
+    }
+    return RedirectResponse(login_url(APP_FINISH_PATH), status_code=302)
+
+
+@router.get("/app/finish")
+def app_finish(request: Request):
+    """Signed in (the gate sends everyone else to log in first): hand the app a one-time code."""
+    pending = request.session.pop("app_login", None)
+    iat = pending.get("iat") if isinstance(pending, dict) else None
+    if not isinstance(iat, int | float) or time.time() - iat > APP_LOGIN_MAX_AGE_S:
+        return _message_page(
+            request, 400, "Sign-in can't finish", "Open Polished on your phone and try again."
+        )
+    user = request.state.user
+    settings: Settings = request.app.state.settings
+    conn = connect(settings.db_path)
+    try:
+        code = api_tokens.mint_login_code(
+            conn, user["sub"], user["name"], pending["challenge"], pending["device"]
+        )
+    finally:
+        conn.close()
+    return RedirectResponse(
+        f"{APP_CALLBACK}?code={code}", status_code=302, headers={"Cache-Control": "no-store"}
+    )

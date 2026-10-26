@@ -1,0 +1,22 @@
+{
+  "request": {
+    "method": "GET",
+    "path": "/api/v1/me"
+  },
+  "status": 200,
+  "body": {
+    "user": {
+      "sub": "u-nikola",
+      "name": "Nikola Example",
+      "first_name": "Nikola"
+    },
+    "server": {
+      "version": "dev",
+      "public_url": "http://localhost:8080",
+      "store_url": "https://holotaco.com",
+      "timezone": "Europe/Warsaw",
+      "over_black_available": true,
+      "shade_count": 23
+    }
+  }
+}

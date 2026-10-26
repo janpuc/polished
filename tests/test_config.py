@@ -157,3 +157,38 @@ def test_the_over_black_handle_comes_from_the_environment(monkeypatch):
     monkeypatch.setenv("POLISHED_AUTH_MODE", "none")
     monkeypatch.setenv("POLISHED_OVER_BLACK_HANDLE", "midnight-creme")
     assert Settings(_env_file=None).over_black_handle == "midnight-creme"
+
+
+def test_native_app_settings_default_to_off():
+    s = build()
+    assert s.apple_team_id == "" and s.dev_token is None and s.test_reset_from == ""
+
+
+def test_apple_team_id_is_ten_capital_letters_or_digits():
+    assert build(apple_team_id="RW5T9P5A59").apple_team_id == "RW5T9P5A59"
+    with pytest.raises(ValidationError, match="Apple team ID"):
+        build(apple_team_id="not-a-team")
+
+
+def test_dev_token_and_test_reset_are_for_auth_mode_none_only():
+    assert build(dev_token="dev").dev_token.get_secret_value() == "dev"
+    assert build(test_reset_from="template.db").test_reset_from == "template.db"
+    oidc = {
+        "auth_mode": "oidc",
+        "public_url": "https://polished.example.test",
+        "oidc_client_id": "id",
+        "oidc_client_secret": "secret",
+        "session_secret": SECRET,
+    }
+    assert Settings(_env_file=None, **oidc).dev_token is None
+    with pytest.raises(ValidationError, match="DEV_TOKEN is only allowed"):
+        Settings(_env_file=None, dev_token="dev", **oidc)
+    with pytest.raises(ValidationError, match="TEST_RESET_FROM is only allowed"):
+        Settings(_env_file=None, test_reset_from="template.db", **oidc)
+    # An empty value (an unset variable in a manifest) is the same as none.
+    assert Settings(_env_file=None, dev_token="", test_reset_from="", **oidc).dev_token is None
+
+
+def test_dev_token_needs_a_loopback_bind(monkeypatch):
+    with pytest.raises(ValidationError, match="loopback"):
+        build(dev_token="dev", host="0.0.0.0")

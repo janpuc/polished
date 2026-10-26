@@ -1,0 +1,51 @@
+{
+  "request": {
+    "method": "GET",
+    "path": "/api/v1/shades/23"
+  },
+  "status": 200,
+  "body": {
+    "shade": {
+      "id": 23,
+      "title": "Gifted Mystery",
+      "kind": "polish",
+      "source": "manual",
+      "is_topper": false,
+      "price_cents": null,
+      "compare_at_cents": null,
+      "status": null,
+      "finishes": [],
+      "owned_count": 0,
+      "wishlisted": false,
+      "hero_image_url": null,
+      "released_on": null,
+      "official_collection": null,
+      "marks": [],
+      "tip": {
+        "id": 23,
+        "hex": "#c9bfc0",
+        "hex2": null,
+        "finishes": [],
+        "topper": false,
+        "clear": false,
+        "coats": 1,
+        "colours": [],
+        "revision": "b39b20f91e"
+      }
+    },
+    "images": [],
+    "tags": {
+      "finish": [],
+      "color": [],
+      "collection": []
+    },
+    "sku": null,
+    "handle": null,
+    "store_url": null,
+    "on_sale": false,
+    "bottles": [],
+    "wishlist": null,
+    "swatched_on": [],
+    "tip_source": "none"
+  }
+}

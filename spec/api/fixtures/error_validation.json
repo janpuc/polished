@@ -1,0 +1,14 @@
+{
+  "request": {
+    "method": "GET",
+    "path": "/api/v1/shades?page=x"
+  },
+  "status": 422,
+  "body": {
+    "error": {
+      "code": "validation",
+      "message": "Input should be a valid integer, unable to parse string as an integer",
+      "field": "page"
+    }
+  }
+}

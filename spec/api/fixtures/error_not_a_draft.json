@@ -1,0 +1,13 @@
+{
+  "request": {
+    "method": "GET",
+    "path": "/api/v1/stacks/1"
+  },
+  "status": 409,
+  "body": {
+    "error": {
+      "code": "not_a_draft",
+      "message": "That swatch is not being edited."
+    }
+  }
+}

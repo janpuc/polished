@@ -1,0 +1,216 @@
+{
+  "request": {
+    "method": "GET",
+    "path": "/api/v1/stacks/pick?q=flak&scope=all"
+  },
+  "status": 200,
+  "body": {
+    "items": [
+      {
+        "id": 14,
+        "title": "Flakie Holo Taco",
+        "kind": "topcoat",
+        "source": "holotaco",
+        "is_topper": true,
+        "price_cents": 1450,
+        "compare_at_cents": 1450,
+        "status": {
+          "key": "available",
+          "label": "In stock",
+          "buyable": true
+        },
+        "finishes": [
+          "flakie",
+          "holographic"
+        ],
+        "owned_count": 1,
+        "wishlisted": false,
+        "hero_image_url": "https://cdn.shopify.com/s/files/1/0050/3001/9162/files/HT-Bottle-AuroraUnicornSkin-Black_23c30047-a41f-4fc8-8bc3-d09161df24cc.jpg?v=1770735818",
+        "released_on": null,
+        "official_collection": null,
+        "marks": [
+          [
+            0,
+            4
+          ]
+        ],
+        "tip": {
+          "id": 14,
+          "hex": "#d1478b",
+          "hex2": null,
+          "finishes": [
+            "flakie",
+            "holographic"
+          ],
+          "topper": true,
+          "clear": false,
+          "coats": 1,
+          "colours": [],
+          "revision": "b74a65e152"
+        }
+      },
+      {
+        "id": 20,
+        "title": "Red Flake Taco",
+        "kind": "polish",
+        "source": "sheet",
+        "is_topper": true,
+        "price_cents": null,
+        "compare_at_cents": null,
+        "status": {
+          "key": "sheet_only",
+          "label": "Not in the shop",
+          "buyable": false
+        },
+        "finishes": [],
+        "owned_count": 0,
+        "wishlisted": false,
+        "hero_image_url": null,
+        "released_on": "2022-12-06",
+        "official_collection": "12 Days of Cristmas Release",
+        "marks": [
+          [
+            4,
+            8
+          ]
+        ],
+        "tip": {
+          "id": 20,
+          "hex": "#8447d1",
+          "hex2": null,
+          "finishes": [],
+          "topper": true,
+          "clear": false,
+          "coats": 1,
+          "colours": [],
+          "revision": "1fc71871d8"
+        }
+      },
+      {
+        "id": 17,
+        "title": "Silver Flake Taco",
+        "kind": "polish",
+        "source": "holotaco",
+        "is_topper": false,
+        "price_cents": 1550,
+        "compare_at_cents": 1550,
+        "status": {
+          "key": "available",
+          "label": "In stock",
+          "buyable": true
+        },
+        "finishes": [
+          "flakie"
+        ],
+        "owned_count": 0,
+        "wishlisted": true,
+        "hero_image_url": "https://cdn.shopify.com/s/files/1/0050/3001/9162/files/0009_HT-Holoween-SoloBottleHero-ThirstTrap.jpg?v=1760456220",
+        "released_on": "2022-12-06",
+        "official_collection": "12 Days of Cristmas Release",
+        "marks": [
+          [
+            7,
+            11
+          ]
+        ],
+        "tip": {
+          "id": 17,
+          "hex": "#4bd147",
+          "hex2": null,
+          "finishes": [
+            "flakie"
+          ],
+          "topper": false,
+          "clear": false,
+          "coats": 1,
+          "colours": [
+            "silver"
+          ],
+          "revision": "7a1c3d4267"
+        }
+      },
+      {
+        "id": 1,
+        "title": "Thirst Trap",
+        "kind": "polish",
+        "source": "holotaco",
+        "is_topper": false,
+        "price_cents": 1550,
+        "compare_at_cents": 1550,
+        "status": {
+          "key": "available",
+          "label": "In stock",
+          "buyable": true
+        },
+        "finishes": [
+          "flakie"
+        ],
+        "owned_count": 1,
+        "wishlisted": false,
+        "hero_image_url": "https://cdn.shopify.com/s/files/1/0050/3001/9162/files/0009_HT-Holoween-SoloBottleHero-ThirstTrap.jpg?v=1760456220",
+        "released_on": "2025-10-04",
+        "official_collection": "Holoween Collection",
+        "marks": [],
+        "tip": {
+          "id": 1,
+          "hex": "#d1b947",
+          "hex2": null,
+          "finishes": [
+            "flakie"
+          ],
+          "topper": false,
+          "clear": false,
+          "coats": 1,
+          "colours": [
+            "red"
+          ],
+          "revision": "2a0c3309f5"
+        }
+      },
+      {
+        "id": 6,
+        "title": "Aurora Unicorn Skin™",
+        "kind": "topcoat",
+        "source": "holotaco",
+        "is_topper": true,
+        "price_cents": 1450,
+        "compare_at_cents": 1450,
+        "status": {
+          "key": "available",
+          "label": "In stock",
+          "buyable": true
+        },
+        "finishes": [
+          "flakie",
+          "iridescent"
+        ],
+        "owned_count": 0,
+        "wishlisted": false,
+        "hero_image_url": "https://cdn.shopify.com/s/files/1/0050/3001/9162/files/HT-Bottle-AuroraUnicornSkin-Black_23c30047-a41f-4fc8-8bc3-d09161df24cc.jpg?v=1770735818",
+        "released_on": "2020-03-15",
+        "official_collection": "Holo Taco Unicorn Skin Collection",
+        "marks": [],
+        "tip": {
+          "id": 6,
+          "hex": "#c847d1",
+          "hex2": null,
+          "finishes": [
+            "flakie",
+            "iridescent"
+          ],
+          "topper": true,
+          "clear": false,
+          "coats": 1,
+          "colours": [
+            "blue",
+            "pink",
+            "purple"
+          ],
+          "revision": "87f54e583e"
+        }
+      }
+    ],
+    "total": 5,
+    "suggestion": null
+  }
+}

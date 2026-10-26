@@ -11,7 +11,7 @@ from fastapi.staticfiles import StaticFiles
 from starlette.middleware import Middleware
 from starlette.middleware.sessions import SessionMiddleware
 
-from . import auth
+from . import api, auth
 from .auth import AuthGateMiddleware, build_oidc_client
 from .catalog.scheduler import Scheduler, close_stale_runs_at_startup
 from .catalog.sync import SyncRunner
@@ -80,6 +80,7 @@ def create_app(settings: Settings) -> FastAPI:
     app.include_router(tips.router)
     app.include_router(pwa.router)
     app.include_router(sync.router)
+    api.install(app)
     app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
     return app
 

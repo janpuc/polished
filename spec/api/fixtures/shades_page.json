@@ -1,0 +1,855 @@
+{
+  "request": {
+    "method": "GET",
+    "path": "/api/v1/shades"
+  },
+  "status": 200,
+  "body": {
+    "items": [
+      {
+        "id": 6,
+        "title": "Aurora Unicorn Skin™",
+        "kind": "topcoat",
+        "source": "holotaco",
+        "is_topper": true,
+        "price_cents": 1450,
+        "compare_at_cents": 1450,
+        "status": {
+          "key": "available",
+          "label": "In stock",
+          "buyable": true
+        },
+        "finishes": [
+          "flakie",
+          "iridescent"
+        ],
+        "owned_count": 0,
+        "wishlisted": false,
+        "hero_image_url": "https://cdn.shopify.com/s/files/1/0050/3001/9162/files/HT-Bottle-AuroraUnicornSkin-Black_23c30047-a41f-4fc8-8bc3-d09161df24cc.jpg?v=1770735818",
+        "released_on": "2020-03-15",
+        "official_collection": "Holo Taco Unicorn Skin Collection",
+        "marks": [],
+        "tip": {
+          "id": 6,
+          "hex": "#c847d1",
+          "hex2": null,
+          "finishes": [
+            "flakie",
+            "iridescent"
+          ],
+          "topper": true,
+          "clear": false,
+          "coats": 1,
+          "colours": [
+            "blue",
+            "pink",
+            "purple"
+          ],
+          "revision": "87f54e583e"
+        }
+      },
+      {
+        "id": 16,
+        "title": "Crème Brûlée",
+        "kind": "polish",
+        "source": "holotaco",
+        "is_topper": false,
+        "price_cents": 1350,
+        "compare_at_cents": 1650,
+        "status": {
+          "key": "available",
+          "label": "In stock",
+          "buyable": true
+        },
+        "finishes": [
+          "creme"
+        ],
+        "owned_count": 0,
+        "wishlisted": true,
+        "hero_image_url": "https://cdn.shopify.com/s/files/1/0050/3001/9162/files/HT-Bottle-RestInPeach-Black_c65fffad-6651-4dbb-bfc8-6d85b10b7b51.jpg?v=1770734984",
+        "released_on": null,
+        "official_collection": null,
+        "marks": [],
+        "tip": {
+          "id": 16,
+          "hex": "#bcd147",
+          "hex2": null,
+          "finishes": [
+            "creme"
+          ],
+          "topper": false,
+          "clear": false,
+          "coats": 1,
+          "colours": [
+            "orange"
+          ],
+          "revision": "415fa9d497"
+        }
+      },
+      {
+        "id": 22,
+        "title": "Diamond Dasher Taco",
+        "kind": "polish",
+        "source": "sheet",
+        "is_topper": true,
+        "price_cents": null,
+        "compare_at_cents": null,
+        "status": {
+          "key": "sheet_only",
+          "label": "Not in the shop",
+          "buyable": false
+        },
+        "finishes": [],
+        "owned_count": 0,
+        "wishlisted": false,
+        "hero_image_url": null,
+        "released_on": "2025-11-15",
+        "official_collection": "Mini Advent Calendar Collection",
+        "marks": [],
+        "tip": {
+          "id": 22,
+          "hex": "#d15347",
+          "hex2": null,
+          "finishes": [],
+          "topper": true,
+          "clear": false,
+          "coats": 1,
+          "colours": [],
+          "revision": "fbccee7831"
+        }
+      },
+      {
+        "id": 14,
+        "title": "Flakie Holo Taco",
+        "kind": "topcoat",
+        "source": "holotaco",
+        "is_topper": true,
+        "price_cents": 1450,
+        "compare_at_cents": 1450,
+        "status": {
+          "key": "available",
+          "label": "In stock",
+          "buyable": true
+        },
+        "finishes": [
+          "flakie",
+          "holographic"
+        ],
+        "owned_count": 1,
+        "wishlisted": false,
+        "hero_image_url": "https://cdn.shopify.com/s/files/1/0050/3001/9162/files/HT-Bottle-AuroraUnicornSkin-Black_23c30047-a41f-4fc8-8bc3-d09161df24cc.jpg?v=1770735818",
+        "released_on": null,
+        "official_collection": null,
+        "marks": [],
+        "tip": {
+          "id": 14,
+          "hex": "#d1478b",
+          "hex2": null,
+          "finishes": [
+            "flakie",
+            "holographic"
+          ],
+          "topper": true,
+          "clear": false,
+          "coats": 1,
+          "colours": [],
+          "revision": "b74a65e152"
+        }
+      },
+      {
+        "id": 23,
+        "title": "Gifted Mystery",
+        "kind": "polish",
+        "source": "manual",
+        "is_topper": false,
+        "price_cents": null,
+        "compare_at_cents": null,
+        "status": null,
+        "finishes": [],
+        "owned_count": 0,
+        "wishlisted": false,
+        "hero_image_url": null,
+        "released_on": null,
+        "official_collection": null,
+        "marks": [],
+        "tip": {
+          "id": 23,
+          "hex": "#c9bfc0",
+          "hex2": null,
+          "finishes": [],
+          "topper": false,
+          "clear": false,
+          "coats": 1,
+          "colours": [],
+          "revision": "b39b20f91e"
+        }
+      },
+      {
+        "id": 19,
+        "title": "Glow In The Dark Taco",
+        "kind": "polish",
+        "source": "sheet",
+        "is_topper": true,
+        "price_cents": null,
+        "compare_at_cents": null,
+        "status": {
+          "key": "sheet_only",
+          "label": "Not in the shop",
+          "buyable": false
+        },
+        "finishes": [],
+        "owned_count": 0,
+        "wishlisted": false,
+        "hero_image_url": null,
+        "released_on": "2022-10-08",
+        "official_collection": "Simply's Birthday Nail Polish 2022 Release",
+        "marks": [],
+        "tip": {
+          "id": 19,
+          "hex": "#477cd1",
+          "hex2": null,
+          "finishes": [],
+          "topper": true,
+          "clear": false,
+          "coats": 1,
+          "colours": [],
+          "revision": "a1c3a07e8b"
+        }
+      },
+      {
+        "id": 2,
+        "title": "Gold Play Button",
+        "kind": "polish",
+        "source": "holotaco",
+        "is_topper": false,
+        "price_cents": 1500,
+        "compare_at_cents": 1500,
+        "status": {
+          "key": "retired",
+          "label": "Retired",
+          "buyable": false
+        },
+        "finishes": [
+          "glitter",
+          "holographic"
+        ],
+        "owned_count": 0,
+        "wishlisted": false,
+        "hero_image_url": "https://cdn.shopify.com/s/files/1/0050/3001/9162/products/HT-Bottle_0005_GOLDPLAYBUTTON.jpg?v=1646261701",
+        "released_on": "2021-11-13",
+        "official_collection": "Holo Taco Cristmas Collection",
+        "marks": [],
+        "tip": {
+          "id": 2,
+          "hex": "#78d147",
+          "hex2": null,
+          "finishes": [
+            "glitter",
+            "holographic"
+          ],
+          "topper": false,
+          "clear": false,
+          "coats": 1,
+          "colours": [
+            "gold",
+            "yellow"
+          ],
+          "revision": "9a3de03273"
+        }
+      },
+      {
+        "id": 3,
+        "title": "Hit The Lights",
+        "kind": "polish",
+        "source": "holotaco",
+        "is_topper": false,
+        "price_cents": 1500,
+        "compare_at_cents": 1500,
+        "status": {
+          "key": "retired",
+          "label": "Retired",
+          "buyable": false
+        },
+        "finishes": [
+          "reflective"
+        ],
+        "owned_count": 0,
+        "wishlisted": false,
+        "hero_image_url": "https://cdn.shopify.com/s/files/1/0050/3001/9162/files/0038_HT---Jackpot---Bottle-Heroes---Hit-The-Lights.png?v=1782945217",
+        "released_on": "2026-07-11",
+        "official_collection": "7th Anniversary Jackpot Collection",
+        "marks": [],
+        "tip": {
+          "id": 3,
+          "hex": "#47d188",
+          "hex2": null,
+          "finishes": [
+            "reflective"
+          ],
+          "topper": false,
+          "clear": false,
+          "coats": 1,
+          "colours": [
+            "blue",
+            "gold"
+          ],
+          "revision": "aaaf00923b"
+        }
+      },
+      {
+        "id": 11,
+        "title": "Holo Magnetic Taco",
+        "kind": "polish",
+        "source": "holotaco",
+        "is_topper": false,
+        "price_cents": 1550,
+        "compare_at_cents": 1550,
+        "status": {
+          "key": "available",
+          "label": "In stock",
+          "buyable": true
+        },
+        "finishes": [
+          "magnetic"
+        ],
+        "owned_count": 0,
+        "wishlisted": false,
+        "hero_image_url": "https://cdn.shopify.com/s/files/1/0050/3001/9162/files/0009_HT-Holoween-SoloBottleHero-ThirstTrap.jpg?v=1760456220",
+        "released_on": null,
+        "official_collection": null,
+        "marks": [],
+        "tip": {
+          "id": 11,
+          "hex": "#47cbd1",
+          "hex2": null,
+          "finishes": [
+            "magnetic"
+          ],
+          "topper": false,
+          "clear": false,
+          "coats": 1,
+          "colours": [
+            "purple"
+          ],
+          "revision": "7c2c9e5a0d"
+        }
+      },
+      {
+        "id": 4,
+        "title": "Jam Session",
+        "kind": "polish",
+        "source": "holotaco",
+        "is_topper": false,
+        "price_cents": 1550,
+        "compare_at_cents": 1550,
+        "status": {
+          "key": "sold_out",
+          "label": "Sold out, retiring",
+          "buyable": false
+        },
+        "finishes": [
+          "holographic",
+          "iridescent",
+          "shimmer"
+        ],
+        "owned_count": 0,
+        "wishlisted": false,
+        "hero_image_url": "https://cdn.shopify.com/s/files/1/0050/3001/9162/files/HT-Bottle-JamSession-Stylized.jpg?v=1767074115",
+        "released_on": "2024-05-25",
+        "official_collection": "Rock Candy Collection",
+        "marks": [],
+        "tip": {
+          "id": 4,
+          "hex": "#47a9d1",
+          "hex2": null,
+          "finishes": [
+            "holographic",
+            "iridescent",
+            "shimmer"
+          ],
+          "topper": false,
+          "clear": false,
+          "coats": 1,
+          "colours": [
+            "orange",
+            "red"
+          ],
+          "revision": "d8b8a447f5"
+        }
+      },
+      {
+        "id": 10,
+        "title": "Magnetic Taco",
+        "kind": "polish",
+        "source": "holotaco",
+        "is_topper": false,
+        "price_cents": 1550,
+        "compare_at_cents": 1550,
+        "status": {
+          "key": "available",
+          "label": "In stock",
+          "buyable": true
+        },
+        "finishes": [
+          "magnetic"
+        ],
+        "owned_count": 0,
+        "wishlisted": false,
+        "hero_image_url": "https://cdn.shopify.com/s/files/1/0050/3001/9162/files/0009_HT-Holoween-SoloBottleHero-ThirstTrap.jpg?v=1760456220",
+        "released_on": null,
+        "official_collection": null,
+        "marks": [],
+        "tip": {
+          "id": 10,
+          "hex": "#47d166",
+          "hex2": null,
+          "finishes": [
+            "magnetic"
+          ],
+          "topper": false,
+          "clear": false,
+          "coats": 1,
+          "colours": [
+            "blue"
+          ],
+          "revision": "f8fa9a0d4e"
+        }
+      },
+      {
+        "id": 15,
+        "title": "Mermaid Jelly",
+        "kind": "polish",
+        "source": "holotaco",
+        "is_topper": false,
+        "price_cents": 1550,
+        "compare_at_cents": 1550,
+        "status": {
+          "key": "available",
+          "label": "In stock",
+          "buyable": true
+        },
+        "finishes": [
+          "jelly"
+        ],
+        "owned_count": 0,
+        "wishlisted": true,
+        "hero_image_url": "https://cdn.shopify.com/s/files/1/0050/3001/9162/files/0009_HT-Holoween-SoloBottleHero-ThirstTrap.jpg?v=1760456220",
+        "released_on": null,
+        "official_collection": null,
+        "marks": [],
+        "tip": {
+          "id": 15,
+          "hex": "#d17547",
+          "hex2": null,
+          "finishes": [
+            "jelly"
+          ],
+          "topper": false,
+          "clear": false,
+          "coats": 1,
+          "colours": [
+            "blue",
+            "green"
+          ],
+          "revision": "7cc09474f1"
+        }
+      },
+      {
+        "id": 12,
+        "title": "One-Coat Black",
+        "kind": "polish",
+        "source": "holotaco",
+        "is_topper": false,
+        "price_cents": 1550,
+        "compare_at_cents": 1550,
+        "status": {
+          "key": "available",
+          "label": "In stock",
+          "buyable": true
+        },
+        "finishes": [
+          "creme"
+        ],
+        "owned_count": 1,
+        "wishlisted": false,
+        "hero_image_url": "https://cdn.shopify.com/s/files/1/0050/3001/9162/files/0009_HT-Holoween-SoloBottleHero-ThirstTrap.jpg?v=1760456220",
+        "released_on": null,
+        "official_collection": null,
+        "marks": [],
+        "tip": {
+          "id": 12,
+          "hex": "#111111",
+          "hex2": null,
+          "finishes": [
+            "creme"
+          ],
+          "topper": false,
+          "clear": false,
+          "coats": 1,
+          "colours": [
+            "black"
+          ],
+          "revision": "a27c6f2038"
+        }
+      },
+      {
+        "id": 7,
+        "title": "Peely Base",
+        "kind": "basecoat",
+        "source": "holotaco",
+        "is_topper": false,
+        "price_cents": 1350,
+        "compare_at_cents": 1350,
+        "status": {
+          "key": "available",
+          "label": "In stock",
+          "buyable": true
+        },
+        "finishes": [],
+        "owned_count": 0,
+        "wishlisted": false,
+        "hero_image_url": "https://cdn.shopify.com/s/files/1/0050/3001/9162/files/HT-Bottle-PeelyBase-Black.jpg?v=1765267286",
+        "released_on": null,
+        "official_collection": null,
+        "marks": [],
+        "tip": {
+          "id": 7,
+          "hex": "#d14769",
+          "hex2": null,
+          "finishes": [],
+          "topper": false,
+          "clear": true,
+          "coats": 1,
+          "colours": [
+            "clear"
+          ],
+          "revision": "a91136bd97"
+        }
+      },
+      {
+        "id": 18,
+        "title": "Play Rosé",
+        "kind": "polish",
+        "source": "sheet",
+        "is_topper": false,
+        "price_cents": null,
+        "compare_at_cents": null,
+        "status": {
+          "key": "sheet_only",
+          "label": "Not in the shop",
+          "buyable": false
+        },
+        "finishes": [],
+        "owned_count": 0,
+        "wishlisted": false,
+        "hero_image_url": null,
+        "released_on": "2019-11-16",
+        "official_collection": "Holo Taco Holoday Collection",
+        "marks": [],
+        "tip": {
+          "id": 18,
+          "hex": "#47d1b5",
+          "hex2": null,
+          "finishes": [],
+          "topper": false,
+          "clear": false,
+          "coats": 1,
+          "colours": [],
+          "revision": "2b93636c7b"
+        }
+      },
+      {
+        "id": 20,
+        "title": "Red Flake Taco",
+        "kind": "polish",
+        "source": "sheet",
+        "is_topper": true,
+        "price_cents": null,
+        "compare_at_cents": null,
+        "status": {
+          "key": "sheet_only",
+          "label": "Not in the shop",
+          "buyable": false
+        },
+        "finishes": [],
+        "owned_count": 0,
+        "wishlisted": false,
+        "hero_image_url": null,
+        "released_on": "2022-12-06",
+        "official_collection": "12 Days of Cristmas Release",
+        "marks": [],
+        "tip": {
+          "id": 20,
+          "hex": "#8447d1",
+          "hex2": null,
+          "finishes": [],
+          "topper": true,
+          "clear": false,
+          "coats": 1,
+          "colours": [],
+          "revision": "1fc71871d8"
+        }
+      },
+      {
+        "id": 5,
+        "title": "Rest In Peach",
+        "kind": "polish",
+        "source": "holotaco",
+        "is_topper": false,
+        "price_cents": 1350,
+        "compare_at_cents": 1650,
+        "status": {
+          "key": "retiring",
+          "label": "Retiring soon",
+          "buyable": true
+        },
+        "finishes": [
+          "creme"
+        ],
+        "owned_count": 0,
+        "wishlisted": false,
+        "hero_image_url": "https://cdn.shopify.com/s/files/1/0050/3001/9162/files/HT-Bottle-RestInPeach-Black_c65fffad-6651-4dbb-bfc8-6d85b10b7b51.jpg?v=1770734984",
+        "released_on": "2023-03-22",
+        "official_collection": "Pastel & Don't Tell Bundle",
+        "marks": [],
+        "tip": {
+          "id": 5,
+          "hex": "#5747d1",
+          "hex2": null,
+          "finishes": [
+            "creme"
+          ],
+          "topper": false,
+          "clear": false,
+          "coats": 1,
+          "colours": [
+            "orange"
+          ],
+          "revision": "de255b13a9"
+        }
+      },
+      {
+        "id": 9,
+        "title": "Royal-Tea Blue",
+        "kind": "polish",
+        "source": "holotaco",
+        "is_topper": false,
+        "price_cents": 1350,
+        "compare_at_cents": 1350,
+        "status": {
+          "key": "available",
+          "label": "In stock",
+          "buyable": true
+        },
+        "finishes": [
+          "creme"
+        ],
+        "owned_count": 0,
+        "wishlisted": false,
+        "hero_image_url": "https://cdn.shopify.com/s/files/1/0050/3001/9162/files/HT-Bottle-Royal-Tea-Black_af78c5d3-4512-4e02-8983-399b02fcf94c.jpg?v=1770735109",
+        "released_on": "2019-07-06",
+        "official_collection": "Holo Taco Launch Collection",
+        "marks": [],
+        "tip": {
+          "id": 9,
+          "hex": "#9ad147",
+          "hex2": null,
+          "finishes": [
+            "creme"
+          ],
+          "topper": false,
+          "clear": false,
+          "coats": 1,
+          "colours": [
+            "blue"
+          ],
+          "revision": "c4399d2a16"
+        }
+      },
+      {
+        "id": 21,
+        "title": "Silent Night",
+        "kind": "polish",
+        "source": "sheet",
+        "is_topper": false,
+        "price_cents": null,
+        "compare_at_cents": null,
+        "status": {
+          "key": "sheet_only",
+          "label": "Not in the shop",
+          "buyable": false
+        },
+        "finishes": [],
+        "owned_count": 0,
+        "wishlisted": false,
+        "hero_image_url": null,
+        "released_on": "2025-11-15",
+        "official_collection": "Mini Advent Calendar Collection",
+        "marks": [],
+        "tip": {
+          "id": 21,
+          "hex": "#d147ad",
+          "hex2": null,
+          "finishes": [],
+          "topper": false,
+          "clear": false,
+          "coats": 1,
+          "colours": [],
+          "revision": "37471003c6"
+        }
+      },
+      {
+        "id": 17,
+        "title": "Silver Flake Taco",
+        "kind": "polish",
+        "source": "holotaco",
+        "is_topper": false,
+        "price_cents": 1550,
+        "compare_at_cents": 1550,
+        "status": {
+          "key": "available",
+          "label": "In stock",
+          "buyable": true
+        },
+        "finishes": [
+          "flakie"
+        ],
+        "owned_count": 0,
+        "wishlisted": true,
+        "hero_image_url": "https://cdn.shopify.com/s/files/1/0050/3001/9162/files/0009_HT-Holoween-SoloBottleHero-ThirstTrap.jpg?v=1760456220",
+        "released_on": "2022-12-06",
+        "official_collection": "12 Days of Cristmas Release",
+        "marks": [],
+        "tip": {
+          "id": 17,
+          "hex": "#4bd147",
+          "hex2": null,
+          "finishes": [
+            "flakie"
+          ],
+          "topper": false,
+          "clear": false,
+          "coats": 1,
+          "colours": [
+            "silver"
+          ],
+          "revision": "7a1c3d4267"
+        }
+      },
+      {
+        "id": 13,
+        "title": "Spirit Fingers",
+        "kind": "polish",
+        "source": "holotaco",
+        "is_topper": false,
+        "price_cents": 1550,
+        "compare_at_cents": 1550,
+        "status": {
+          "key": "available",
+          "label": "In stock",
+          "buyable": true
+        },
+        "finishes": [
+          "glitter"
+        ],
+        "owned_count": 2,
+        "wishlisted": false,
+        "hero_image_url": "https://cdn.shopify.com/s/files/1/0050/3001/9162/files/HT-Bottle-JamSession-Stylized.jpg?v=1767074115",
+        "released_on": null,
+        "official_collection": null,
+        "marks": [],
+        "tip": {
+          "id": 13,
+          "hex": "#a647d1",
+          "hex2": null,
+          "finishes": [
+            "glitter"
+          ],
+          "topper": false,
+          "clear": false,
+          "coats": 1,
+          "colours": [
+            "orange"
+          ],
+          "revision": "009e6d1af8"
+        }
+      },
+      {
+        "id": 8,
+        "title": "Sticky Base",
+        "kind": "polish",
+        "source": "holotaco",
+        "is_topper": true,
+        "price_cents": 1350,
+        "compare_at_cents": 1350,
+        "status": {
+          "key": "available",
+          "label": "In stock",
+          "buyable": true
+        },
+        "finishes": [],
+        "owned_count": 0,
+        "wishlisted": false,
+        "hero_image_url": "https://cdn.shopify.com/s/files/1/0050/3001/9162/files/HT-Bottle-StickyBase-Black.jpg?v=1765267147",
+        "released_on": null,
+        "official_collection": null,
+        "marks": [],
+        "tip": {
+          "id": 8,
+          "hex": "#d19747",
+          "hex2": null,
+          "finishes": [],
+          "topper": true,
+          "clear": false,
+          "coats": 1,
+          "colours": [
+            "clear"
+          ],
+          "revision": "cfdc2abce5"
+        }
+      },
+      {
+        "id": 1,
+        "title": "Thirst Trap",
+        "kind": "polish",
+        "source": "holotaco",
+        "is_topper": false,
+        "price_cents": 1550,
+        "compare_at_cents": 1550,
+        "status": {
+          "key": "available",
+          "label": "In stock",
+          "buyable": true
+        },
+        "finishes": [
+          "flakie"
+        ],
+        "owned_count": 1,
+        "wishlisted": false,
+        "hero_image_url": "https://cdn.shopify.com/s/files/1/0050/3001/9162/files/0009_HT-Holoween-SoloBottleHero-ThirstTrap.jpg?v=1760456220",
+        "released_on": "2025-10-04",
+        "official_collection": "Holoween Collection",
+        "marks": [],
+        "tip": {
+          "id": 1,
+          "hex": "#d1b947",
+          "hex2": null,
+          "finishes": [
+            "flakie"
+          ],
+          "topper": false,
+          "clear": false,
+          "coats": 1,
+          "colours": [
+            "red"
+          ],
+          "revision": "2a0c3309f5"
+        }
+      }
+    ],
+    "total": 23,
+    "page": 1,
+    "has_more": false,
+    "fuzzy": false
+  }
+}

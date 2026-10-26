@@ -1,0 +1,70 @@
+{
+  "request": {
+    "method": "GET",
+    "path": "/api/v1/shades/facets"
+  },
+  "status": 200,
+  "body": {
+    "finish": [
+      "creme",
+      "flakie",
+      "holographic",
+      "glitter",
+      "iridescent",
+      "magnetic",
+      "jelly",
+      "reflective",
+      "shimmer"
+    ],
+    "color": [
+      "blue",
+      "orange",
+      "clear",
+      "gold",
+      "purple",
+      "red",
+      "black",
+      "green",
+      "pink",
+      "silver",
+      "yellow"
+    ],
+    "collection": [
+      "7th-anniversary",
+      "camping",
+      "creme",
+      "crushed-holographic",
+      "essentials",
+      "glitter",
+      "holographic",
+      "holographic-glitter",
+      "holoween",
+      "iridescent",
+      "limited-and-seasonal",
+      "limited-edition",
+      "magnetic",
+      "metallic",
+      "pastel-and-dont-tell",
+      "reflective",
+      "retirement",
+      "rock-candy",
+      "shimmer",
+      "soon-retiring",
+      "trending",
+      "unicorn-skin"
+    ],
+    "official": [
+      "12 Days of Cristmas Release",
+      "7th Anniversary Jackpot Collection",
+      "Holo Taco Cristmas Collection",
+      "Holo Taco Holoday Collection",
+      "Holo Taco Launch Collection",
+      "Holo Taco Unicorn Skin Collection",
+      "Holoween Collection",
+      "Mini Advent Calendar Collection",
+      "Pastel & Don't Tell Bundle",
+      "Rock Candy Collection",
+      "Simply's Birthday Nail Polish 2022 Release"
+    ]
+  }
+}

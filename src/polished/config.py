@@ -1,3 +1,4 @@
+import re
 import secrets
 from typing import Literal
 from urllib.parse import urlsplit
@@ -62,6 +63,14 @@ class Settings(BaseSettings):
     timezone: str = "Europe/Warsaw"
     over_black_handle: str = "one-coat-black"
 
+    # The 10-character Apple team ID of the native app; with it the server answers
+    # /.well-known/apple-app-site-association (universal links). Empty: that route is off.
+    apple_team_id: str = ""
+    # AUTH_MODE=none only: a fixed bearer token for /api/v1 (local development, UI tests).
+    dev_token: SecretStr | None = None
+    # AUTH_MODE=none only: a template database that POST /__test/reset copies over the live one.
+    test_reset_from: str = ""
+
     @field_validator("public_url", "store_url", "oidc_issuer")
     @classmethod
     def _http_url(cls, value: str) -> str:
@@ -72,6 +81,19 @@ class Settings(BaseSettings):
     def _optional_http_url(cls, value: str) -> str:
         value = value.strip()
         return _check_http_url(value) if value else ""
+
+    @field_validator("apple_team_id")
+    @classmethod
+    def _team_id(cls, value: str) -> str:
+        value = value.strip()
+        if value and not re.fullmatch(r"[A-Z0-9]{10}", value):
+            raise ValueError("must be the 10-character Apple team ID, e.g. ABCDE12345")
+        return value
+
+    @field_validator("dev_token")
+    @classmethod
+    def _dev_token_not_empty(cls, value: SecretStr | None) -> SecretStr | None:
+        return value if value is not None and value.get_secret_value() else None
 
     @field_validator("timezone")
     @classmethod
@@ -84,6 +106,15 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def _check_auth(self) -> "Settings":
+        if self.auth_mode != "none":
+            for name, value in (
+                ("DEV_TOKEN", self.dev_token),
+                ("TEST_RESET_FROM", self.test_reset_from),
+            ):
+                if value:
+                    raise ValueError(
+                        f"POLISHED_{name} is only allowed with POLISHED_AUTH_MODE=none"
+                    )
         if self.auth_mode == "none":
             host = urlsplit(self.public_url).hostname
             if host not in LOCAL_HOSTS:

@@ -1,0 +1,15 @@
+{
+  "request": {
+    "method": "GET",
+    "path": "/api/v1/lookup?q=12345678&via=scan"
+  },
+  "status": 200,
+  "body": {
+    "outcome": "invalid_code",
+    "code": null,
+    "kind": null,
+    "shade": null,
+    "identifier_id": null,
+    "results": null
+  }
+}

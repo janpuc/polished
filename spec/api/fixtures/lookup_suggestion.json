@@ -1,0 +1,56 @@
+{
+  "request": {
+    "method": "GET",
+    "path": "/api/v1/lookup?q=259"
+  },
+  "status": 200,
+  "body": {
+    "outcome": "suggestion",
+    "code": "P259",
+    "kind": "printed",
+    "shade": {
+      "id": 13,
+      "title": "Spirit Fingers",
+      "kind": "polish",
+      "source": "holotaco",
+      "is_topper": false,
+      "price_cents": 1550,
+      "compare_at_cents": 1550,
+      "status": {
+        "key": "available",
+        "label": "In stock",
+        "buyable": true
+      },
+      "finishes": [
+        "glitter"
+      ],
+      "owned_count": 2,
+      "wishlisted": false,
+      "hero_image_url": "https://cdn.shopify.com/s/files/1/0050/3001/9162/files/HT-Bottle-JamSession-Stylized.jpg?v=1767074115",
+      "released_on": null,
+      "official_collection": null,
+      "marks": [],
+      "tip": {
+        "id": 13,
+        "hex": "#a647d1",
+        "hex2": null,
+        "finishes": [
+          "glitter"
+        ],
+        "topper": false,
+        "clear": false,
+        "coats": 1,
+        "colours": [
+          "orange"
+        ],
+        "revision": "009e6d1af8"
+      },
+      "images": [
+        "https://cdn.shopify.com/s/files/1/0050/3001/9162/files/HT-Bottle-JamSession-Stylized.jpg?v=1767074115",
+        "https://cdn.shopify.com/s/files/1/0050/3001/9162/files/HT-RockCandy-PDPs-JamSession-hand2.jpg?v=1771273315"
+      ]
+    },
+    "identifier_id": null,
+    "results": null
+  }
+}
