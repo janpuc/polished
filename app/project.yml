@@ -1,0 +1,181 @@
+# XcodeGen spec: `xcodegen generate` writes Polished.xcodeproj (gitignored). docs/NATIVE.md 2.1, 2.2.
+name: Polished
+
+options:
+  bundleIdPrefix: com.janpuc
+  deploymentTarget:
+    iOS: "27.0"
+  createIntermediateGroups: true
+  generateEmptyDirectories: false
+  groupSortPosition: top
+
+configFiles:
+  Debug: Config.xcconfig
+  Release: Config.xcconfig
+
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    SWIFT_STRICT_CONCURRENCY: complete
+    IPHONEOS_DEPLOYMENT_TARGET: "27.0"
+    MARKETING_VERSION: 1.0.0
+    CURRENT_PROJECT_VERSION: "1"
+    CODE_SIGN_STYLE: Automatic
+    SDKROOT: iphoneos
+    SUPPORTED_PLATFORMS: "iphoneos iphonesimulator"
+    TARGETED_DEVICE_FAMILY: "1,2"
+    SUPPORTS_MACCATALYST: NO
+    SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD: NO
+    ENABLE_USER_SCRIPT_SANDBOXING: YES
+    ASSETCATALOG_COMPILER_GENERATE_ASSET_SYMBOLS: NO
+  configs:
+    Debug:
+      SWIFT_ACTIVE_COMPILATION_CONDITIONS: DEBUG
+      ENABLE_TESTABILITY: YES
+
+packages:
+  PolishedCore:
+    path: PolishedCore
+
+targets:
+  Polished:
+    type: application
+    platform: iOS
+    sources:
+      - path: Polished
+        excludes:
+          - "Resources/Fonts/*.txt"
+          - "Info.plist"
+          - "*.entitlements"
+    dependencies:
+      - target: PolishedWidgets
+      - package: PolishedCore
+        product: NailTips
+      - package: PolishedCore
+        product: PolishedModels
+      - package: PolishedCore
+        product: PolishedAPI
+      - package: PolishedCore
+        product: PolishedStore
+    info:
+      path: Polished/Info.plist
+      properties:
+        CFBundleDisplayName: Polished
+        ITSAppUsesNonExemptEncryption: false
+        NFCReaderUsageDescription: Polished writes the wheel's link to a sticker and checks it.
+        NSCameraUsageDescription: Polished reads the barcode under a bottle.
+        UIAppFonts:
+          - Fraunces144pt-SemiBold.ttf
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: true
+          UISceneConfigurations: {}
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        UISupportedInterfaceOrientations~ipad:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.janpuc.polished
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        INFOPLIST_FILE: Polished/Info.plist
+      configs:
+        Debug:
+          CODE_SIGN_ENTITLEMENTS: Polished/Polished-Debug.entitlements
+        Release:
+          CODE_SIGN_ENTITLEMENTS: Polished/Polished.entitlements
+    postCompileScripts:
+      - name: Copy tip fixtures (Debug only)
+        script: |
+          if [ "${CONFIGURATION}" = "Debug" ]; then
+            cp "${SRCROOT}/../spec/tips/cases.json" "${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/TipCases.json"
+          fi
+        inputFiles:
+          - $(SRCROOT)/../spec/tips/cases.json
+        outputFiles:
+          - $(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/TipCases.json
+
+  PolishedWidgets:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: PolishedWidgets
+        excludes:
+          - "Info.plist"
+          - "*.entitlements"
+      - path: Polished/Design
+      - path: Polished/Resources/Colors.xcassets
+    dependencies:
+      - package: PolishedCore
+        product: NailTips
+      - sdk: SwiftUI.framework
+      - sdk: WidgetKit.framework
+    info:
+      path: PolishedWidgets/Info.plist
+      properties:
+        CFBundleDisplayName: Polished
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.janpuc.polished.widgets
+        INFOPLIST_FILE: PolishedWidgets/Info.plist
+        CODE_SIGN_ENTITLEMENTS: PolishedWidgets/PolishedWidgets.entitlements
+        SKIP_INSTALL: YES
+
+  # Hosts the PolishedCore tests too: the sources of the package's test target are compiled here,
+  # with the repository's spec/ folder copied into the bundle at build time.
+  PolishedTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: PolishedCore/Tests/PolishedCoreTests
+      - path: ../spec
+        type: folder
+        buildPhase: resources
+    dependencies:
+      - package: PolishedCore
+        product: NailTips
+      - package: PolishedCore
+        product: PolishedModels
+      - package: PolishedCore
+        product: PolishedAPI
+      - package: PolishedCore
+        product: PolishedStore
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.janpuc.polished.tests
+        GENERATE_INFOPLIST_FILE: YES
+
+  PolishedUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: PolishedUITests
+    dependencies:
+      - target: Polished
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.janpuc.polished.uitests
+        GENERATE_INFOPLIST_FILE: YES
+
+schemes:
+  Polished:
+    build:
+      targets:
+        Polished: all
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - PolishedTests
+        - PolishedUITests
+    archive:
+      config: Release

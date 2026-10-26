@@ -1,0 +1,10 @@
+Fraunces144pt-SemiBold.ttf
+  family   Fraunces (Undercase Type), static instance: opsz 144, wght 600, SOFT 0, WONK 0
+  licence  SIL Open Font License 1.1 (OFL.txt, copied from the same commit)
+  source   https://github.com/undercasetype/Fraunces/blob/7ccdec31c6028118dce3e47fe864e3744460371d/fonts/ttf/Fraunces144pt-SemiBold.ttf
+  fetched  2026-10-26 from raw.githubusercontent.com at repository commit 7ccdec31c602 (master, 2025-10-21)
+  sha256   8832b1e87af1097037a4603d3785c30ba1c0b6e1c5bf5112f105479738b4b2e9  Fraunces144pt-SemiBold.ttf
+  sha256   bdf4c22802eaf804f998195871c6b8938aac2ac14b2d78a8bd66a6f1eced833b  OFL.txt
+  PostScript name  Fraunces144pt-SemiBold
+  features GSUB: aalt, case, liga, locl, ss01. No tnum: the digits have different advance widths
+           (1 is 744, 0 is 1226 units), so numbers that must not jitter sit in fixed-width frames.

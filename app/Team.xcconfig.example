@@ -1,0 +1,2 @@
+// Copy to Team.xcconfig (gitignored) and put your Apple team ID here.
+DEVELOPMENT_TEAM = XXXXXXXXXX
