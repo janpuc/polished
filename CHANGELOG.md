@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.6.0](https://github.com/janpuc/polished/compare/v0.5.0...v0.6.0) (2026-10-26)
+
+
+### Features
+
+* **app:** SwiftUI app skeleton for iPhone, iPad and iPhone Duo with the painted-tip renderer ported to Swift (parity with the web), v3 tokens, Fraunces, tip gallery ([97c0a2f](https://github.com/janpuc/polished/commit/97c0a2fc29308b38260cc9f0830bfa9afb38a32e))
+* tip renderer split into a paint plan and SVG, SplitMix64 random, stable revision, shared spec fixtures for the Swift engine ([01bf449](https://github.com/janpuc/polished/commit/01bf449185015bd1c13e12246927038db58b2c08))
+* v3 web shells (Mac sidebar with the shade panel, iPad rail, keyboard, per-shell sheets), search extras, delete-wheel and tag pages; fix: lint the app's parity scripts ([c1d3d20](https://github.com/janpuc/polished/commit/c1d3d203231c076445ca6043019b92e9c7078d85))
+
 ## [0.5.0](https://github.com/janpuc/polished/compare/v0.4.0...v0.5.0) (2026-10-26)
 
 
