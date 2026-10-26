@@ -43,7 +43,7 @@
           "clear": false,
           "coats": 1,
           "colours": [],
-          "revision": "b74a65e152"
+          "revision": "5f900568f2"
         }
       },
       "bottle": {
@@ -111,7 +111,7 @@
             "colours": [
               "orange"
             ],
-            "revision": "009e6d1af8"
+            "revision": "c25aa856e4"
           }
         }
       },
@@ -164,7 +164,7 @@
             "colours": [
               "red"
             ],
-            "revision": "2a0c3309f5"
+            "revision": "9bcec5e9f9"
           }
         }
       },
@@ -217,7 +217,7 @@
             "clear": false,
             "coats": 1,
             "colours": [],
-            "revision": "b74a65e152"
+            "revision": "5f900568f2"
           }
         }
       },
@@ -270,7 +270,7 @@
             "colours": [
               "black"
             ],
-            "revision": "a27c6f2038"
+            "revision": "cea9644b5e"
           }
         }
       },
@@ -323,7 +323,7 @@
             "colours": [
               "orange"
             ],
-            "revision": "009e6d1af8"
+            "revision": "c25aa856e4"
           }
         }
       }
@@ -488,7 +488,7 @@
                 "colours": [
                   "black"
                 ],
-                "revision": "50a724030c"
+                "revision": "66fab2e23b"
               }
             },
             {
@@ -510,7 +510,7 @@
                 "clear": false,
                 "coats": 1,
                 "colours": [],
-                "revision": "b74a65e152"
+                "revision": "5f900568f2"
               }
             }
           ],
@@ -545,7 +545,7 @@
                 "colours": [
                   "orange"
                 ],
-                "revision": "d26f07fe62"
+                "revision": "b3a96ed0f8"
               }
             }
           ],

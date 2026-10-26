@@ -1,0 +1,89 @@
+{
+ "note": "normalise_gtin: whitespace removed, 8/12/13/14 digits with a valid GS1 check digit, 14 digits only with a leading 0; the result is the 13-digit form or null.",
+ "vectors": [
+  {
+   "input": "810170284120",
+   "output": "0810170284120"
+  },
+  {
+   "input": "0810170284120",
+   "output": "0810170284120"
+  },
+  {
+   "input": "00810170284120",
+   "output": "0810170284120"
+  },
+  {
+   "input": "810170284121",
+   "output": null
+  },
+  {
+   "input": "96385074",
+   "output": "0000096385074"
+  },
+  {
+   "input": "96385075",
+   "output": null
+  },
+  {
+   "input": "4006381333931",
+   "output": "4006381333931"
+  },
+  {
+   "input": "4006381333932",
+   "output": null
+  },
+  {
+   "input": " 810 170 284 120 ",
+   "output": "0810170284120"
+  },
+  {
+   "input": "810170284120\n",
+   "output": "0810170284120"
+  },
+  {
+   "input": "10810170284127",
+   "output": null
+  },
+  {
+   "input": "",
+   "output": null
+  },
+  {
+   "input": "   ",
+   "output": null
+  },
+  {
+   "input": "abc",
+   "output": null
+  },
+  {
+   "input": "81017028412x",
+   "output": null
+  },
+  {
+   "input": "8101702841",
+   "output": null
+  },
+  {
+   "input": "81017028412011",
+   "output": null
+  },
+  {
+   "input": "8101702841200123",
+   "output": null
+  },
+  {
+   "input": "0000000000000",
+   "output": "0000000000000"
+  },
+  {
+   "input": "036000291452",
+   "output": "0036000291452"
+  },
+  {
+   "input": "١٢٣٤٥٦٧٨",
+   "output": null
+  }
+ ]
+}

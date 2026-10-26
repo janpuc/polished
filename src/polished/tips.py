@@ -12,7 +12,6 @@ every time and in every stack. The shape of the tip is CSS; the SVG is 102x168 a
 import colorsys
 import hashlib
 import math
-import random
 from dataclasses import dataclass
 
 WIDTH, HEIGHT = 102, 168
@@ -91,12 +90,27 @@ def _tag_set(value) -> frozenset[str]:
 
 # Bump when render() draws differently: the image URLs are cached for good, so only a new
 # revision makes a browser fetch the new drawing.
-DRAWING_VERSION = 2
+DRAWING_VERSION = 3
 
 
 def revision(shades: list[TipShade]) -> str:
     """Changes whenever anything that is drawn changes; goes in the image URL and the ETag."""
-    return hashlib.sha1(f"{DRAWING_VERSION}{shades!r}".encode()).hexdigest()[:10]
+    key = [_key(shade) for shade in shades]
+    return hashlib.sha1(f"{DRAWING_VERSION}{key!r}".encode()).hexdigest()[:10]
+
+
+def _key(shade: TipShade) -> tuple:
+    """Plain values with the sets sorted: a frozenset's repr changes with PYTHONHASHSEED."""
+    return (
+        shade.id,
+        shade.hex,
+        shade.hex2,
+        tuple(sorted(shade.finishes)),
+        shade.topper,
+        shade.clear,
+        shade.coats,
+        None if shade.colours is None else tuple(sorted(shade.colours)),
+    )
 
 
 def shade_url(row) -> str:
@@ -147,86 +161,100 @@ def luminance(colour: str) -> float:
     return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255
 
 
-# --- drawing --------------------------------------------------------------------------------
+# --- the random generator -------------------------------------------------------------------
+
+_MASK = 2**64 - 1
 
 
-class _Canvas:
+class TipRandom:
+    """SplitMix64, seeded with the shade id: the same numbers in Python and in the app's Swift
+    port (spec/tips/random.json holds the vectors). Not CPython's random.Random, whose
+    algorithm is not worth porting."""
+
+    def __init__(self, seed: int) -> None:
+        self.state = seed & _MASK
+
+    def next(self) -> int:
+        self.state = (self.state + 0x9E3779B97F4A7C15) & _MASK
+        z = self.state
+        z = ((z ^ (z >> 30)) * 0xBF58476D1CE4E5B9) & _MASK
+        z = ((z ^ (z >> 27)) * 0x94D049BB133111EB) & _MASK
+        return z ^ (z >> 31)
+
+    def random(self) -> float:
+        return (self.next() >> 11) * 2.0**-53
+
+    def uniform(self, a: float, b: float) -> float:
+        return a + (b - a) * self.random()
+
+    def below(self, n: int) -> int:
+        return int(self.random() * n)
+
+    def choice(self, items):
+        return items[self.below(len(items))]
+
+    def randint(self, a: int, b: int) -> int:
+        return a + self.below(b - a + 1)
+
+    def randrange(self, n: int) -> int:
+        return self.below(n)
+
+
+# --- the paint plan ---------------------------------------------------------------------------
+#
+# ops() turns layers into a flat list of paint operations in painting order; svg() writes them as
+# markup. The native app draws the same list with its own canvas (docs/NATIVE.md 4.1). Op kinds:
+#   rect     the whole tip, with a `fill` that is solid, linear or radial, and an `opacity`
+#   dots     circles [cx, cy, r] of one `color` and `opacity`
+#   star     a four-point star at (cx, cy) of `size`, `color`, `opacity`
+#   polygon  `points` [x, y], `color`, `opacity`, `stroke`, `stroke_opacity`, `stroke_width`
+#   path     path data `d` with a `color` and an `opacity` and optionally `blur`, or with a linear
+#            `fill` measured in the path's own bounding box
+#   ellipse  (cx, cy, rx, ry) turned by `rotate` degrees about its centre, `color`, `opacity`
+# Gradient stops are [offset, color, opacity]; linear ones run from (x1, y1) to (x2, y2) and radial
+# ones around (cx, cy) with radius r, in fractions of the tip.
+
+
+def solid(colour: str) -> dict:
+    return {"kind": "solid", "color": colour}
+
+
+def linear(stops, x1=0.0, y1=0.0, x2=0.0, y2=1.0) -> dict:
+    """A linear gradient over the whole tip; stops are (offset, colour, opacity)."""
+    return {
+        "kind": "linear",
+        "x1": x1,
+        "y1": y1,
+        "x2": x2,
+        "y2": y2,
+        "stops": [list(stop) for stop in stops],
+    }
+
+
+def radial(stops, cx=0.5, cy=0.5, r=0.5) -> dict:
+    return {"kind": "radial", "cx": cx, "cy": cy, "r": r, "stops": [list(stop) for stop in stops]}
+
+
+class _Plan:
     def __init__(self) -> None:
-        self.defs: list[str] = []
-        self.body: list[str] = []
-        self._ids = 0
+        self.ops: list[dict] = []
 
-    def new_id(self, kind: str) -> str:
-        self._ids += 1
-        return f"{kind}{self._ids}"
+    def rect(self, fill: dict, opacity: float = 1.0) -> None:
+        self.ops.append({"op": "rect", "fill": fill, "opacity": opacity})
 
-    def gradient(self, stops, x1=0.0, y1=0.0, x2=0.0, y2=1.0) -> str:
-        """A linear gradient over the whole tip; stops are (offset, colour, opacity)."""
-        ident = self.new_id("g")
-        rows = "".join(
-            f'<stop offset="{offset:g}" stop-color="{colour}" stop-opacity="{opacity:g}"/>'
-            for offset, colour, opacity in stops
-        )
-        self.defs.append(
-            f'<linearGradient id="{ident}" x1="{x1:g}" y1="{y1:g}" x2="{x2:g}" y2="{y2:g}">{rows}</linearGradient>'
-        )
-        return f"url(#{ident})"
-
-    def radial(self, stops, cx=0.5, cy=0.5, r=0.5) -> str:
-        ident = self.new_id("r")
-        rows = "".join(
-            f'<stop offset="{offset:g}" stop-color="{colour}" stop-opacity="{opacity:g}"/>'
-            for offset, colour, opacity in stops
-        )
-        self.defs.append(
-            f'<radialGradient id="{ident}" cx="{cx:g}" cy="{cy:g}" r="{r:g}">{rows}</radialGradient>'
-        )
-        return f"url(#{ident})"
-
-    def blur(self, amount: float) -> str:
-        ident = self.new_id("b")
-        self.defs.append(
-            f'<filter id="{ident}" x="-30%" y="-30%" width="160%" height="160%">'
-            f'<feGaussianBlur stdDeviation="{amount:g}"/></filter>'
-        )
-        return f"url(#{ident})"
-
-    def rect(self, fill: str, opacity: float = 1.0) -> None:
-        extra = "" if opacity >= 1 else f' fill-opacity="{opacity:.2f}"'
-        self.body.append(f'<rect width="{WIDTH}" height="{HEIGHT}" fill="{fill}"{extra}/>')
-
-    def add(self, markup: str) -> None:
-        self.body.append(markup)
-
-    def svg(self) -> str:
-        return (
-            f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {WIDTH} {HEIGHT}"'
-            f' width="{WIDTH}" height="{HEIGHT}" preserveAspectRatio="xMidYMid slice">'
-            f"<defs>{''.join(self.defs)}</defs>{''.join(self.body)}</svg>"
-        )
+    def add(self, op: str, **fields) -> None:
+        self.ops.append({"op": op, **fields})
 
 
-def _dots(canvas: _Canvas, rng: random.Random, count: int, radius, colours, opacity) -> None:
+def _dots(plan: _Plan, rng: TipRandom, count: int, radius, colours, opacity) -> None:
     """Round dots in groups by colour, so the markup stays short."""
-    groups: dict[str, list[str]] = {}
+    groups: dict[str, list[list[float]]] = {}
     for _ in range(count):
         colour = rng.choice(colours)
         r = rng.uniform(*radius)
-        groups.setdefault(colour, []).append(
-            f'<circle cx="{rng.uniform(0, WIDTH):.1f}" cy="{rng.uniform(0, HEIGHT):.1f}" r="{r:.2f}"/>'
-        )
+        groups.setdefault(colour, []).append([rng.uniform(0, WIDTH), rng.uniform(0, HEIGHT), r])
     for colour, circles in groups.items():
-        canvas.add(f'<g fill="{colour}" fill-opacity="{opacity:g}">{"".join(circles)}</g>')
-
-
-def _star(cx: float, cy: float, size: float, colour: str, opacity: float) -> str:
-    pinch = size * 0.16
-    d = (
-        f"M{cx:.1f} {cy - size:.1f}L{cx + pinch:.1f} {cy - pinch:.1f}L{cx + size:.1f} {cy:.1f}"
-        f"L{cx + pinch:.1f} {cy + pinch:.1f}L{cx:.1f} {cy + size:.1f}L{cx - pinch:.1f} {cy + pinch:.1f}"
-        f"L{cx - size:.1f} {cy:.1f}L{cx - pinch:.1f} {cy - pinch:.1f}Z"
-    )
-    return f'<path d="{d}" fill="{colour}" fill-opacity="{opacity:g}"/>'
+        plan.add("dots", color=colour, opacity=opacity, circles=circles)
 
 
 def _sparkle_palette(shade: TipShade) -> list[str]:
@@ -239,7 +267,7 @@ def _sparkle_palette(shade: TipShade) -> list[str]:
     return palette
 
 
-def _rainbow_sheen(canvas: _Canvas, rng: random.Random, opacity: float) -> None:
+def _rainbow_sheen(plan: _Plan, rng: TipRandom, opacity: float) -> None:
     """The spectrum spread over the tip in two soft diagonal sweeps, where it starts differing
     from shade to shade."""
     start = rng.randrange(len(RAINBOW))
@@ -252,10 +280,10 @@ def _rainbow_sheen(canvas: _Canvas, rng: random.Random, opacity: float) -> None:
         )
         for index, colour in enumerate(colours)
     ]
-    canvas.rect(canvas.gradient(stops, 0, 0.15, 1, 0.85))
+    plan.rect(linear(stops, 0, 0.15, 1, 0.85))
 
 
-def _flakes(canvas: _Canvas, rng: random.Random, shade: TipShade) -> None:
+def _flakes(plan: _Plan, rng: TipRandom, shade: TipShade) -> None:
     palette = list(RAINBOW) + [
         shade.hex,
         shade.hex,
@@ -269,37 +297,40 @@ def _flakes(canvas: _Canvas, rng: random.Random, shade: TipShade) -> None:
         for index in range(rng.randint(4, 6)):
             angle = index / 5 * 6.283 + rng.uniform(-0.5, 0.5)
             radius = size * rng.uniform(0.55, 1.1)
-            points.append(
-                f"{cx + radius * math.cos(angle):.1f},{cy + radius * math.sin(angle):.1f}"
-            )
+            points.append([cx + radius * math.cos(angle), cy + radius * math.sin(angle)])
         colour = rng.choice(palette)
-        canvas.add(
-            f'<polygon points="{" ".join(points)}" fill="{colour}" fill-opacity="{rng.uniform(0.5, 0.8):.2f}"'
-            f' stroke="#ffffff" stroke-opacity="0.35" stroke-width="0.4"/>'
+        plan.add(
+            "polygon",
+            points=points,
+            color=colour,
+            opacity=rng.uniform(0.5, 0.8),
+            stroke="#ffffff",
+            stroke_opacity=0.35,
+            stroke_width=0.4,
         )
 
 
-def _paint(canvas: _Canvas, shade: TipShade) -> None:
+def _paint(plan: _Plan, shade: TipShade) -> None:
     """One layer: its base, then its finish."""
     if shade.clear:
         return
-    rng = random.Random(shade.id)
+    rng = TipRandom(shade.id)
     finishes = shade.finishes
     base = shade.hex
 
     if "thermal" in finishes:
         other = shade.hex2 or shift_hue(lighten(base, 0.2), 70)
-        fill = canvas.gradient([(0, base, 1), (0.45, base, 1), (1, other, 1)])
-        canvas.rect(fill, 0.9 if shade.topper else 1)
+        fill = linear([(0, base, 1), (0.45, base, 1), (1, other, 1)])
+        plan.rect(fill, 0.9 if shade.topper else 1)
     elif shade.see_through:
-        canvas.rect(base, min(0.95, 0.68 + 0.1 * shade.coats))
-        canvas.rect(
-            canvas.gradient([(0, base, 0), (1, darken(base, 0.45), 0.55)]), 1
+        plan.rect(solid(base), min(0.95, 0.68 + 0.1 * shade.coats))
+        plan.rect(
+            linear([(0, base, 0), (1, darken(base, 0.45), 0.55)]), 1
         )  # depth: deeper toward the free edge
     elif not shade.topper:
-        canvas.rect(base)
+        plan.rect(solid(base))
     elif shade.tinted:
-        canvas.rect(base, 0.3)  # a coloured topper leaves a hint of its colour
+        plan.rect(solid(base), 0.3)  # a coloured topper leaves a hint of its colour
 
     if (
         shade.hex2
@@ -309,8 +340,8 @@ def _paint(canvas: _Canvas, shade: TipShade) -> None:
         and luminance(shade.hex2) > 0.12
     ):
         # duochrome and multichrome shift: the second colour sweeps in across the tip
-        canvas.rect(
-            canvas.gradient(
+        plan.rect(
+            linear(
                 [(0, shade.hex2, 0), (0.45, shade.hex2, 0.0), (1, shade.hex2, 0.7)], 0, 0.1, 1, 0.9
             )
         )
@@ -329,28 +360,34 @@ def _paint(canvas: _Canvas, shade: TipShade) -> None:
             (0.8, mid, 1),
             (1, lighten(base, 0.3), 1),
         ]
-        canvas.rect(
-            canvas.gradient(stops, 0, 0, 0.9, 1),
+        plan.rect(
+            linear(stops, 0, 0, 0.9, 1),
             (0.9 if strong else 0.6) * (0.5 if shade.topper else 1),
         )
 
     if "magnetic" in finishes:
-        soft = canvas.blur(3.5)
-        band = lighten(base, 0.6)
-        canvas.add(
-            f'<path d="M-8 150Q51 52 112 96L112 128Q51 84-8 176Z" fill="{band}" fill-opacity="0.75" filter="{soft}"/>'
+        plan.add(
+            "path",
+            d="M-8 150Q51 52 112 96L112 128Q51 84-8 176Z",
+            color=lighten(base, 0.6),
+            opacity=0.75,
+            blur=3.5,
         )
-        canvas.add(
-            f'<path d="M-8 128Q51 36 112 74L112 84Q51 52-8 146Z" fill="{darken(base, 0.45)}" fill-opacity="0.35" filter="{soft}"/>'
+        plan.add(
+            "path",
+            d="M-8 128Q51 36 112 74L112 84Q51 52-8 146Z",
+            color=darken(base, 0.45),
+            opacity=0.35,
+            blur=3.5,
         )
 
     if finishes & {"holographic", "iridescent"}:
         strength = 0.2 if "holographic" in finishes else 0.12
-        _rainbow_sheen(canvas, rng, strength * (0.6 if shade.topper else 1))
+        _rainbow_sheen(plan, rng, strength * (0.6 if shade.topper else 1))
     if finishes & {"shimmer", "holographic", "iridescent", "reflective"}:
         count = 190 if "shimmer" in finishes else 90
         _dots(
-            canvas,
+            plan,
             rng,
             count,
             (0.35, 0.8),
@@ -359,53 +396,175 @@ def _paint(canvas: _Canvas, shade: TipShade) -> None:
         )
     if "glitter" in finishes:
         palette = _sparkle_palette(shade)
-        _dots(canvas, rng, 55, (0.7, 1.9), palette, 0.9)
+        _dots(plan, rng, 55, (0.7, 1.9), palette, 0.9)
         for _ in range(7):
-            canvas.add(
-                _star(
-                    rng.uniform(8, WIDTH - 8),
-                    rng.uniform(8, HEIGHT - 8),
-                    rng.uniform(2.6, 5.2),
-                    "#ffffff",
-                    0.9,
-                )
+            plan.add(
+                "star",
+                cx=rng.uniform(8, WIDTH - 8),
+                cy=rng.uniform(8, HEIGHT - 8),
+                size=rng.uniform(2.6, 5.2),
+                color="#ffffff",
+                opacity=0.9,
             )
     if "flakie" in finishes:
-        _flakes(canvas, rng, shade)
+        _flakes(plan, rng, shade)
 
 
-def _finish(canvas: _Canvas, matte: bool) -> None:
+def _finish(plan: _Plan, matte: bool) -> None:
     """Over everything: the curve of the nail, then the gloss unless the top coat is matte. The
     page's CSS adds the occlusion and the specular pool over this (DESIGN 9), so the dome's edge is
     light and the small highlight sits under the pool's default place at the top left."""
-    canvas.rect(canvas.radial([(0.55, "#000000", 0), (1, "#000000", 0.18)], 0.5, 0.42, 0.78), 1)
+    plan.rect(radial([(0.55, "#000000", 0), (1, "#000000", 0.18)], 0.5, 0.42, 0.78), 1)
     if matte:
         return
-    canvas.add(
-        f'<path d="M25 30C26 20 37 20 39 30L36 98C35 106 29 105 28 97Z"'
-        f' fill="{canvas.gradient([(0, "#ffffff", 0.5), (1, "#ffffff", 0.03)])}"/>'
+    plan.add(
+        "path",
+        d="M25 30C26 20 37 20 39 30L36 98C35 106 29 105 28 97Z",
+        fill=linear([(0, "#ffffff", 0.5), (1, "#ffffff", 0.03)]),
+        opacity=1,
     )
-    canvas.add(
-        '<ellipse cx="66" cy="30" rx="6" ry="15" fill="#ffffff" fill-opacity="0.1"'
-        ' transform="rotate(14 66 30)"/>'
-    )
+    plan.add("ellipse", cx=66, cy=30, rx=6, ry=15, rotate=14, color="#ffffff", opacity=0.1)
 
 
-def render(layers: list[TipShade]) -> str:
-    """The tip of a stack in painting order (a single shade is a stack of one). An opaque polish
-    covers what is below it; a see-through one tints it; a topper adds only its finish. Over
-    nothing opaque, the layers go on a sheer nude so a lone topper is visible."""
-    canvas = _Canvas()
+def ops(layers: list[TipShade]) -> list[dict]:
+    """The paint plan of a stack in painting order (a single shade is a stack of one). An opaque
+    polish covers what is below it; a see-through one tints it; a topper adds only its finish.
+    Over nothing opaque, the layers go on a sheer nude so a lone topper is visible."""
+    plan = _Plan()
     start = 0
     for index, shade in enumerate(layers):
         if shade.opaque:
             start = index
     if not any(shade.opaque for shade in layers):
-        canvas.rect(
-            canvas.gradient([(0, lighten(NUDE_HEX, 0.25), 1), (1, darken(NUDE_HEX, 0.08), 1)])
-        )
+        plan.rect(linear([(0, lighten(NUDE_HEX, 0.25), 1), (1, darken(NUDE_HEX, 0.08), 1)]))
     for shade in layers[start:]:
-        _paint(canvas, shade)
+        _paint(plan, shade)
     top = layers[-1] if layers else None
-    _finish(canvas, matte=bool(top and "matte" in top.finishes))
-    return canvas.svg()
+    _finish(plan, matte=bool(top and "matte" in top.finishes))
+    return plan.ops
+
+
+# --- the markup -----------------------------------------------------------------------------
+
+
+class _Markup:
+    def __init__(self) -> None:
+        self.defs: list[str] = []
+        self.body: list[str] = []
+        self._ids = 0
+        self._open_blur: tuple[float, str] | None = None
+
+    def new_id(self, kind: str) -> str:
+        self._ids += 1
+        return f"{kind}{self._ids}"
+
+    def stops(self, stops) -> str:
+        return "".join(
+            f'<stop offset="{offset:g}" stop-color="{colour}" stop-opacity="{opacity:g}"/>'
+            for offset, colour, opacity in stops
+        )
+
+    def fill(self, fill: dict) -> str:
+        """The `fill` attribute value of a fill; gradients go to <defs>."""
+        if fill["kind"] == "solid":
+            return fill["color"]
+        if fill["kind"] == "linear":
+            ident = self.new_id("g")
+            self.defs.append(
+                f'<linearGradient id="{ident}" x1="{fill["x1"]:g}" y1="{fill["y1"]:g}"'
+                f' x2="{fill["x2"]:g}" y2="{fill["y2"]:g}">{self.stops(fill["stops"])}</linearGradient>'
+            )
+        else:
+            ident = self.new_id("r")
+            self.defs.append(
+                f'<radialGradient id="{ident}" cx="{fill["cx"]:g}" cy="{fill["cy"]:g}"'
+                f' r="{fill["r"]:g}">{self.stops(fill["stops"])}</radialGradient>'
+            )
+        return f"url(#{ident})"
+
+    def blur(self, amount: float) -> str:
+        """A path's blur filter. The two bands of a magnetic layer follow each other and share
+        one filter; the next band starts a new one."""
+        if self._open_blur and self._open_blur[0] == amount:
+            ident = self._open_blur[1]
+            self._open_blur = None
+        else:
+            ident = self.new_id("b")
+            self.defs.append(
+                f'<filter id="{ident}" x="-30%" y="-30%" width="160%" height="160%">'
+                f'<feGaussianBlur stdDeviation="{amount:g}"/></filter>'
+            )
+            self._open_blur = (amount, ident)
+        return f"url(#{ident})"
+
+    def draw(self, op: dict) -> None:
+        kind = op["op"]
+        if kind != "path":
+            self._open_blur = None
+        getattr(self, f"_{kind}")(op)
+
+    def _rect(self, op: dict) -> None:
+        opacity = op["opacity"]
+        extra = "" if opacity >= 1 else f' fill-opacity="{opacity:.2f}"'
+        self.body.append(
+            f'<rect width="{WIDTH}" height="{HEIGHT}" fill="{self.fill(op["fill"])}"{extra}/>'
+        )
+
+    def _dots(self, op: dict) -> None:
+        circles = "".join(
+            f'<circle cx="{cx:.1f}" cy="{cy:.1f}" r="{r:.2f}"/>' for cx, cy, r in op["circles"]
+        )
+        self.body.append(f'<g fill="{op["color"]}" fill-opacity="{op["opacity"]:g}">{circles}</g>')
+
+    def _star(self, op: dict) -> None:
+        cx, cy, size = op["cx"], op["cy"], op["size"]
+        pinch = size * 0.16
+        d = (
+            f"M{cx:.1f} {cy - size:.1f}L{cx + pinch:.1f} {cy - pinch:.1f}L{cx + size:.1f} {cy:.1f}"
+            f"L{cx + pinch:.1f} {cy + pinch:.1f}L{cx:.1f} {cy + size:.1f}L{cx - pinch:.1f} {cy + pinch:.1f}"
+            f"L{cx - size:.1f} {cy:.1f}L{cx - pinch:.1f} {cy - pinch:.1f}Z"
+        )
+        self.body.append(f'<path d="{d}" fill="{op["color"]}" fill-opacity="{op["opacity"]:g}"/>')
+
+    def _polygon(self, op: dict) -> None:
+        points = " ".join(f"{x:.1f},{y:.1f}" for x, y in op["points"])
+        self.body.append(
+            f'<polygon points="{points}" fill="{op["color"]}" fill-opacity="{op["opacity"]:.2f}"'
+            f' stroke="{op["stroke"]}" stroke-opacity="{op["stroke_opacity"]:g}"'
+            f' stroke-width="{op["stroke_width"]:g}"/>'
+        )
+
+    def _path(self, op: dict) -> None:
+        fill = self.fill(op["fill"]) if "fill" in op else op["color"]
+        extra = "" if op["opacity"] >= 1 else f' fill-opacity="{op["opacity"]:g}"'
+        if "blur" in op:
+            extra += f' filter="{self.blur(op["blur"])}"'
+        self.body.append(f'<path d="{op["d"]}" fill="{fill}"{extra}/>')
+
+    def _ellipse(self, op: dict) -> None:
+        cx, cy = op["cx"], op["cy"]
+        self.body.append(
+            f'<ellipse cx="{cx:g}" cy="{cy:g}" rx="{op["rx"]:g}" ry="{op["ry"]:g}"'
+            f' fill="{op["color"]}" fill-opacity="{op["opacity"]:g}"'
+            f' transform="rotate({op["rotate"]:g} {cx:g} {cy:g})"/>'
+        )
+
+    def svg(self) -> str:
+        return (
+            f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {WIDTH} {HEIGHT}"'
+            f' width="{WIDTH}" height="{HEIGHT}" preserveAspectRatio="xMidYMid slice">'
+            f"<defs>{''.join(self.defs)}</defs>{''.join(self.body)}</svg>"
+        )
+
+
+def svg(plan: list[dict]) -> str:
+    """The markup of a paint plan: presentation attributes only, so it holds under the CSP."""
+    markup = _Markup()
+    for op in plan:
+        markup.draw(op)
+    return markup.svg()
+
+
+def render(layers: list[TipShade]) -> str:
+    """The tip of a stack as SVG."""
+    return svg(ops(layers))

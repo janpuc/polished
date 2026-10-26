@@ -88,6 +88,13 @@ The flows live in `tests/e2e/flows/` (`scenarios.py` has them, `harness.py` the 
 `tests/e2e/builder_smoke.py` and `scanner_smoke.py` are the older single-purpose smoke tests and
 still run on their own.
 
+**Shared fixtures** (`spec/`): the native app's tests read files this repo generates, so both
+sides check the same contract. `spec/api/` holds the OpenAPI document and recorded responses
+(`scripts/make_api_spec.py`, `scripts/make_api_fixtures.py`); `spec/tips/` the nail-tip paint plan
+of about fifty recipes and the random generator's vectors, and `spec/identifiers/` the barcode and
+P-code normalisation vectors (`uv run python scripts/make_tip_fixtures.py`). `pytest -q` fails when
+a file differs from what the code produces now; run the script and commit the result.
+
 ## Scanning
 
 `/lookup` reads a bottle's barcode with the phone camera (zxing-wasm, in the page, no cloud) or

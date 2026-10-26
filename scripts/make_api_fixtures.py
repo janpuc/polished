@@ -4,13 +4,12 @@ small invented household (bottles, a wishlist, two wheels, a draft, learned code
     uv run python scripts/make_api_fixtures.py
 
 The app's tests decode these files, and tests/test_api_fixtures.py checks each against
-spec/api/openapi.yaml. Output is deterministic (fixed clock, fixed hash seed, fixed slug and
-timestamps); the only invented value is the example token. Catalog fields and made-up bottles
-only: nothing here comes from the live database.
+spec/api/openapi.yaml. Output is deterministic (fixed clock, fixed slug and timestamps); the only
+invented value is the example token. Catalog fields and made-up bottles only: nothing here comes
+from the live database.
 """
 
 import json
-import os
 import random
 import re
 import sys
@@ -25,8 +24,6 @@ EXAMPLE_CODE = "example-code-0123456789abcdefghijklmnopqrstuvwxyz"
 NOW = datetime(2026, 10, 26, 16, 30, tzinfo=UTC)
 SLUG = "k3m9xq"
 USER = ("u-nikola", "Nikola Example")
-# The first nail-tip recipe of a shade hashes a frozenset's repr, which varies with the hash seed.
-HASH_SEED = "0"
 STAMP = re.compile(r"\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ")
 # The slugs the wheels made by the write fixtures get, in order (the real ones are random).
 SLUGS = ["j7g2hm", "t4n8qb", "w9d3fj"]
@@ -472,8 +469,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    if os.environ.get("PYTHONHASHSEED") != HASH_SEED:
-        os.execve(
-            sys.executable, [sys.executable, *sys.argv], {**os.environ, "PYTHONHASHSEED": HASH_SEED}
-        )
     main()

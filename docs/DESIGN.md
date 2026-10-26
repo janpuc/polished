@@ -128,7 +128,7 @@ gtin.py              normalise_gtin(), check digit
 identifiers.py       resolve(), learn(), learn_printed(), printed-code normalisation, learned-code list
 stacks.py            draft/commit, layers, templates, summary(), default_coats()
 wheels.py            wheel CRUD and delete, slug generation, slot grid, tag URL, QR
-tips.py              nail tips as SVG: render(layers), TIP_FIELDS, revision() for URLs and ETags (9)
+tips.py              nail tips as SVG: ops(layers) the paint plan, svg(ops), render(layers), TipRandom, TIP_FIELDS, revision() for URLs and ETags (9, 17.8)
 routes/              home.py shades.py bottles.py wishlist.py lookup.py wheels.py stacks.py
                      tips.py sync.py pwa.py health.py   (thin: parse, call domain function, render)
 templates/           base.html (tab bar, sheet), pages, partials (leading underscore: _shade_row.html …),
@@ -874,7 +874,7 @@ auth gate → routes.
   `GET /tips/stack/<id>.svg` a whole stack in painting order; the URL carries `?v=<revision>` (a hash of
   everything drawn), so the answer is `private, max-age=31536000, immutable` with an ETag, and a changed
   colour is a new URL. The drawing uses presentation attributes only (no `style`, no script, no
-  external reference), is seeded by the shade id (the same shade looks the same everywhere) and
+  external reference), is seeded by the shade id through `TipRandom` (SplitMix64; the same shade looks the same everywhere, 17.8) and
   reads the shade's colour (`swatch_override_hex`, else `swatch_hex`, else neutral; `swatch_hex2` as a
   second colour), its finish tags and `is_topper`:
   creme is flat with a gloss; jelly is the colour at about 70 percent over what is below, darker toward the free
@@ -1889,3 +1889,5 @@ The iPhone and iPad app (docs/NATIVE.md) talks to a JSON API under `/api/v1`, in
 **17.6 Writes.** Every write of NATIVE.md §3 lives under `src/polished/api/` and calls the domain modules; no rule is restated. Bodies are JSON, a PATCH changes only the keys it sends, money is cents, dates may not pass today in the household timezone, and errors carry the web's sentences (`field`, and `fields` when several are wrong). Stack refusals map as in the web: NotADraft 409, StackFull and EmptyStack 422, the not-found kinds 404. Multi-row writes (`/wishlist/bought`, save, wheel delete, bottle create with its learned P code) are single transactions. A write without a Bearer token is a 401 and changes nothing.
 
 **17.7 Wear.** `wear(shade_id, worn_on, created_at)`, unique per shade per day (migration 009), written by `POST /api/v1/wear/{shade_id}` in the household's local date. `src/polished/wear.py` holds the rules (framework-free, shared with the web's Home): the candidates are shades with a bottle that is neither archived nor empty; today's pick is drawn by a generator seeded with the date, weighted by wearings of the previous 30 days (a recent wearing counts for between 0.1 and 1); the shade already worn today is shown instead; "Another" is a random draw excluding the shown shade, with the same weights counting today too. A sheet-shade merge moves wearings to the shop shade.
+
+**17.8 Shared fixtures.** The tip drawing is split in `tips.py` into `ops(layers)`, a flat list of paint operations (rect with a solid, linear or radial fill, dots, star, polygon, path with an optional blur or a gradient fill, rotated ellipse), and `svg(ops)`, today's markup; `render()` is `svg(ops(layers))`. The random numbers of a tip come from `TipRandom`, SplitMix64 seeded with the shade id (CPython's `random.Random` is not portable), so the app can reproduce them bit for bit. `scripts/make_tip_fixtures.py` records `spec/tips/cases.json` (`{source, cases:[{name, layers, ops}]}`, numbers rounded to 3 decimals, colours lowercase), `spec/tips/random.json` (first values of `random()` and `below(1000)` for five seeds), `spec/identifiers/gtin.json` and `printed.json` (inputs with the output of `normalise_gtin` / `normalise_printed`, rejects as null) and `tests/fixtures/tip_svg_sha1.json` (the sha1 of `render()` for every case, so a change of drawing cannot slip by: it fails until `DRAWING_VERSION` is bumped and the file regenerated). `tests/test_tips_spec.py` fails when any file differs from what the code makes now and checks the ops, the generator and the vectors against them. `DRAWING_VERSION` goes into `revision()`, which is the tip image URL's `?v=` and the API's `Tip.revision`; `revision()` hashes sorted tuples, never a frozenset's repr, so it is the same after every restart (a test runs it under four `PYTHONHASHSEED` values). Dust, glitter and flake positions moved once with `TipRandom` (`DRAWING_VERSION` 3).

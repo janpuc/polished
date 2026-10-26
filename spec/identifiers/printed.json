@@ -1,0 +1,89 @@
+{
+ "note": "normalise_printed: whitespace removed, uppercased, all digits get the prefix P, then one or two letters and one to five digits; otherwise null.",
+ "vectors": [
+  {
+   "input": "259",
+   "output": "P259"
+  },
+  {
+   "input": "p259",
+   "output": "P259"
+  },
+  {
+   "input": "P259",
+   "output": "P259"
+  },
+  {
+   "input": " p 259 ",
+   "output": "P259"
+  },
+  {
+   "input": "P 0259",
+   "output": "P0259"
+  },
+  {
+   "input": "ab12",
+   "output": "AB12"
+  },
+  {
+   "input": "AB12345",
+   "output": "AB12345"
+  },
+  {
+   "input": "ABC12",
+   "output": null
+  },
+  {
+   "input": "A",
+   "output": null
+  },
+  {
+   "input": "P",
+   "output": null
+  },
+  {
+   "input": "A123456",
+   "output": null
+  },
+  {
+   "input": "123456",
+   "output": null
+  },
+  {
+   "input": "1",
+   "output": "P1"
+  },
+  {
+   "input": "hello",
+   "output": null
+  },
+  {
+   "input": "",
+   "output": null
+  },
+  {
+   "input": "  ",
+   "output": null
+  },
+  {
+   "input": "p-259",
+   "output": null
+  },
+  {
+   "input": "P25.9",
+   "output": null
+  },
+  {
+   "input": "p259x",
+   "output": null
+  },
+  {
+   "input": "é12",
+   "output": null
+  },
+  {
+   "input": "Ａ12",
+   "output": null
+  }
+ ]
+}

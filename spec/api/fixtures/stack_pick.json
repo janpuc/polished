@@ -46,7 +46,7 @@
           "clear": false,
           "coats": 1,
           "colours": [],
-          "revision": "b74a65e152"
+          "revision": "5f900568f2"
         }
       },
       {
@@ -83,7 +83,7 @@
           "clear": false,
           "coats": 1,
           "colours": [],
-          "revision": "1fc71871d8"
+          "revision": "ddcc26cf5d"
         }
       },
       {
@@ -126,7 +126,7 @@
           "colours": [
             "silver"
           ],
-          "revision": "7a1c3d4267"
+          "revision": "dd30b606a1"
         }
       },
       {
@@ -164,7 +164,7 @@
           "colours": [
             "red"
           ],
-          "revision": "2a0c3309f5"
+          "revision": "9bcec5e9f9"
         }
       },
       {
@@ -206,7 +206,7 @@
             "pink",
             "purple"
           ],
-          "revision": "87f54e583e"
+          "revision": "ad554428f9"
         }
       }
     ],

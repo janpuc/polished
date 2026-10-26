@@ -38,7 +38,7 @@
           "clear": false,
           "coats": 1,
           "colours": [],
-          "revision": "b74a65e152"
+          "revision": "5f900568f2"
         }
       },
       {
@@ -61,7 +61,7 @@
           "colours": [
             "red"
           ],
-          "revision": "8a6c8a990d"
+          "revision": "8780b51e2f"
         }
       }
     ],
@@ -80,7 +80,7 @@
         "clear": false,
         "coats": 1,
         "colours": [],
-        "revision": "b74a65e152"
+        "revision": "5f900568f2"
       },
       {
         "id": 1,
@@ -95,7 +95,7 @@
         "colours": [
           "red"
         ],
-        "revision": "8a6c8a990d"
+        "revision": "8780b51e2f"
       }
     ]
   }
