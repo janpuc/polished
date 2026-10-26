@@ -4,5 +4,5 @@
    opening the shade: a barcode is saved at once, a P code opens the add-bottle sheet with it. #}
 {% if ctx == 'learn' and kind == 'gtin' %}<li class="shade-row"><button type="button" class="row-link" hx-post="/identifiers" hx-vals='{{ {"kind": "gtin", "value": value, "shade_id": shade.id}|tojson }}' hx-target="#lookup-result" hx-swap="innerHTML">{% include "_shade_row_body.html" %}</button></li>
 {% elif ctx == 'learn' %}<li class="shade-row"><button type="button" class="row-link" hx-get="/shades/{{ shade.id }}/bottles/new?ctx=lookup&amp;printed_code={{ value|urlencode }}" hx-target="#sheet-body" hx-swap="innerHTML">{% include "_shade_row_body.html" %}</button></li>
-{% else %}<li class="shade-row"><a class="row-link" href="/shades/{{ shade.id }}">{% include "_shade_row_body.html" %}</a></li>
+{% else %}<li class="shade-row"><a class="row-link" href="/shades/{{ shade.id }}" data-panel{% if cursor %} aria-current="true"{% endif %}>{% include "_shade_row_body.html" %}</a></li>
 {% endif %}

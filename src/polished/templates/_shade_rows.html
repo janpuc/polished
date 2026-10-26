@@ -2,11 +2,11 @@
 {% from "_icons.html" import icon with context %}
 {% from "_tip.html" import unpainted %}
 {% if is_partial %}
-<span id="result-count" hx-swap-oob="true">{{ result.total }} shade{{ '' if result.total == 1 else 's' }}</span>
+<span id="result-count" hx-swap-oob="true">{% include "_result_count.html" %}</span>
 <span id="filter-count" hx-swap-oob="true">{% if query.filter_count() %}{{ query.filter_count() }}{% endif %}</span>
 {% with oob = true %}{% include "_filter_show.html" %}{% endwith %}
 {% endif %}
-{% for shade in result.rows %}{% include "_shade_row.html" %}
+{% for shade in result.rows %}{% set cursor = loop.first and query.q.strip() %}{% include "_shade_row.html" %}
 {% else %}
 <li class="empty-state">
   {{ unpainted("l") }}

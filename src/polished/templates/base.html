@@ -23,13 +23,30 @@
   <script type="module" src="/static/js/register-sw.js?v={{ version }}"></script>
   <script type="module" src="/static/js/chrome.js?v={{ version }}"></script>
   <script type="module" src="/static/js/date.js?v={{ version }}"></script>
+  <script type="module" src="/static/js/sheet.js?v={{ version }}"></script>
+  <script type="module" src="/static/js/panel.js?v={{ version }}"></script>
+  <script type="module" src="/static/js/keys.js?v={{ version }}"></script>
   {% block scripts %}{% endblock %}
 </head>
-<body{% if not tab %} class="bare"{% endif %}>
+<body{% if not tab %} class="bare"{% endif %}{% block body_attrs %}{% endblock %}>
   <a class="skip-link" href="#main">Skip to content</a>
-  <main id="main">
+  {% if tab %}
+  {% set current = side|default(tab) %}
+  <nav class="side" aria-label="Main">
+    <a class="side-brand" href="/"><img src="/static/icons/favicon.svg" width="28" height="28" alt=""><span class="side-label">Polished</span></a>
+    {% for key, glyph, href, text in [("home", "home", "/", "Home"), ("shades", "shades", "/shades", "Shades"), ("bottles", "bottles", "/bottles", "Bottles"), ("wheels", "wheels", "/wheels", "Wheels"), ("wishlist", "heart", "/wishlist", "Wishlist")] %}
+    <a class="side-link" href="{{ href }}" data-tip="{{ text }}"{% if current == key %} aria-current="page"{% endif %}>{{ icon(glyph) }}<span class="side-label">{{ text }}</span>{% if key == "shades" %}<kbd class="side-key" aria-hidden="true">/</kbd>{% endif %}</a>
+    {% endfor %}
+    <div class="side-foot">
+      <a class="side-link" href="/more" data-tip="More"{% if current == "more" %} aria-current="page"{% endif %}>{{ icon("ellipsis") }}<span class="side-label">More</span></a>
+      {% if user %}<p class="side-user footnote">Signed in as {{ user.name }}</p>{% endif %}
+    </div>
+  </nav>
+  {% endif %}
+  <main id="main" class="{% block main_class %}{% endblock %}">
     {% block content %}{% endblock %}
   </main>
+  {% block aside %}{% endblock %}
   {% if tab %}
   <nav class="tabbar" aria-label="Main">
     <div class="tabbar-inner">

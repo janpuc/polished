@@ -121,10 +121,12 @@ def _match(entry: _Entry, query_words: list[str], query_norm: str) -> tuple[int,
     return None
 
 
-def rank(conn: sqlite3.Connection, text: str, owned_first: bool = False) -> list[int]:
-    """The ids of the shades matching `text`, best first (the module docstring has the order).
-    `owned_first` puts shades the household owns, then wishlisted ones, ahead of the others whose
-    tier, edits and title length are the same. Empty for a query without words."""
+def rank_with_tiers(
+    conn: sqlite3.Connection, text: str, owned_first: bool = False
+) -> list[tuple[int, int]]:
+    """(shade id, tier) of the shades matching `text`, best first (the module docstring has the
+    order). `owned_first` puts shades the household owns, then wishlisted ones, ahead of the others
+    whose tier, edits and title length are the same. Empty for a query without words."""
     query_words = tokens(text)
     if not query_words:
         return []
@@ -141,7 +143,12 @@ def rank(conn: sqlite3.Connection, text: str, owned_first: bool = False) -> list
             standing = (-row["owned"], -row["wished"]) if owned_first else (0, 0)
             found.append((*match, len(entry.norm), *standing, row["title"].casefold(), row["id"]))
     found.sort()
-    return [item[-1] for item in found]
+    return [(item[-1], item[0]) for item in found]
+
+
+def rank(conn: sqlite3.Connection, text: str, owned_first: bool = False) -> list[int]:
+    """The ids of the shades matching `text`, best first (see rank_with_tiers)."""
+    return [shade_id for shade_id, _ in rank_with_tiers(conn, text, owned_first)]
 
 
 def _folded_with_origin(title: str) -> tuple[str, list[int]]:

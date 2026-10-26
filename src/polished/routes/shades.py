@@ -86,11 +86,15 @@ def _detail_context(conn: sqlite3.Connection, shade: dict) -> dict:
 
 
 @router.get("/{shade_id}")
-def detail(request: Request, conn: Conn, shade_id: int):
+def detail(request: Request, conn: Conn, shade_id: int, panel: int = 0):
+    """The shade page. `panel=1` is the same page without the chrome, for the right-hand #panel
+    of the wide shells (static/js/panel.js asks for it)."""
     shade = shades.get_shade(conn, shade_id)
     if shade is None:
         return render(request, "not_found.html", status_code=404)
-    return render(request, "shade_detail.html", _detail_context(conn, shade))
+    return render(
+        request, "shade_detail.html", {**_detail_context(conn, shade), "panel": bool(panel)}
+    )
 
 
 @router.post("/{shade_id}/tip-colour")

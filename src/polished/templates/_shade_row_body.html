@@ -7,6 +7,6 @@
   <span class="row-body row-shade">
     <span class="row-title">{{ shade.title|marked(shade.marks) }}{% if shade.wishlisted %}<span class="heart" role="img" aria-label="On the wishlist">{{ icon("heart") }}</span>{% endif %}</span>
     <span class="row-end price">{% if shade.price_cents is not none %}{{ shade.price_cents|money }}{% endif %}</span>
-    <span class="row-sub">{% if shade.status is none %}<span class="status status-manual">Added by hand</span>{% elif shade.status.key != 'available' %}<span class="status status-{{ shade.status.key }}">{{ shade.status.label }}</span>{% endif %}<span class="row-finish">{{ ((["topper"] if shade.is_topper else []) + shade.finishes[:3])|words }}</span></span>
+    <span class="row-sub">{% if shade.status is none %}<span class="status status-manual">Added by hand</span>{% elif shade.status.key != 'available' %}<span class="status status-{{ shade.status.key }}">{{ shade.status.label }}</span>{% endif %}<span class="row-finish">{{ ((["topper"] if shade.is_topper else []) + shade.finishes[:3])|words }}</span>{% if shade.hint %}<span class="row-hint">{{ shade.hint }}</span>{% endif %}</span>
     <span class="row-end footnote">{% if shade.owned_count %}<span aria-label="Owned ×{{ shade.owned_count }}" role="img">×{{ shade.owned_count }}</span>{% endif %}</span>
   </span>

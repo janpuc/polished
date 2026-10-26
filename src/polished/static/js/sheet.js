@@ -18,9 +18,55 @@ if (sheet && body) {
   });
 
   // The dialog has no padding, so a click whose target is the dialog itself hit the backdrop.
+  // A drag on the grabber captures the pointer, so the click that follows it lands on the dialog
+  // itself: `dragged` keeps that click from counting as a tap on the backdrop.
+  let dragged = false;
   sheet.addEventListener("click", (event) => {
+    if (dragged) return;
     if (event.target === sheet || event.target.closest("[data-sheet-close]")) sheet.close();
   });
+
+  // Drag to dismiss (phone shell only; wider shells have no grabber). A finger on the grabber moves
+  // the sheet down through --drag; on release a quick flick or a pull past a third of the sheet's
+  // height closes it, anything less lets it spring back. The CSS keeps the transitions off while
+  // `is-dragging`, and only the grabber takes the touch (touch-action: none), so the sheet's own
+  // scrolling is untouched.
+  const phone = matchMedia("(max-width: 699px)");
+  const FLICK = 0.5; // px per ms
+  let drag = null;
+
+  sheet.addEventListener("pointerdown", (event) => {
+    if (!phone.matches || !event.target.closest(".grabber")) return;
+    drag = { id: event.pointerId, y0: event.clientY, dy: 0, t: event.timeStamp, speed: 0 };
+    sheet.setPointerCapture(event.pointerId);
+    sheet.classList.add("is-dragging");
+  });
+
+  sheet.addEventListener("pointermove", (event) => {
+    if (!drag || event.pointerId !== drag.id) return;
+    const dy = Math.max(0, event.clientY - drag.y0);
+    const dt = event.timeStamp - drag.t;
+    if (dt > 0) drag.speed = (dy - drag.dy) / dt;
+    drag.dy = dy;
+    drag.t = event.timeStamp;
+    sheet.style.setProperty("--drag", `${dy}px`);
+  });
+
+  const release = (event) => {
+    if (!drag || event.pointerId !== drag.id) return;
+    const { dy, speed } = drag;
+    drag = null;
+    dragged = dy > 4;
+    setTimeout(() => {
+      dragged = false;
+    }, 100);
+    sheet.classList.remove("is-dragging");
+    if (event.type === "pointerup" && (speed > FLICK || dy > sheet.offsetHeight / 3)) sheet.close();
+    else sheet.style.removeProperty("--drag");
+  };
+  sheet.addEventListener("pointerup", release);
+  sheet.addEventListener("pointercancel", release);
+  sheet.addEventListener("close", () => sheet.style.removeProperty("--drag"));
 
   // The layer-stack builder (DESIGN 10). A tap on a result row would blur the search field and
   // drop the keyboard, so the row keeps the focus (the click still fires). After a layer was

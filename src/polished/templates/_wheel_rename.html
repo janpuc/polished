@@ -1,16 +1,22 @@
 {# The rename sheet, swapped into #sheet-body. A saved name swaps the title out of band
    (_wheel_name.html) and closes the sheet; an empty one comes back into #rename-status. #}
+{% from "_icons.html" import sheet_cancel with context %}
 <form class="sheet-form" method="post" action="/wheels/{{ wheel.id }}" hx-post="/wheels/{{ wheel.id }}" hx-swap="none">
   <div class="grabber" aria-hidden="true"></div>
   <header class="sheet-head">
     <h2 tabindex="-1" autofocus>Rename wheel</h2>
-    <button type="button" class="btn btn-text" data-sheet-close>Cancel</button>
+    {{ sheet_cancel() }}
   </header>
   <div class="field">
     <label for="rename">Name</label>
     <input id="rename" name="name" value="{{ wheel.name }}" maxlength="60" required autocomplete="off" enterkeyhint="done">
     <p id="rename-status" class="field-error" role="alert"></p>
   </div>
+  {% if not wheel.archived %}
+  <div class="sheet-quiet">
+    <button type="button" class="btn btn-text" hx-post="/wheels/{{ wheel.id }}/archive" hx-vals='{"archived": "1"}' hx-confirm="Archive this wheel? Its tag keeps working and you can restore it.">Archive wheel</button>
+  </div>
+  {% endif %}
   <div class="sheet-actions">
     <button type="submit" class="btn btn-block">Save name</button>
   </div>

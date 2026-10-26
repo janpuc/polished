@@ -66,10 +66,11 @@ def row_titles(rows: Locator, count: int = 3) -> list[str]:
 
 
 def open_shade(t: Trace, title: str) -> None:
-    """The shade's page, reached through the browse list like a person would."""
+    """The shade, reached through the browse list like a person would: a page of its own on the
+    phone and rail shells, the right-hand panel beside the list on the panel shell (Mac)."""
     t.goto(f"/shades?q={quote(title)}")
     t.page.locator("#shade-list").get_by_role("link").first.click()
-    expect(t.page.get_by_role("heading", level=1, name=title)).to_be_visible()
+    expect(t.page.get_by_role("heading", name=title, exact=True)).to_be_visible()
 
 
 def add_bottle(t: Trace, title: str, *, price: str = "", bought_on: str = "") -> None:
@@ -439,12 +440,25 @@ def wheel_delete(t: Trace) -> None:
         foot.get_by_role("button", name="Delete wheel").click()
         sheet = t.open_sheet()
         expect(sheet.get_by_role("heading", name=f"Delete {name}?")).to_be_visible()
-        expect(sheet.get_by_text("Its 1 swatch goes too")).to_be_visible()
-        expect(sheet.get_by_text("tag and QR code stop working")).to_be_visible()
-        expect(sheet.get_by_text("This can’t be undone")).to_be_visible()
+        expect(sheet.get_by_text("its 1 swatch and its tag address")).to_be_visible()
+        expect(sheet.get_by_text("The sticker will stop opening anything")).to_be_visible()
+        expect(sheet.get_by_text(f"{name}, 1 of 20")).to_be_visible()
         expect(sheet.get_by_role("button", name="Delete wheel")).to_be_visible()
 
+    with t.step("Esc cancels, and the foot's Delete is the red word"):
+        page.keyboard.press("Escape")
+        t.close_sheet_check()
+        expect(page.get_by_role("heading", level=1, name=name)).to_be_visible()
+        colour = foot.get_by_role("button", name="Delete wheel").evaluate(
+            "el => getComputedStyle(el).color"
+        )
+        sibling = foot.get_by_role("button", name="Rename").evaluate(
+            "el => getComputedStyle(el).color"
+        )
+        assert colour != sibling, "Delete should not look like the quiet actions beside it"
+
     with t.step("Cancel keeps the wheel"):
+        foot.get_by_role("button", name="Delete wheel").click()
         t.open_sheet().get_by_role("button", name="Cancel").click()
         t.close_sheet_check()
         expect(page.get_by_role("heading", level=1, name=name)).to_be_visible()
@@ -458,7 +472,8 @@ def wheel_delete(t: Trace) -> None:
         t.open_sheet().get_by_role("button", name="Delete wheel").click()
         page.wait_for_url(re.compile(r"/wheels$"))
         expect(page.get_by_role("heading", level=1, name="Wheels")).to_be_visible()
-        expect(page.get_by_text(name)).to_have_count(0)
+        expect(page.get_by_role("status")).to_have_text(f"Deleted {name}")
+        expect(page.get_by_role("link", name=re.compile(re.escape(name)))).to_have_count(0)
 
     with t.step("its tag address now opens a 404 page"):
         with t.allow_status(404):
@@ -668,3 +683,319 @@ def tabs(t: Trace) -> None:
     with t.step("add a shade by hand"):
         t.goto("/shades/new")
         expect(page.get_by_role("heading", level=1)).to_be_visible()
+
+
+# The three shells (docs/VISUAL.md section 6). The flows branch on the device profile, which is
+# the test's way of picking a viewport: the app itself never looks at the user agent.
+
+
+def shell_of(t: Trace) -> str:
+    """phone (iPhone, 390), rail (iPad portrait, 834) or panel (Mac, 1440)."""
+    return {"iphone": "phone", "ipad": "rail", "mac": "panel"}[t.device.key]
+
+
+def drag_grabber(page, x: float, y: float, distance: int, fast: bool = False) -> None:
+    """Pulls the sheet's grabber down: slowly (a pull the sheet should take back), or in one quick
+    flick (which should dismiss it)."""
+    page.mouse.move(x, y)
+    page.mouse.down()
+    if fast:
+        page.mouse.move(x, y + distance, steps=6)
+    else:
+        for step in range(1, 5):
+            page.mouse.move(x, y + distance * step / 4)
+            page.wait_for_timeout(120)
+    page.mouse.up()
+
+
+def box_of(locator: Locator) -> dict:
+    box = locator.bounding_box()
+    assert box is not None, "not on screen"
+    return box
+
+
+@flow("shell-nav", "The navigation of each shell: tab bar, icon rail or labelled sidebar")
+def shell_nav(t: Trace) -> None:
+    page = t.page
+    shell = shell_of(t)
+    side = page.locator("nav.side")
+    tabbar = page.locator("nav.tabbar")
+
+    with t.step("Home"):
+        t.goto("/")
+        expect(page.get_by_role("heading", level=1, name=GREETING)).to_be_visible()
+
+    with t.step(f"the {shell} shell shows the right navigation"):
+        if shell == "phone":
+            expect(tabbar).to_be_visible()
+            expect(side).to_be_hidden()
+        else:
+            expect(side).to_be_visible()
+            expect(tabbar).to_be_hidden()
+            width = box_of(side)["width"]
+            assert (width < 100) == (shell == "rail"), f"side nav is {width}px wide"
+        nav = page.get_by_role("navigation", name="Main")
+        expect(nav.get_by_role("link", name="Home")).to_have_attribute("aria-current", "page")
+
+    if shell == "panel":
+        with t.step("the sidebar has words, a / hint and who is signed in"):
+            expect(side.get_by_text("Wishlist")).to_be_visible()
+            expect(side.locator(".side-key")).to_have_text("/")
+            expect(side.get_by_role("link", name="More")).to_be_visible()
+
+    if shell != "phone":
+        with t.step("the content is not hidden behind the navigation"):
+            left = box_of(page.get_by_role("heading", level=1, name=GREETING))["x"]
+            assert left >= box_of(side)["width"], "the greeting starts under the side nav"
+
+    with t.step("Wheels from the navigation"):
+        page.get_by_role("navigation", name="Main").get_by_role("link", name="Wheels").click()
+        expect(page.get_by_role("heading", level=1, name="Wheels")).to_be_visible()
+
+
+@flow("shade-panel", "A shade opens in the right-hand panel on a Mac and as a page elsewhere")
+def shade_panel(t: Trace) -> None:
+    page = t.page
+    shell = shell_of(t)
+    rows = page.locator("#shade-list").get_by_role("link")
+    panel = page.locator("#panel")
+
+    with t.step("search the list"):
+        t.goto("/shades")
+        box = page.get_by_role("searchbox", name="Search shades")
+        type_and_wait(t, box, "magnetic taco", "/shades")
+        expect(rows.first).to_contain_text("Magnetic Taco")
+        page.evaluate("window.__listPage = 1")  # survives only while no page is loaded
+
+    if shell != "panel":
+        with t.step("a row is a link to the shade's page"):
+            rows.first.click()
+            expect(page.get_by_role("heading", level=1, name="Magnetic Taco")).to_be_visible()
+            expect(panel).to_be_hidden()
+            page.go_back()
+            expect(page.get_by_role("heading", level=1, name="Shades")).to_be_visible()
+        return
+
+    with t.step("a row click opens the panel without a page load"):
+        rows.first.click()
+        expect(panel.get_by_role("heading", name="Magnetic Taco", exact=True)).to_be_visible()
+        assert page.evaluate("window.__listPage") == 1, "the page was reloaded"
+        expect(page).to_have_url(re.compile(r"/shades/\d+$"))
+        expect(rows.first).to_have_attribute("aria-current", "true")
+        expect(panel.get_by_role("button", name="Add bottle")).to_be_visible()
+        right = box_of(panel)
+        assert right["x"] + right["width"] >= 1439 and right["width"] >= 390, right
+
+    with t.step("another row replaces the shade in the panel"):
+        rows.nth(1).click()
+        expect(panel.get_by_role("heading", name="Holo Magnetic Taco", exact=True)).to_be_visible()
+        expect(rows.nth(1)).to_have_attribute("aria-current", "true")
+        expect(page.locator("a.row-link[aria-current]")).to_have_count(1)
+
+    with t.step("Esc closes the panel and the list stays"):
+        page.keyboard.press("Escape")
+        expect(panel).to_be_hidden()
+        assert page.evaluate("window.__listPage") == 1, "the page was reloaded"
+        assert "/shades/" not in page.url, page.url
+        expect(rows.first).to_contain_text("Magnetic Taco")
+
+    with t.step("the close button closes it too"):
+        rows.first.click()
+        expect(panel.get_by_role("heading", name="Magnetic Taco", exact=True)).to_be_visible()
+        panel.get_by_role("button", name="Close panel").click()
+        expect(panel).to_be_hidden()
+
+    with t.step("Back closes the panel, Forward opens it again"):
+        rows.first.click()
+        expect(panel.get_by_role("heading", name="Magnetic Taco", exact=True)).to_be_visible()
+        page.go_back()
+        expect(panel).to_be_hidden()
+        expect(rows.first).to_contain_text("Magnetic Taco")
+        assert page.evaluate("window.__listPage") == 1, "Back reloaded the list"
+        page.go_forward()
+        expect(panel.get_by_role("heading", name="Magnetic Taco", exact=True)).to_be_visible()
+
+    with t.step("a shade's own address opens the list with the panel"):
+        shade_url = page.url
+        page.goto(shade_url)
+        expect(panel.get_by_role("heading", name="Magnetic Taco", exact=True)).to_be_visible()
+        expect(page.get_by_role("heading", level=1, name="Shades")).to_be_visible()
+        expect(page.locator("#shade-list a.row-link").first).to_be_visible()
+        page.keyboard.press("Escape")
+        expect(panel).to_be_hidden()
+        assert page.url.endswith("/shades"), page.url
+
+
+@flow(
+    "keyboard", "Keys on a Mac: / searches, arrows move, Enter opens, n adds a bottle, Esc closes"
+)
+def keyboard(t: Trace) -> None:
+    page = t.page
+    if shell_of(t) != "panel":
+        with t.step("no keyboard hint on a screen without one"):
+            t.goto("/shades")
+            expect(page.locator(".keys-hint")).to_be_hidden()
+        return
+    rows = page.locator("#shade-list").get_by_role("link")
+    panel = page.locator("#panel")
+
+    with t.step("/ focuses the search field"):
+        t.goto("/shades")
+        expect(page.locator(".keys-hint")).to_be_hidden()  # until a key was used
+        page.keyboard.press("/")
+        expect(page.get_by_role("searchbox", name="Search shades")).to_be_focused()
+        type_and_wait(
+            t, page.get_by_role("searchbox", name="Search shades"), "magnetic taco", "/shades"
+        )
+
+    with t.step("the hint line appears with the first keyboard focus"):
+        expect(page.locator(".keys-hint")).to_be_visible()
+        expect(page.get_by_text("close panel")).to_be_visible()
+
+    with t.step("the first result is selected and Enter opens it"):
+        expect(rows.first).to_have_attribute("aria-current", "true")
+        page.keyboard.press("Enter")
+        expect(panel.get_by_role("heading", name="Magnetic Taco", exact=True)).to_be_visible()
+
+    with t.step("n opens Add bottle in the right-hand sheet"):
+        page.locator("body").click(position={"x": 700, "y": 600})
+        page.keyboard.press("n")
+        sheet = t.open_sheet()
+        expect(sheet.get_by_role("heading", name="Add bottle")).to_be_visible()
+        right = box_of(sheet)
+        assert right["x"] + right["width"] >= 1439 and right["height"] >= 890, right
+
+    with t.step("Esc closes the sheet first, then the panel"):
+        page.keyboard.press("Escape")
+        t.close_sheet_check()
+        expect(panel).to_be_visible()
+        page.keyboard.press("Escape")
+        expect(panel).to_be_hidden()
+
+    with t.step("the arrows move the selection and / works again"):
+        page.keyboard.press("Escape")
+        page.locator("body").click(position={"x": 700, "y": 700})
+        page.keyboard.press("ArrowDown")
+        page.keyboard.press("ArrowDown")
+        expect(rows.nth(1)).to_have_attribute("aria-current", "true")
+        page.keyboard.press("ArrowUp")
+        expect(rows.first).to_have_attribute("aria-current", "true")
+        page.keyboard.press("/")
+        expect(page.get_by_role("searchbox", name="Search shades")).to_be_focused()
+
+
+@flow("sheet-shells", "The sheet is a bottom sheet, a centred modal or a right panel by width")
+def sheet_shells(t: Trace) -> None:
+    page = t.page
+    shell = shell_of(t)
+    vw = page.viewport_size["width"]
+
+    with t.step("open Add bottle on a shade"):
+        open_shade(t, "Thirst Trap")
+        page.get_by_role("button", name="Add bottle").click()
+        sheet = t.open_sheet()
+        expect(sheet.get_by_role("heading", name="Add bottle")).to_be_visible()
+
+    with t.step(f"the {shell} shape"):
+        sheet = t.open_sheet()
+        page.wait_for_timeout(500)
+        box = box_of(sheet)
+        grabber = sheet.locator(".grabber")
+        if shell == "phone":
+            assert box["x"] <= 1 and box["width"] >= vw - 2, box
+            expect(grabber).to_be_visible()
+        elif shell == "rail":
+            assert box["width"] <= 561 and box["x"] > 20, box
+            assert abs(box["x"] + box["width"] / 2 - vw / 2) < 2, "not centred"
+            expect(grabber).to_be_hidden()
+        else:
+            assert 395 <= box["width"] <= 401 and box["x"] + box["width"] >= vw - 1, box
+            expect(grabber).to_be_hidden()
+            expect(sheet.get_by_role("button", name="Cancel")).to_be_visible()
+
+    if shell == "phone":
+        with t.step("a short drag on the grabber springs back"):
+            grab = box_of(t.open_sheet().locator(".grabber"))
+            x, y = grab["x"] + grab["width"] / 2, grab["y"] + grab["height"] / 2
+            drag_grabber(page, x, y, 40)
+            page.wait_for_timeout(500)
+            t.open_sheet()
+
+        with t.step("a long drag on the grabber dismisses the sheet"):
+            grab = box_of(t.open_sheet().locator(".grabber"))
+            x, y = grab["x"] + grab["width"] / 2, grab["y"] + grab["height"] / 2
+            drag_grabber(page, x, y, 420, fast=True)
+            t.close_sheet_check()
+    else:
+        with t.step("Cancel closes it"):
+            t.open_sheet().get_by_role("button", name="Cancel").click()
+            t.close_sheet_check()
+
+
+@flow("builder-panel", "The builder on a Mac is a right-hand panel beside the ring")
+def builder_panel(t: Trace) -> None:
+    page = t.page
+    name = f"Panel wheel {t.uid}"
+    with t.step("a wheel"):
+        make_wheel(t, name)
+
+    with t.step("tap slot 2: the builder opens"):
+        page.get_by_role("button", name=re.compile(r"^Slot 2, empty")).click()
+        sheet = t.open_sheet()
+        page.wait_for_timeout(500)
+        expect(sheet.get_by_role("heading", name="Slot 2")).to_be_visible()
+        if shell_of(t) == "panel":
+            box = box_of(sheet)
+            assert 395 <= box["width"] <= 401 and box["x"] + box["width"] >= 1439, box
+            ring = box_of(page.locator(".ring"))
+            assert ring["x"] + ring["width"] <= box["x"] + 1, "the ring is under the panel"
+
+    with t.step("add a layer: the footer stays in view"):
+        pick_layer(t, "magnetic taco", "Magnetic Taco")
+        sheet = t.open_sheet()
+        save = sheet.get_by_role("button", name="Save swatch")
+        expect(save).to_be_enabled()
+        box = box_of(save)
+        assert box["y"] + box["height"] <= page.viewport_size["height"], "Save is below the fold"
+
+    with t.step("Esc closes the builder and the draft dot stays"):
+        page.keyboard.press("Escape")
+        t.close_sheet_check()
+        expect(page.locator("#slot-2")).to_be_visible()
+
+
+@flow("tag-page", "The tag page: Copy address first, the NFC Tools steps by shell")
+def tag_page(t: Trace) -> None:
+    page = t.page
+    shell = shell_of(t)
+    name = f"Tag wheel {t.uid}"
+    written = "Open NFC Tools on your iPhone and tap Write."
+
+    with t.step("make a wheel: its tag page opens"):
+        t.goto("/wheels")
+        page.get_by_label("Name").fill(name)
+        page.get_by_role("button", name="Make a wheel").click()
+        expect(page.get_by_role("heading", level=1, name="Tag and QR code")).to_be_visible()
+        expect(page.get_by_role("button", name="Copy address")).to_be_visible()
+
+    if shell == "phone":
+        with t.step("the phone shows the steps and the plain lede"):
+            expect(page.get_by_role("heading", name="Write the tag")).to_be_visible()
+            expect(page.locator(".tag-steps-narrow").get_by_text(written)).to_be_visible()
+            expect(page.locator(".tag-steps-wide")).to_be_hidden()
+            expect(page.get_by_text("Scan this with the iPhone camera")).to_be_hidden()
+    else:
+        with t.step("the wide shells send you to the iPhone, with the steps collapsed"):
+            expect(page.get_by_text("Scan this with the iPhone camera")).to_be_visible()
+            expect(page.get_by_text("Or write it from the Polished app on iPhone")).to_be_visible()
+            wide = page.locator(".tag-steps-wide")
+            expect(page.locator(".tag-steps-narrow")).to_be_hidden()
+            expect(wide.get_by_text(written)).to_be_hidden()
+            wide.get_by_text("Write the tag").click()
+            expect(wide.get_by_text(written)).to_be_visible()
+
+    with t.step("Copy address says it copied"):
+        page.get_by_role("button", name="Copy address").click()
+        expect(
+            page.get_by_role("button", name=re.compile("Copied|Select and copy"))
+        ).to_be_visible()

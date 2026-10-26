@@ -9,7 +9,7 @@ from fastapi.responses import RedirectResponse, Response
 
 from .. import shades, stacks, wheels
 from ..db import get_conn
-from ..web import is_partial_request, render
+from ..web import clear_flash, is_partial_request, pop_flash, render, set_flash
 from ._builder import SHEET_CLOSE, fail, sheet_context, slot_swap
 
 router = APIRouter()
@@ -44,12 +44,16 @@ def _others(conn: sqlite3.Connection, wheel_id: int) -> list[dict]:
     return [w for w in every if w["id"] != wheel_id]
 
 
-def _redirect(request: Request, url: str) -> Response:
+def _redirect(request: Request, url: str, flash: str | None = None) -> Response:
     """A plain form gets a 302; a confirmed HTMX button gets HX-Redirect, since a swapped-in
-    page would land in the wrong element."""
+    page would land in the wrong element. `flash` is a line the next page shows once."""
     if request.headers.get("hx-request") == "true":
-        return Response(status_code=200, headers={"HX-Redirect": url})
-    return RedirectResponse(url, status_code=302)
+        response = Response(status_code=200, headers={"HX-Redirect": url})
+    else:
+        response = RedirectResponse(url, status_code=302)
+    if flash:
+        set_flash(response, flash)
+    return response
 
 
 def _cards(conn: sqlite3.Connection, archived: bool) -> list[dict]:
@@ -77,8 +81,12 @@ def _list_page(
         "error": error,
         "default_slots": wheels.DEFAULT_SLOT_COUNT,
         "max_slots": wheels.MAX_SLOT_COUNT,
+        "flash": pop_flash(request),
     }
-    return render(request, "wheels.html", context, status_code)
+    response = render(request, "wheels.html", context, status_code)
+    if context["flash"]:
+        clear_flash(response)
+    return response
 
 
 @router.get("/wheels")
@@ -179,21 +187,22 @@ def delete_sheet(request: Request, conn: Conn, wheel_id: int):
         for w in wheels.list_wheels(conn, bool(wheel["archived"]))
         if w["id"] == wheel_id
     )
-    return render(request, "_wheel_delete.html", {"wheel": wheel, "swatches": swatches})
+    context = {"wheel": wheel, "swatches": swatches, "tiles": wheels.slot_grid(conn, wheel)}
+    return render(request, "_wheel_delete.html", context)
 
 
 @router.post("/wheels/{wheel_id}/delete")
 def delete_wheel(request: Request, conn: Conn, wheel_id: int, confirm: Annotated[str, Form()] = ""):
     """Deletes the wheel with its swatches and drafts for good. Only the confirmation sheet sends
     `confirm=yes`; without it nothing is deleted (400)."""
-    _wheel(conn, wheel_id)
+    wheel = _wheel(conn, wheel_id)
     if confirm != "yes":
         raise HTTPException(400, "Confirm the deletion")
     try:
         wheels.delete(conn, wheel_id)
     except wheels.WheelNotFound:
         raise HTTPException(404, "No such wheel") from None
-    return _redirect(request, "/wheels")
+    return _redirect(request, "/wheels", flash=f"Deleted {wheel['name']}")
 
 
 @router.get("/wheels/{wheel_id}/tag")

@@ -2,6 +2,7 @@
 
 from datetime import date, datetime, timedelta
 from pathlib import Path
+from urllib.parse import quote, unquote
 from zoneinfo import ZoneInfo
 
 from fastapi import Request
@@ -108,6 +109,28 @@ templates.env.globals.update(
     tip_shade_url=tips.shade_url, tip_stack_url=tips.stack_url, tip_hex=tips.effective_hex
 )
 templates.env.tests["owned_bottle"] = is_owned
+
+
+FLASH_COOKIE = "polished_flash"
+FLASH_SECONDS = 60
+
+
+def set_flash(response: Response, text: str) -> None:
+    """A line the next page shows once (a deleted wheel). It rides in a short-lived cookie that
+    pop_flash() clears, so a reload does not repeat it."""
+    response.set_cookie(
+        FLASH_COOKIE, quote(text), max_age=FLASH_SECONDS, httponly=True, samesite="lax", path="/"
+    )
+
+
+def pop_flash(request: Request) -> str | None:
+    """The flash line the request carries, if any. The response must call clear_flash()."""
+    raw = request.cookies.get(FLASH_COOKIE)
+    return unquote(raw) if raw else None
+
+
+def clear_flash(response: Response) -> None:
+    response.delete_cookie(FLASH_COOKIE, path="/")
 
 
 def is_partial_request(request: Request) -> bool:

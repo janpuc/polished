@@ -24,7 +24,9 @@ from playwright.sync_api import Page, expect
 
 STEP_TIMEOUT_MS = 8000
 TAP_TARGET_PX = 44
-SETTLE_MS = 250  # lets a sheet slide in and a fade finish before the screenshot
+SETTLE_MS = (
+    400  # lets a sheet slide in (380ms on the phone) and a fade finish before the screenshot
+)
 
 
 @dataclass(frozen=True)

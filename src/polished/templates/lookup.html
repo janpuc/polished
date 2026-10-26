@@ -2,10 +2,7 @@
 {% from "_icons.html" import icon with context %}
 {% set tab = "bottles" %}
 {% block title %}Scan a bottle | Polished{% endblock %}
-{% block scripts %}
-<script type="module" src="/static/js/sheet.js?v={{ version }}"></script>
-<script type="module" src="/static/js/scanner.js?v={{ version }}"></script>
-{% endblock %}
+{% block scripts %}<script type="module" src="/static/js/scanner.js?v={{ version }}"></script>{% endblock %}
 {% block content %}
 <a class="back" href="/bottles">{{ icon("chevron-left") }}Bottles</a>
 <header class="page-head">

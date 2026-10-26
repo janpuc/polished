@@ -1,0 +1,12 @@
+{# The frame of a page shown in the right-hand #panel of the wide shells (static/js/panel.js asks
+   for `?panel=1`): the title bar with its close button, then the page's own content. The
+   <title> keeps the browser tab in step; htmx applies it. #}
+{% from "_icons.html" import icon with context %}
+<title>{% block title %}{% endblock %}</title>
+<header class="panel-bar">
+  <p class="panel-title">{% block panel_title %}Shade{% endblock %}</p>
+  <button type="button" class="btn-round" data-panel-close aria-label="Close panel">{{ icon("x") }}</button>
+</header>
+<div class="panel-body">
+{% block content %}{% endblock %}
+</div>

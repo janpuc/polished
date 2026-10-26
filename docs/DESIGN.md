@@ -73,11 +73,24 @@ iPhone Safari / PWA ──https──> Cloudflare tunnel ──> envoy-external 
 
 - **FastAPI + Jinja2 + HTMX.** Pages are server-rendered. HTMX swaps partials; every mutation is
   a POST that returns the re-rendered partial, so there is no client-side state to lose.
-- **JS islands** are plain ES modules under `static/js/`, loaded only on pages that need them:
-  `scanner.js` (camera and zxing-wasm), `sheet.js` (opens and closes the bottom-sheet
-  `<dialog>`, refocuses the picker field), `copy.js` (copy buttons), `tag.js` (copy the tag URL),
-  and `chrome.js`, which every page loads: it turns the sticky search field into a material once it
-  is stuck under the status bar. No bundler, no Node.
+- **JS islands** are plain ES modules under `static/js/`. Every page with the shared chrome loads
+  `chrome.js` (the sticky search field turns into a material once it is stuck under the status
+  bar), `date.js`, `sheet.js` (opens and closes the `<dialog id="sheet">`, drags it down by its
+  grabber on the phone shell, refocuses the picker field), `panel.js` (the shade panel of the wide
+  shells, below) and `keys.js` (the keyboard); `scanner.js` (camera and zxing-wasm), `copy.js` (copy
+  buttons) and `wheel.js` load only where they are used. No bundler, no Node.
+- **Three shells from one HTML** (v3 run 2), chosen by viewport width and never by user agent:
+  phone under 700px (tab bar, bottom sheets), rail from 700 (a 72px icon rail, centred modal
+  sheets, tab bar hidden) and panel from 1000 (rail plus a non-modal `#panel` beside the Shades
+  list, `#sheet` a right-anchored 360px modal panel; from 1280 the rail is a 240px sidebar with
+  labels and a `/` hint, and the panel and sheet are 400px). `base.html` always renders both
+  `<nav class="side">` and `<nav class="tabbar">`; CSS shows one. The shade page answers
+  `GET /shades/{id}?panel=1` with the same content under `_panel_frame.html` (a title bar with a
+  close button) instead of the base chrome; `panel.js` asks for it when `(min-width: 1000px)`
+  matches, swaps it into `#panel`, pushes `/shades/{id}` and marks the row `aria-current`. A deep
+  link to `/shades/{id}` on a wide viewport renders the full shade page, and `panel.js` replaces
+  `#main` with the list and opens the shade in the panel; Back and Esc close the panel without
+  reloading the list. See docs/VISUAL.md section 12.
 - **Vendored static assets** in `static/vendor/`: `htmx.min.js` and `zxing-wasm/` (reader build:
   `reader/index.js` and `share.js` as shipped, plus `zxing_reader.wasm`). Versions recorded in `static/vendor/VERSIONS.txt`, fetched by `scripts/vendor.sh` (a developer step);
   Renovate cannot update vendored files, so a refresh is a manual stage. There is no webfont: the UI
@@ -163,9 +176,11 @@ and date (`day`: "2026-10-01" becomes "1 Oct 2026") are Jinja filters. `thumb(ur
 with CSS.
 
 **Look and feel.** `docs/VISUAL.md` is the spec for looks and this file wins on behaviour. In the
-templates: `base.html` carries the five-tab bar (Home, Shades, Bottles, Wheels, Wishlist; a page sets
-`{% set tab = "shades" %}` and a page without a tab, such as the offline and sign-in pages, gets no
-bar), a skip link and the shared `<dialog id="sheet">`; each page opens with a large title
+templates: `base.html` carries the five-tab bar and the side nav (Home, Shades, Bottles, Wheels,
+Wishlist, and More at the foot of the side nav; a page sets `{% set tab = "shades" %}`, and More
+sets `{% set side = "more" %}` to mark itself in the side nav only; a page without a tab, such as
+the offline and sign-in pages, gets neither), a skip link, `{% block aside %}` (the Shades list and
+the shade page put `<aside id="panel">` there) and the shared `<dialog id="sheet">`; each page opens with a large title
 (`.title`, 34 pt bold) and, below the top level, a back link row. Icons are `{{ icon("name") }}`, a
 `<use>` of `static/icons/ui.svg?v=<version>`. The CSP allows no inline style, so all styling is
 classes in `app.css`; nothing sets a `style` attribute.
@@ -1105,8 +1120,8 @@ builds it.
 | GET | `/` | Home: large title with the icon, search, the most recently touched wheel as a 200px ring, recent bottles as tips, one line of counts as links, a short grouped list (Browse all shades, Toppers, New and in stock, More) | full page | 3 |
 | GET | `/more` | Add a shade by hand, Catalog sync, Learned codes, and Sign out under "Signed in as …" | full page | 2b |
 | GET | `/search` | Typeahead rows. Params `q`, `ctx` (`home`, `stack`, `learn`), `filter` (`owned/toppers/all`), `stack_id`, `kind`+`value` for `learn` (422 without a valid code). Row action depends on `ctx`; `home` in stage 3, `learn` in 5, `stack` in 7. Always rows only (the page that asked is on screen), nothing for an empty query. `home` adds a "Look up “259” as a code" link when `q` is all digits or a P code. Ranked and typo-tolerant (section 6); rows mark the matched words with `<mark>` | partial | 3 |
-| GET | `/shades` | Browse list with filters (section 6) | full page; P = rows + Load more | 3 |
-| GET | `/shades/{id}` | Detail: images, tags, price/status, product link; stage 4 adds bottles and wishlist, stage 6 "Swatched on" | full page | 3 |
+| GET | `/shades` | Browse list with filters (section 6). A search with words that needed typo tolerance says "N matches, closest first" in the count line (N above one); the first result row is `aria-current` (the cursor of `keys.js`); rows whose names are all but the same as another row of the page carry the official collection, else the release year, as a hint. The filters' `change` trigger listens on `.filter-panel` only, so a change event of the search field does not fire a second, history-pushing request | full page; P = rows + Load more | 3 |
+| GET | `/shades/{id}` | Detail: images, tags, price/status, product link; stage 4 adds bottles and wishlist, stage 6 "Swatched on". `?panel=1` renders the same content without the base chrome (title bar with a close button, the shade's name as an `h2`) for the right-hand `#panel` of the wide shells | full page; `?panel=1` fragment | 3 |
 | GET | `/shades/new` | Manual shade form (gifted non-catalog bottle) | full page / P | 4 |
 | POST | `/shades` | Create manual shade (title, kind) | 302 to the shade | 4 |
 | GET | `/wheels` | The Wheels tab (section 13.5) | full page | design |
@@ -1182,12 +1197,12 @@ carry the shade page's action bar as an out-of-band copy when `ctx=shade`, becau
 | GET | `/wheels` | Wheels with a mini ring each (archived behind a row), new-wheel form behind the "+" | full page | 6 |
 | POST | `/wheels` | Create (name, slot_count default 20) | 302 `/wheels/{id}/tag` | 6 |
 | GET | `/w/{slug}` | The wheel page; NFC and QR target; `?hl=<shade_id>` | full page | 6 |
-| GET | `/wheels/{id}/rename` | The rename sheet (404 for no such wheel) | P sheet | 2b |
+| GET | `/wheels/{id}/rename` | The rename sheet (404 for no such wheel); Archive wheel is its quiet action (the wheel page's foot is Tag and QR code, Rename, Delete) | P sheet | 2b, 86 |
 | POST | `/wheels/{id}` | Rename | P header | 6 |
 | POST | `/wheels/{id}/archive` | `archived=0/1` | 302 | 6 |
-| GET | `/wheels/{id}/delete` | The delete confirmation sheet (404 for no such wheel) | P sheet | 84 |
-| POST | `/wheels/{id}/delete` | Delete the wheel, its slots, stacks and layers; needs `confirm=yes` (400 without), 404 unknown | 302 `/wheels` (HX-Redirect for htmx) | 84 |
-| GET | `/wheels/{id}/tag` | URL, Copy, QR, NFC Tools steps | full page | 6 |
+| GET | `/wheels/{id}/delete` | The delete confirmation sheet (404 for no such wheel): what goes, the wheel's mini ring and count, the one filled `--bad` button | P sheet | 84, 86 |
+| POST | `/wheels/{id}/delete` | Delete the wheel, its slots, stacks and layers; needs `confirm=yes` (400 without), 404 unknown. Sets a one-minute `polished_flash` cookie ("Deleted Holos") that the next `/wheels` shows once as a status line and clears | 302 `/wheels` (HX-Redirect for htmx) | 84, 86 |
+| GET | `/wheels/{id}/tag` | QR, address with Copy address (the filled action), Open the wheel, the NFC Tools steps; one page, two renderings by width: the phone's lede and steps, or (from 700px) "Scan this with the iPhone camera, then write the sticker from NFC Tools there. Or write it from the Polished app on iPhone." with the steps in a closed `<details>` | full page | 6, 86 |
 | GET | `/wheels/{id}/qr.svg` | QR code | `image/svg+xml` | 6 |
 | POST | `/wheels/{id}/slug/regenerate` | New slug | 302 tag page | 6 |
 | POST | `/wheels/{id}/slug/take` | Swap slugs with `from_wheel_id` | 302 tag page | 6 |
@@ -1768,6 +1783,61 @@ carry the shade page's action bar as an out-of-band copy when `ctx=shade`, becau
     - **Flows** changed only where markup legitimately did: Home's `h1` is the greeting now, not "Polished". New
       steps: the date field's words and presets and the refusal of a future day (add-bottle), "Try fewer letters"
       (search) and the ring's label after a save (wheel-build).
+
+86. **v3 run 2, "three shells"** (`docs/advice/fable-v3-web-2026-10-26.md` sections 3, 4.4, 4.5, 4.6 and 6;
+    VISUAL.md section 12 is new). The Home shelf, wear and its two-column layout are run 3; Home keeps its
+    content and only sits in the shells (40rem column, centred). What was built and where it departs from the spec:
+    - **Shells and navigation** as in section 3, one `<nav class="side">` always rendered and the tab bar hidden
+      from 700px. The side nav's links carry a `data-tip` that shows as a tooltip on the rail under a pointer
+      (`@media (hover: hover)`), and `kbd` `/` on Shades from 1280. "Signed in as" is the account's name.
+      More is a link at the foot with a new `ellipsis` icon (the spec's `sidebar` icon is still unused).
+    - **`#sheet` per shell:** phone as before plus drag to dismiss on the grabber (`sheet.js`, pointer events; a
+      flick above 0.5 px/ms or a pull past a third of the sheet closes it, anything less springs back; a drag
+      keeps the click that follows it from counting as a tap on the backdrop; under reduced motion the sheet
+      does not follow the finger but a release still decides); rail: centred modal, max 560, radius 20, scale
+      .96 and fade over 240ms; panel: a 360 (400 from 1280) right-anchored modal over a .25 scrim, 280ms slide,
+      a frosted sticky head with the title at 15/600 and a round close button in place of the word Cancel
+      (`sheet_cancel()` in `_icons.html`: one button, the word on narrow shells, the icon on the panel shell).
+      The builder keeps its own head: its text Cancel discards the draft, which a close icon would hide.
+      The page behind a modal panel gets `padding-right`, so the ring stays beside it.
+    - **`#panel`, `panel.js` and `?panel=1`** as in 3.1, plus: the deep link swaps the list in from a plain
+      `fetch` of `/shades` (an htmx request would get the rows alone), Esc and the close button call
+      `history.back()` when the panel pushed its entry, and a Back onto the list is intercepted in the capture
+      phase so htmx does not reload it. A shade's tip-colour error page is never a panel (no deep-link marker).
+    - **A found bug:** the filter form's `hx-trigger` `change` also fired from the search field (on blur or
+      Enter), which re-requested the list and pushed a second history entry after the panel's own, leaving the
+      URL on the list with the panel open. `change` now comes from `.filter-panel` only.
+    - **Keys (`keys.js`):** `/` focuses the search field (from a page without one it goes to `/shades#search`),
+      `n` clicks Add bottle while a shade is shown, the arrows move the `aria-current` cursor over the list or
+      the typeahead rows, Enter opens it (wide shells), Esc closes the sheet and then the panel (`panel.js`
+      ignores it while a dialog is open). The hint line is `position: fixed` at the foot of the content and shows
+      after the first `:focus-visible`, on a device with a fine pointer and hover.
+    - **Layout from 700:** gutter 24 (32 from 1280), shade rows 12px from the edge, tip tokens as in 3.2, the
+      Wheels list a 2-column (3 from 1000) grid of cards, Bottles in two columns from 900, History months in two
+      from 1000, the Wishlist's checkout stuck beside its rows from 1000, the gallery three photos across. The
+      spec's "filter as a popover" is the existing drop-down panel, right-aligned and 26rem wide; "lookup result
+      beside the viewfinder from 1280" is not built (Lookup is a phone-first page and stays one column).
+    - **Delete wheel (4.4):** the foot's third action is Delete in `--bad` and Archive moved into the Rename
+      sheet. The confirmation sheet from item 84 is restyled to the spec's copy, shows the wheel's mini ring with
+      "Holos, 14 of 20", and its one filled button is `--bad`. There is no `hx-confirm`; Esc cancels. The
+      "Deleted Holos" status line is a one-minute cookie rather than a query parameter, so a reload or a shared
+      URL does not repeat it.
+    - **Tag page (4.5):** order is lede, QR (216px, kept on a white plate rather than `--surface`: dark modules on a
+      dark board do not scan), address, **Copy address** (the filled
+      action), Open the wheel (quiet), then Write the tag. No user-agent check: the markup holds both lede and
+      both step lists and CSS picks by width (the steps appear twice in the HTML, one `display: none`).
+    - **Search extras (4.6):** "N matches, closest first" when some match came from typo tolerance
+      (`ShadePage.fuzzy`, from `search.rank_with_tiers`) and N is above one; on the Shades list and the typeahead;
+      the hint under near-duplicate names (names within one edit of another row of the same page) is the
+      official collection, else the release year, in `--ink-3` at 13px beside the finishes; the first result is
+      `aria-current` and Enter opens it.
+    - **Sign-in error, offline and signed-out pages** are the existing status pages; from 700 they are centred at
+      420px with no side nav (they have no tab).
+    - **Flows:** `open_shade` accepts the panel (a heading of any level); new flows `shell-nav`, `shade-panel`,
+      `keyboard`, `sheet-shells`, `builder-panel` and `tag-page` branch on the device profile; the harness
+      settles 400ms (a phone sheet takes 380) so a transition is not measured mid-way.
+    - **Not measured:** WebKit, so iOS Safari's handling of the grabber's `touch-action: none` and of
+      `:has()` rules is unverified here; hover tooltips were not screenshotted.
 
 ## 15. Home-ops manifests
 

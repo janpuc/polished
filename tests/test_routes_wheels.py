@@ -103,6 +103,22 @@ def test_tag_page_shows_the_full_url_and_the_qr(client, conn, settings):
     assert "NFC Tools" in page
 
 
+def test_tag_page_copy_address_is_the_filled_action_and_the_lede_changes_by_width(client):
+    wheel_id = make_wheel(client)
+    page = client.get(f"/wheels/{wheel_id}/tag").text
+    copy = re.search(r'<button type="button" class="([^"]*)" data-copy="#tag-url">', page)
+    assert copy and "btn-secondary" not in copy.group(1) and "btn-block" in copy.group(1)
+    assert 'class="btn btn-secondary btn-block tag-open"' in page  # Open the wheel is quiet
+    # one page, two renderings picked by CSS width: no user-agent branching
+    assert 'class="lede tag-lede-narrow"' in page and 'class="lede tag-lede-wide"' in page
+    assert "Scan this with the iPhone camera, then write the sticker from NFC Tools there." in page
+    assert "Or write it from the Polished app on iPhone." in page
+    assert '<details class="tag-steps-wide">' in page  # collapsed: no `open`
+    assert 'class="tag-steps-narrow"' in page
+    assert page.count("Open NFC Tools on your iPhone and tap Write.") == 2
+    assert client.get(f"/wheels/{wheel_id}/tag", headers={"User-Agent": "iPad"}).text == page
+
+
 def test_tag_page_of_an_unknown_wheel_is_404(client):
     assert client.get("/wheels/99/tag").status_code == 404
 
@@ -238,9 +254,18 @@ def test_the_wheel_page_ends_in_a_quiet_row_of_actions(client, conn):
     foot = re.search(r'<nav class="wheel-foot".*?</nav>', page, re.S).group(0)
     assert f'href="/wheels/{wheel_id}/tag"' in foot
     assert f'hx-get="/wheels/{wheel_id}/rename"' in foot
-    assert f'hx-post="/wheels/{wheel_id}/archive"' in foot and "hx-confirm" in foot
-    assert f'hx-get="/wheels/{wheel_id}/delete"' in foot and "Delete wheel" in foot
+    assert f'hx-get="/wheels/{wheel_id}/delete"' in foot and ">Delete</button>" in foot
+    assert "btn-danger" in foot and "/archive" not in foot  # Archive lives in the Rename sheet
     assert "This wheel</h2>" not in page and 'id="rename"' not in page
+
+
+def test_the_rename_sheet_holds_archive_as_a_quiet_action(client, conn):
+    wheel_id = make_wheel(client)
+    sheet = client.get(f"/wheels/{wheel_id}/rename").text
+    quiet = re.search(r'<div class="sheet-quiet">.*?</div>', sheet, re.S).group(0)
+    assert f'hx-post="/wheels/{wheel_id}/archive"' in quiet and "hx-confirm" in quiet
+    client.post(f"/wheels/{wheel_id}/archive", data={"archived": "1"})
+    assert "sheet-quiet" not in client.get(f"/wheels/{wheel_id}/rename").text
 
 
 def test_archive_keeps_the_slug_and_the_page_shows_the_banner(client, conn):
@@ -362,21 +387,25 @@ def test_delete_sheet_names_the_wheel_and_counts_its_swatches(client, catalog):
     wheel_id = make_wheel(client, "Test")
     empty = client.get(f"/wheels/{wheel_id}/delete", headers={"HX-Request": "true"})
     assert empty.status_code == 200 and "<html" not in empty.text
-    assert "Delete Test?" in empty.text and "no swatches" in empty.text
-    assert "tag and QR code stop" not in empty.text
+    assert "Delete Test?" in empty.text
+    assert "This removes the wheel and its tag address." in empty.text
+    assert "its 0 swatches" not in empty.text
     swatch(catalog, wheel_id, 1, "one-coat-black")
     swatch(catalog, wheel_id, 2, "one-coat-black", "flakie-holo-taco")
     sheet = client.get(f"/wheels/{wheel_id}/delete").text
-    assert "Delete Test?" in sheet and "Its 2 swatches go too." in sheet
-    assert "tag and QR code stop working" in sheet and "This can’t be undone." in sheet
+    assert "Delete Test?" in sheet
+    assert "This removes the wheel, its 2 swatches and its tag address." in sheet
+    assert "The sticker will stop opening anything." in sheet
     assert 'name="confirm" value="yes"' in sheet and ">Delete wheel<" in sheet
+    assert "btn-danger" in sheet and "hx-confirm" not in sheet  # the sheet is the confirmation
+    assert "Test, 2 of 20" in re.sub(r"<[^>]+>", "", sheet)  # the mini ring and its count
     assert f'hx-post="/wheels/{wheel_id}/delete"' in sheet and "data-sheet-close" in sheet
 
 
 def test_delete_sheet_says_one_swatch_goes(client, catalog):
     wheel_id = make_wheel(client, "Test")
     swatch(catalog, wheel_id, 1, "one-coat-black")
-    assert "Its 1 swatch goes too." in client.get(f"/wheels/{wheel_id}/delete").text
+    assert "its 1 swatch and its tag address" in client.get(f"/wheels/{wheel_id}/delete").text
 
 
 def test_the_archived_banner_offers_delete_as_well(client, conn):
@@ -405,7 +434,9 @@ def test_delete_removes_the_wheel_and_leaves_the_others(client, catalog):
     assert [w["name"] for w in wheels.list_wheels(catalog)] == ["Holos"]
     assert catalog.execute("select count(*) from stack").fetchone()[0] == 1
     assert catalog.execute("select count(*) from shade").fetchone()[0] == shades_before
-    assert "Test" not in client.get("/wheels").text
+    listing = client.get("/wheels").text
+    assert 'role="status">Deleted Test</p>' in listing and 'wheel-name">Test<' not in listing
+    assert "Deleted" not in client.get("/wheels").text  # shown once
 
 
 def test_delete_from_the_sheet_answers_an_htmx_redirect(client):

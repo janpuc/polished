@@ -158,6 +158,7 @@ class ShadePage:
     total: int = 0
     page: int = 1
     has_more: bool = False
+    fuzzy: bool = False  # a query with words, and some match needed typo tolerance
 
 
 def _tag_clause(ns: str, values: tuple[str, ...], where: list[str], args: list) -> None:
@@ -238,8 +239,10 @@ def list_shades(
     page = max(page, 1)
     where, args = _where(query)
     offset = (page - 1) * size
+    fuzzy = False
     if tokens(query.q):
-        ranked = name_search.rank(conn, query.q, owned_first)
+        ranked_tiers = name_search.rank_with_tiers(conn, query.q, owned_first)
+        ranked = [shade_id for shade_id, _ in ranked_tiers]
         if query.sort == "name":
             allowed = {r[0] for r in conn.execute(f"select s.id {FROM}{where}", args)}
             ids = [i for i in ranked if i in allowed]
@@ -253,6 +256,8 @@ def list_shades(
                 if r[0] in matched
             ]
         total = len(ids)
+        listed = set(ids)
+        fuzzy = any(tier == name_search.FUZZY for i, tier in ranked_tiers if i in listed)
         page_ids = ids[offset : offset + size]
         marks = ", ".join("?" * len(page_ids))
         by_id = {
@@ -273,7 +278,33 @@ def list_shades(
     if tokens(query.q):
         for row in result:
             row["marks"] = name_search.marks(row["title"], query.q)
-    return ShadePage(rows=result, total=total, page=page, has_more=page * size < total)
+    _add_lookalike_hints(conn, result)
+    return ShadePage(rows=result, total=total, page=page, has_more=page * size < total, fuzzy=fuzzy)
+
+
+def _add_lookalike_hints(conn: sqlite3.Connection, rows: list[dict]) -> None:
+    """Gives each row whose name is all but the same as another row of the page a `hint` that
+    tells them apart: the official collection, else the release year. Two names are alike when
+    their words are equal or one letter apart."""
+    keys = [" ".join(tokens(row["title"])) for row in rows]
+    alike: set[int] = set()
+    for i in range(len(rows)):
+        for j in range(i + 1, len(rows)):
+            if name_search.distance(keys[i], keys[j], 1) <= 1:
+                alike |= {rows[i]["id"], rows[j]["id"]}
+    if not alike:
+        return
+    marks = ", ".join("?" * len(alike))
+    facts = {
+        r["id"]: r["official_collection"] or (r["released_on"] or "")[:4]
+        for r in conn.execute(
+            f"select id, official_collection, released_on from shade where id in ({marks})",
+            list(alike),
+        )
+    }
+    for row in rows:
+        if row["id"] in alike and facts[row["id"]]:
+            row["hint"] = facts[row["id"]]
 
 
 def search(conn: sqlite3.Connection, text: str, limit: int = SEARCH_LIMIT) -> ShadePage:

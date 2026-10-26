@@ -10,8 +10,9 @@
   {% if ctx != 'learn' %}<a class="btn btn-text" href="/shades/new?title={{ q|urlencode }}">Add it by hand</a>{% endif %}
 </div>
 {% else %}
+{% if result.fuzzy and result.total > 1 and ctx != 'learn' %}<p class="count">{{ result.total }} matches, closest first</p>{% endif %}
 <ul class="list">
-  {% for shade in result.rows %}{% include "_shade_row.html" %}
+  {% for shade in result.rows %}{% set cursor = loop.first %}{% include "_shade_row.html" %}
   {% endfor %}
 </ul>
 {% if result.total > result.rows|length %}

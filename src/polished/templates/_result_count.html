@@ -1,0 +1,1 @@
+{# "3 matches, closest first" when typo tolerance found some of them, else "372 shades". #}{% if result.fuzzy and result.total > 1 %}{{ result.total }} matches, closest first{% else %}{{ result.total }} shade{{ '' if result.total == 1 else 's' }}{% endif %}

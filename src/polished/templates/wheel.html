@@ -2,10 +2,7 @@
 {% from "_icons.html" import icon with context %}
 {% set tab = "wheels" %}
 {% block title %}{{ wheel.name }} | Polished{% endblock %}
-{% block scripts %}
-<script type="module" src="/static/js/sheet.js?v={{ version }}"></script>
-<script type="module" src="/static/js/wheel.js?v={{ version }}"></script>
-{% endblock %}
+{% block scripts %}<script type="module" src="/static/js/wheel.js?v={{ version }}"></script>{% endblock %}
 {% block content %}
 <a class="back" href="/wheels">{{ icon("chevron-left") }}Wheels</a>
 {% if wheel.archived %}
@@ -42,12 +39,6 @@
 <nav class="wheel-foot" aria-label="This wheel">
   <a class="btn btn-text" href="/wheels/{{ wheel.id }}/tag">Tag and QR code</a>
   <button type="button" class="btn btn-text" hx-get="/wheels/{{ wheel.id }}/rename" hx-target="#sheet-body" hx-swap="innerHTML">Rename</button>
-  {% if not wheel.archived %}
-  <form method="post" action="/wheels/{{ wheel.id }}/archive">
-    <input type="hidden" name="archived" value="1">
-    <button type="submit" class="btn btn-text" hx-post="/wheels/{{ wheel.id }}/archive" hx-include="closest form" hx-confirm="Archive this wheel? Its tag keeps working and you can restore it.">Archive</button>
-  </form>
-  {% endif %}
-  <button type="button" class="btn btn-text btn-danger" hx-get="/wheels/{{ wheel.id }}/delete" hx-target="#sheet-body" hx-swap="innerHTML">Delete wheel</button>
+  <button type="button" class="btn btn-text btn-danger" aria-label="Delete wheel" hx-get="/wheels/{{ wheel.id }}/delete" hx-target="#sheet-body" hx-swap="innerHTML">Delete</button>
 </nav>
 {% endblock %}

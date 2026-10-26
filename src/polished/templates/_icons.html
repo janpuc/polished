@@ -3,3 +3,7 @@
 {% macro icon(name, class="") -%}
 <svg class="icon{% if class %} {{ class }}{% endif %}" aria-hidden="true" focusable="false"><use href="/static/icons/ui.svg?v={{ version }}#{{ name }}"/></svg>
 {%- endmacro %}
+{# The Cancel of a sheet: the word below 1000px, a round close button in the right-hand panel. #}
+{% macro sheet_cancel() -%}
+<button type="button" class="btn btn-text sheet-close" data-sheet-close><span>Cancel</span>{{ icon("x") }}</button>
+{%- endmacro %}

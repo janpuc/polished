@@ -1,6 +1,6 @@
 {# The add / edit bottle sheet, swapped into #sheet-body. A failed validation comes back here
    (HX-Retarget) with the messages and what was typed. #}
-{% from "_icons.html" import icon with context %}
+{% from "_icons.html" import icon, sheet_cancel with context %}
 {% from "_date_field.html" import date_field with context %}
 {% if bottle %}
 <form class="sheet-form" method="post" action="/bottles/{{ bottle.id }}" hx-post="/bottles/{{ bottle.id }}" hx-target="#bottle-{{ bottle.id }}" hx-swap="outerHTML">
@@ -12,7 +12,7 @@
   <div class="grabber" aria-hidden="true"></div>
   <header class="sheet-head">
     <h2 tabindex="-1" autofocus>{% if bottle %}Edit bottle{% else %}Add bottle{% endif %}<span class="sheet-sub">{{ shade_title }}</span></h2>
-    <button type="button" class="btn btn-text" data-sheet-close>Cancel</button>
+    {{ sheet_cancel() }}
   </header>
   <fieldset>
     <legend class="legend">Level</legend>

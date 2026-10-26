@@ -3,7 +3,7 @@
    the colour comes from the tips, pink means one thing, wanted. Mobile first, light and dark.
    Contents: tokens, base, chrome (tab bar, titles, back link), controls, lists and rows, shade
    page, home, bottles, sheet, wishlist, lookup and scanner, status pages, wheels and the ring,
-   the builder, motion preferences. */
+   the builder, the three shells (17), motion preferences. */
 
 /* 1. Tokens */
 @font-face {
@@ -63,6 +63,7 @@
   --ring-edge: 0 0 0 1px oklch(0 0 0 / 0.06);
   --gloss: oklch(1 0 0 / 0.3);
   --scrim: rgb(42 22 35 / 0.45);
+  --scrim-panel: rgb(42 22 35 / 0.25);
   --material: rgb(247 243 242 / 0.78);
   --material-edge: rgb(42 22 35 / 0.08);
   --material-light: inset 0 1px 0 oklch(1 0 0 / 0.35);
@@ -75,6 +76,7 @@
   --display: "Fraunces", "Fraunces fallback", ui-serif, Georgia, serif;
 
   --gutter: 16px;
+  --row-bleed: var(--gutter);
   --tap: 44px;
   --tabbar: 49px;
   --measure: 40rem;
@@ -88,7 +90,7 @@
   --ease-out: cubic-bezier(0.22, 0.9, 0.32, 1);
   --ease-in: cubic-bezier(0.68, 0, 0.78, 0.1);
 
-  /* Tip sizes (width by height); the rail and panel shells of a later run raise them. */
+  /* Tip sizes (width by height); the rail and panel shells (section 17) raise them. */
   --tip-s-w: 28px;
   --tip-s-h: 46px;
   --tip-m-w: 40px;
@@ -123,6 +125,7 @@
     --ring-edge: 0 0 0 1px oklch(1 0 0 / 0.08);
     --gloss: oklch(1 0 0 / 0.18);
     --scrim: rgb(0 0 0 / 0.6);
+    --scrim-panel: rgb(0 0 0 / 0.25);
     --material: rgb(22 11 20 / 0.72);
     --material-edge: rgb(255 255 255 / 0.1);
     --material-light: inset 0 1px 0 oklch(1 0 0 / 0.08);
@@ -953,7 +956,7 @@ button.chip[aria-pressed="false"]:active {
   position: absolute;
   right: 0;
   bottom: 0;
-  left: 52px;
+  left: calc(var(--tip-m-w) + 12px);
   height: 1px;
   background: var(--line);
 }
@@ -962,10 +965,10 @@ button.chip[aria-pressed="false"]:active {
   display: flex;
   align-items: center;
   gap: 12px;
-  width: calc(100% + 2 * var(--gutter));
+  width: calc(100% + 2 * var(--row-bleed));
   min-height: 72px;
-  margin: 0 calc(-1 * var(--gutter));
-  padding: 12px var(--gutter);
+  margin: 0 calc(-1 * var(--row-bleed));
+  padding: 12px var(--row-bleed);
   border: 0;
   background: none;
   color: inherit;
@@ -1191,6 +1194,16 @@ mark {
 .row-end.footnote {
   font-size: 0.8125rem;
   font-variant-numeric: tabular-nums;
+}
+
+.row-hint {
+  flex: none;
+  max-width: 40%;
+  overflow: hidden;
+  color: var(--ink-3);
+  font-size: 0.8125rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .row-sub > span:first-child {
@@ -1824,7 +1837,7 @@ mark {
   display: flex;
   align-items: center;
   gap: 12px;
-  min-height: 66px;
+  min-height: var(--tip-m-h);
   margin-bottom: 8px;
   color: inherit;
   text-decoration: none;
@@ -2189,11 +2202,11 @@ mark {
   position: relative;
   isolation: isolate;
   display: grid;
-  grid-template-columns: 40px minmax(0, 1fr) auto;
+  grid-template-columns: var(--tip-m-w) minmax(0, 1fr) auto;
   column-gap: 12px;
   align-items: center;
-  margin: 0 calc(-1 * var(--gutter));
-  padding: 12px var(--gutter);
+  margin: 0 calc(-1 * var(--row-bleed));
+  padding: 12px var(--row-bleed);
 }
 
 .wish-row::after {
@@ -2201,7 +2214,7 @@ mark {
   position: absolute;
   right: 0;
   bottom: 0;
-  left: calc(var(--gutter) + 52px);
+  left: calc(var(--row-bleed) + var(--tip-m-w) + 12px);
   height: 1px;
   background: var(--line);
 }
@@ -3173,6 +3186,10 @@ input.tip-input {
   font-weight: 600;
 }
 
+.wheel-foot .btn-danger {
+  color: var(--bad);
+}
+
 .banner {
   display: flex;
   flex-direction: column;
@@ -3263,6 +3280,7 @@ input.tip-input {
 }
 
 .tag-url {
+  margin-top: 20px;
   margin-bottom: 12px;
 }
 
@@ -4067,7 +4085,7 @@ span.layer-btn {
   position: absolute;
   top: 0;
   right: 0;
-  left: 40px;
+  left: var(--tip-m-w);
   height: 1px;
   background: var(--line);
 }
@@ -4254,6 +4272,730 @@ span.layer-btn {
   }
 }
 
+/* 17. Three shells, from one HTML and by viewport width, never by user agent (docs/VISUAL.md
+   section 12). Phone under 700: the tab bar and bottom sheets, as built above. Rail, 700 to 999: a
+   72px icon rail, centred modals. Panel, 1000 and up: the shade opens in a non-modal #panel beside
+   the list and #sheet is a right-anchored panel; from 1280 the rail grows into a 240px sidebar.
+   Everything here overrides the phone rules above it. */
+.side,
+.panel {
+  display: none;
+}
+
+.keys-hint {
+  display: none;
+}
+
+/* The tag page keeps two renderings of its lede and the NFC Tools steps: the phone's, and the
+   one for a screen the sticker is not written on. */
+.tag-lede-wide,
+.tag-steps-wide {
+  display: none;
+}
+
+@media (min-width: 700px) {
+  :root {
+    --gutter: 24px;
+    --row-bleed: 12px;
+    --side-w: 72px;
+    --tip-m-w: 44px;
+    --tip-m-h: 72px;
+    --tip-l-w: 88px;
+    --tip-l-h: 144px;
+    --tip-xl-w: 120px;
+    --tip-xl-h: 197px;
+  }
+
+  body {
+    padding-left: calc(var(--side-w) + env(safe-area-inset-left));
+  }
+
+  main {
+    padding-top: 20px;
+    padding-bottom: calc(env(safe-area-inset-bottom) + 48px);
+  }
+
+  main.wide {
+    max-width: none;
+  }
+
+  .tabbar {
+    display: none;
+  }
+
+  .bare {
+    padding-left: env(safe-area-inset-left);
+  }
+
+  .bare main {
+    padding-bottom: calc(env(safe-area-inset-bottom) + 48px);
+  }
+
+  /* The shelf's tips are as wide as the shell makes them; the item is a little wider. */
+  .shelf-item {
+    width: calc(var(--tip-l-w) + 8px);
+  }
+
+  /* The side nav: an icon rail here, labelled and with a / hint from 1280. */
+  .side {
+    position: fixed;
+    inset: 0 auto 0 0;
+    z-index: 20;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    width: calc(var(--side-w) + env(safe-area-inset-left));
+    padding: calc(20px + env(safe-area-inset-top)) 8px calc(16px + env(safe-area-inset-bottom))
+      calc(8px + env(safe-area-inset-left));
+    background: color-mix(in oklab, var(--bg) 70%, var(--fill));
+    box-shadow: 1px 0 0 var(--line);
+  }
+
+  .side-brand {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    min-height: 44px;
+    margin-bottom: 12px;
+    border-radius: 10px;
+    color: var(--ink);
+    font-size: 1.1875rem;
+    line-height: 1.5rem;
+    font-weight: 600;
+    text-decoration: none;
+  }
+
+  .side-brand img {
+    display: block;
+    width: 28px;
+    height: 28px;
+    border-radius: 7px;
+    outline: 1px solid var(--mat);
+    outline-offset: -1px;
+  }
+
+  .side-link {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    min-height: var(--tap);
+    padding: 0 12px;
+    border-radius: 10px;
+    color: var(--ink-2);
+    font-size: 0.9375rem;
+    line-height: 1.25rem;
+    font-weight: 500;
+    text-decoration: none;
+  }
+
+  .side-link[aria-current="page"] {
+    background: var(--fill);
+    color: var(--ink);
+  }
+
+  .side-link[aria-current="page"] .icon {
+    fill: currentColor;
+  }
+
+  .side-link:active {
+    background: var(--fill-2);
+  }
+
+  .side-key {
+    display: none;
+    margin-left: auto;
+    padding: 2px 6px;
+    border: 1px solid var(--line-2);
+    border-radius: 5px;
+    color: var(--ink-3);
+    font: 500 0.75rem/1rem var(--sans);
+  }
+
+  .side-foot {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: auto;
+  }
+
+  .side-user {
+    display: none;
+    padding: 0 12px;
+    color: var(--ink-3);
+  }
+
+  /* On the rail the words are for screen readers, and show as a tooltip under a pointer. */
+  .side-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  /* Rows: a hover wash and a selected row (the cursor of keys.js, the open shade of the panel). */
+  .row-link {
+    min-height: calc(var(--tip-m-h) + 20px);
+    padding-block: 10px;
+    border-radius: 14px;
+  }
+
+  .row-link[aria-current="true"] {
+    background: var(--fill);
+  }
+
+  .shade-row:has(> [aria-current])::after,
+  .shade-row:has(+ .shade-row > [aria-current])::after {
+    display: none;
+  }
+
+  /* The sheet is a centred modal here: no grabber, scale and fade instead of a slide. */
+  .sheet {
+    --gutter: 20px;
+    --tip-xl-w: 96px;
+    --tip-xl-h: 158px;
+    width: calc(100% - 2 * var(--gutter));
+    max-width: 560px;
+    max-height: 86dvh;
+    margin: auto;
+    border-radius: var(--r-sheet);
+    transform: scale(0.96);
+    opacity: 0;
+    transition: transform 240ms var(--ease-in), opacity 240ms ease-out, display 240ms allow-discrete,
+      overlay 240ms allow-discrete;
+  }
+
+  .sheet[open] {
+    transform: none;
+    opacity: 1;
+    transition-duration: 240ms;
+    transition-timing-function: var(--ease-out), ease-out;
+  }
+
+  @starting-style {
+    .sheet[open] {
+      transform: scale(0.96);
+      opacity: 0;
+    }
+  }
+
+  .grabber {
+    display: none;
+  }
+
+  .sheet-actions {
+    padding-bottom: 12px;
+  }
+
+  .sheet-quiet {
+    padding-bottom: 8px;
+  }
+
+  .filter-panel {
+    right: var(--gutter);
+    left: auto;
+    width: min(26rem, calc(100% - 2 * var(--gutter)));
+  }
+
+  .gallery img {
+    width: calc((100% - 2 * var(--gutter) - 24px) / 3);
+  }
+
+  /* Wheels in a grid of their own cards (a ring, a name and a count), not one long group. */
+  .wheel-list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    padding: 0;
+    overflow: visible;
+    border: 0;
+    background: none;
+    box-shadow: none;
+  }
+
+  .wheel-list > li,
+  .wheel-list > li + li {
+    padding: 3px;
+    border: 1px solid transparent;
+    border-radius: var(--r-group);
+    background: var(--surface);
+    box-shadow: var(--ring-edge);
+  }
+
+  .wheel-foot {
+    justify-content: center;
+    gap: 0 24px;
+  }
+
+  .status-page {
+    width: 100%;
+    max-width: 420px;
+    margin-inline: auto;
+  }
+
+  .tag-lede-narrow,
+  .tag-steps-narrow {
+    display: none;
+  }
+
+  .tag-lede-wide {
+    display: block;
+  }
+
+  .tag-steps-wide {
+    display: block;
+  }
+
+  /* The tooltip of a rail link, under a pointer only. */
+  @media (hover: hover) and (max-width: 1279px) {
+    .side-link:hover::after,
+    .side-link:focus-visible::after {
+      content: attr(data-tip);
+      position: absolute;
+      top: 50%;
+      left: calc(100% + 10px);
+      z-index: 2;
+      padding: 6px 10px;
+      border-radius: 8px;
+      background: var(--ink);
+      color: var(--bg);
+      font-size: 0.8125rem;
+      line-height: 1.125rem;
+      font-weight: 600;
+      white-space: nowrap;
+      transform: translateY(-50%);
+      pointer-events: none;
+    }
+  }
+}
+
+@media (min-width: 900px) {
+  #bottle-groups {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+    column-gap: 24px;
+  }
+
+  #bottle-groups > .empty-state {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (min-width: 1000px) {
+  :root {
+    --panel-w: 360px;
+  }
+
+  main.wide {
+    max-width: 1120px;
+  }
+
+  body.has-panel,
+  body:has(dialog.sheet[open]) {
+    padding-right: calc(var(--panel-w) + env(safe-area-inset-right));
+  }
+
+  .wheel-list {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .history-year {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 24px;
+    align-items: start;
+  }
+
+  .history-year > .year-line {
+    grid-column: 1 / -1;
+  }
+
+  /* The wishlist: the checkout on the left, the wished shades beside it. */
+  #wishlist:has(.cart-box) {
+    display: grid;
+    grid-template-columns: 23rem minmax(0, 1fr);
+    column-gap: 32px;
+    align-items: start;
+  }
+
+  #wishlist > .notice {
+    grid-column: 1 / -1;
+  }
+
+  #wishlist > .cart-box {
+    position: sticky;
+    top: 16px;
+    grid-column: 1;
+    grid-row: span 20;
+  }
+
+  #wishlist > .wish-group {
+    grid-column: 2;
+  }
+
+  #wishlist > .wish-group:nth-of-type(2) .section-title {
+    margin-top: 0;
+  }
+
+  /* The shade panel: not modal, beside the list; its own scroll. */
+  .panel {
+    --gutter: 20px;
+    --tip-xl-w: 96px;
+    --tip-xl-h: 158px;
+    position: fixed;
+    inset: 0 0 0 auto;
+    z-index: 15;
+    display: block;
+    width: var(--panel-w);
+    padding-top: env(safe-area-inset-top);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    background: var(--surface);
+    box-shadow: -1px 0 0 var(--line);
+    translate: 100% 0;
+    visibility: hidden;
+    transition: translate 200ms var(--ease-in), visibility 0s linear 200ms;
+  }
+
+  .panel:focus {
+    outline: 0;
+  }
+
+  .has-panel .panel {
+    translate: 0 0;
+    visibility: visible;
+    transition: translate 280ms var(--ease-out);
+  }
+
+  .panel-bar {
+    position: sticky;
+    top: 0;
+    z-index: 4;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px var(--gutter);
+    background: var(--material);
+    -webkit-backdrop-filter: blur(20px) saturate(1.6);
+    backdrop-filter: blur(20px) saturate(1.6);
+    box-shadow: 0 1px 0 var(--material-edge), var(--material-light);
+  }
+
+  .panel-title {
+    color: var(--ink-2);
+    font-size: 0.9375rem;
+    line-height: 1.25rem;
+    font-weight: 600;
+  }
+
+  .panel-body {
+    padding: 16px var(--gutter) 48px;
+  }
+
+  .panel .gallery img {
+    width: 11.25rem;
+  }
+
+  .panel .detail-head {
+    margin-top: 16px;
+  }
+
+  .panel .actions {
+    margin-top: 16px;
+  }
+
+  /* #sheet becomes a right-anchored panel; a modal, over a lighter scrim. */
+  .sheet {
+    width: var(--panel-w);
+    max-width: none;
+    height: 100dvh;
+    max-height: none;
+    margin: 0 0 0 auto;
+    border-radius: 0;
+    box-shadow: -1px 0 0 var(--line);
+    transform: translateX(100%);
+    opacity: 1;
+    transition: transform 200ms var(--ease-in), display 200ms allow-discrete,
+      overlay 200ms allow-discrete;
+  }
+
+  .sheet[open] {
+    transform: none;
+    transition-duration: 280ms;
+    transition-timing-function: var(--ease-out);
+  }
+
+  @starting-style {
+    .sheet[open] {
+      transform: translateX(100%);
+      opacity: 1;
+    }
+  }
+
+  .sheet::backdrop {
+    background: var(--scrim-panel);
+  }
+
+  #sheet-body {
+    display: flex;
+    flex-direction: column;
+    min-height: 100dvh;
+  }
+
+  #sheet-body > form,
+  #sheet-body > .builder {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+  }
+
+  #sheet-body .builder-body {
+    flex: 1;
+  }
+
+  #sheet-body .sheet-actions {
+    margin-top: auto;
+  }
+
+  .sheet-head {
+    position: sticky;
+    top: 0;
+    z-index: 4;
+    align-items: center;
+    margin: 0 calc(-1 * var(--gutter)) 16px;
+    padding: 12px var(--gutter);
+    background: var(--sheet-material);
+    -webkit-backdrop-filter: blur(20px) saturate(1.6);
+    backdrop-filter: blur(20px) saturate(1.6);
+    box-shadow: 0 1px 0 var(--material-edge), var(--material-light);
+  }
+
+  .sheet-head h2 {
+    padding-top: 0;
+    font-size: 0.9375rem;
+    line-height: 1.25rem;
+    font-weight: 600;
+    letter-spacing: 0;
+  }
+
+  .sheet-head .sheet-close {
+    position: relative;
+    min-height: 0;
+    width: 32px;
+    height: 32px;
+    margin-right: 0;
+    padding: 0;
+    border-radius: 999px;
+    background: var(--fill);
+  }
+
+  .sheet-head .sheet-close::before {
+    content: "";
+    position: absolute;
+    inset: -6px;
+  }
+
+  .sheet-close span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  .sheet-head .sheet-close .icon {
+    display: block;
+    width: 1rem;
+    height: 1rem;
+  }
+
+  .picker-results {
+    max-height: none;
+    overflow: visible;
+  }
+
+  /* The hint line at the foot of the Shades list, after the first sign of a keyboard. */
+  @media (hover: hover) and (pointer: fine) {
+    .keys-seen .keys-hint {
+      position: fixed;
+      bottom: 16px;
+      left: calc(var(--side-w) + var(--gutter) + env(safe-area-inset-left));
+      z-index: 5;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px 16px;
+      max-width: calc(100% - var(--side-w) - 2 * var(--gutter));
+      margin: 0;
+      padding: 6px 14px;
+      border-radius: 999px;
+      background: var(--material);
+      -webkit-backdrop-filter: blur(20px) saturate(1.6);
+      backdrop-filter: blur(20px) saturate(1.6);
+      box-shadow: 0 0 0 1px var(--material-edge), var(--material-light);
+      color: var(--ink-2);
+      font-size: 0.8125rem;
+      line-height: 1.125rem;
+    }
+
+    .keys-hint kbd {
+      padding: 0 5px;
+      border: 1px solid var(--line-2);
+      border-radius: 5px;
+      font: 500 0.75rem/1rem var(--sans);
+    }
+  }
+}
+
+@media (min-width: 1280px) {
+  :root {
+    --gutter: 32px;
+    --side-w: 240px;
+    --panel-w: 400px;
+    --tip-l-w: 96px;
+    --tip-l-h: 158px;
+  }
+
+  .side-brand {
+    justify-content: flex-start;
+    padding: 0 12px;
+  }
+
+  .side-link {
+    justify-content: flex-start;
+  }
+
+  .side-label {
+    position: static;
+    width: auto;
+    height: auto;
+    margin: 0;
+    overflow: visible;
+    clip: auto;
+  }
+
+  .side-key {
+    display: block;
+  }
+
+  .side-user {
+    display: block;
+  }
+}
+
+/* The round close button of the panel, and the sheet's Cancel where it takes that shape: 32px to
+   look at and 44 to touch. */
+.sheet-close .icon {
+  display: none;
+}
+
+.btn-round::before {
+  content: "";
+  position: absolute;
+  inset: -6px;
+}
+
+.btn-round {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: var(--fill);
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.btn-round .icon {
+  width: 1rem;
+  height: 1rem;
+}
+
+/* Phone only: the grabber takes the finger (sheet.js) and the sheet follows it. */
+@media (max-width: 699px) {
+  .grabber {
+    position: relative;
+    touch-action: none;
+  }
+
+  .grabber::before {
+    content: "";
+    position: absolute;
+    inset: -14px -48px;
+  }
+
+  .sheet[open] {
+    transform: translateY(var(--drag, 0px));
+  }
+
+  .sheet.is-dragging,
+  .sheet.is-dragging[open] {
+    transition: none;
+  }
+}
+
+.delete-wheel {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin: 0 0 16px;
+}
+
+.delete-wheel-line {
+  min-width: 0;
+  color: var(--ink-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.delete-wheel-line strong {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.sheet-copy {
+  margin: 0 0 16px;
+  color: var(--ink-2);
+  font-size: 0.9375rem;
+  line-height: 1.3125rem;
+}
+
+.tag-steps-wide {
+  margin: 0 0 16px;
+}
+
+.tag-steps-wide summary {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-height: var(--tap);
+  font-weight: 600;
+  list-style: none;
+  cursor: pointer;
+}
+
+.tag-steps-wide summary::-webkit-details-marker {
+  display: none;
+}
+
+.tag-steps-wide summary .icon {
+  transition: rotate 200ms var(--ease-out);
+}
+
+.tag-steps-wide[open] summary .icon {
+  rotate: 90deg;
+}
+
 /* 14. Preferences */
 @media (hover: hover) {
   .row-link:hover,
@@ -4317,5 +5059,18 @@ span.layer-btn {
 
   .sheet::backdrop {
     transition-duration: 150ms;
+  }
+
+  /* The panel fades instead of sliding. */
+  .panel,
+  .has-panel .panel {
+    translate: none;
+    opacity: 0;
+    transition: opacity 150ms ease-out, visibility 0s linear 150ms;
+  }
+
+  .has-panel .panel {
+    opacity: 1;
+    transition: opacity 150ms ease-out;
   }
 }

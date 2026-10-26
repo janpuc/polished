@@ -1,12 +1,11 @@
 # polished: visual design
 
 The look of the app as built: the swatch book of the overhaul of 2026-10-25, lit and lettered by v3 run 1 of
-2026-10-26 ("light and letters"). The direction is Fable's (`docs/advice/fable-swatch-book-2026-10-25.md`, then
+2026-10-26 ("light and letters"), then given three shells by v3 run 2 of the same day (section 12). The direction is Fable's (`docs/advice/fable-swatch-book-2026-10-25.md`, then
 `docs/advice/fable-v3-web-2026-10-26.md`, whose prototypes and screenshots are the visual target); this file
-records what was built and where it departs (DESIGN.md section 14, items 41, 80 to 82 and 85). DESIGN.md wins
-on behaviour; this file wins on looks. Everything lives in `static/css/app.css`. Runs 2 (three shells: side
-nav, panel, per-shell sheets) and 3 (the Home shelf, wear) are not built; sections 5 and 6 say where they will
-change this file.
+records what was built and where it departs (DESIGN.md section 14, items 41, 80 to 82, 85 and 86). DESIGN.md wins
+on behaviour; this file wins on looks. Everything lives in `static/css/app.css`. Run 3 (the Home shelf, wear and
+Home's two-column layout) is not built; Home keeps its phone content in every shell.
 
 ## 1. Concept
 
@@ -41,6 +40,7 @@ Light and dark follow the system setting (`color-scheme: light dark`, two `theme
 | `--heart` | `#d83486` | `#ff77b4` |
 | `--ok`, `--warn`, `--bad` | `#007840`, `#975800`, `#be222a` | `#61da92`, `#f9b64f`, `#ff7f7f` |
 | `--velvet` the plate under the shade head | `--surface` | `#0f070e` |
+| `--scrim-panel` the scrim behind the right-hand sheet | `rgb(42 22 35 / .25)` | `rgb(0 0 0 / .25)` |
 | `--shadow-ink` (rgb channels of every shadow) | `40 20 30` | `0 0 0` |
 | `--rim` the lit edge of a tip | `oklch(1 0 0 / .55)` | `oklch(1 0 0 / .26)` |
 | `--mat` image outline | `oklch(0 0 0 / .1)` | `oklch(1 0 0 / .1)` |
@@ -200,7 +200,10 @@ sheet, whose order is Level, Bought on, then "More details": Price paid, Opened 
 rows, slot rows and the Wheels list follow the same grid: tip or ring, name, trailing facts.
 
 **Search marks.** The letters of a result that hit are wrapped in `<mark>`: a 12 percent ink wash, radius 3, no
-colour change and no weight change; the title stays one inline run, so the mark never opens a gap.
+colour change and no weight change; the title stays one inline run, so the mark never opens a gap. When typo
+tolerance found some of the matches the count line reads "3 matches, closest first". Names that are all but
+the same as another row of the page carry the official collection (else the release year) in `--ink-3` at 13px
+after the finishes. The first result is the cursor (`aria-current`, a `--fill` row) that Enter opens.
 
 **Home.** The greeting in Fraunces, "Good morning", "Good afternoon" or "Good evening" by the hour in
 `POLISHED_TIMEZONE` and the first name of the signed-in account, with the date in `--ink-2` under it and the icon
@@ -233,20 +236,33 @@ until the camera runs, a caption "Point at the barcode under the bottle", one fi
 or a name", "Take a photo instead" as a text action, the result, and a "Learned codes" row. A result is a
 group with the bottle photo (72 by 96) beside the shade's own `tip-l`, then the name, finishes and price.
 
-**Sheets** (`<dialog>`): opaque `--surface`, top radius 20, a 36 by 5 grabber, a title row with a text
-"Cancel", a sticky footer with the translucent material and the one filled button, padding to the home
-indicator. Secondary actions are quiet text at the foot (`.sheet-quiet`), red only where the action destroys.
+**Sheets** (`<dialog>`): opaque `--surface`, top radius 20, a 36 by 5 grabber (a drag handle on the phone,
+section 12), a title row with a text "Cancel", a sticky footer with the translucent material and the one filled
+button, padding to the home indicator. Secondary actions are quiet text at the foot (`.sheet-quiet`: Archive
+this bottle, Archive wheel in the Rename sheet), red only where the action destroys. The shape changes by
+shell (section 12).
+
+**Delete wheel** is a sheet: "Delete Holos?", "This removes the wheel, its 14 swatches and its tag address. The
+sticker will stop opening anything.", the wheel's mini ring (72px) with "Holos, 14 of 20", and the one filled
+button in `--bad`. The wheel page's foot is three quiet words, Tag and QR code, Rename and Delete (the last in
+`--bad`).
+
+**The tag page.** Title, a lede, the QR at 216px on a 12px white plate (radius 16), the address field, **Copy
+address** (the filled action; "Open the wheel" is secondary), then "Write the tag" with the four NFC Tools
+steps, then "Move the tag" and the quiet red "New tag URL". From 700px the lede reads "Scan this with the iPhone
+camera, then write the sticker from NFC Tools there. Or write it from the Polished app on iPhone." and the
+steps sit in a closed disclosure.
 
 **Empty states.** One line and one action; where a drawing helps it is the thing that will fill the space (the
 unpainted ring on Home and in Wheels, the lit unpainted tip in a search with no result), never foil.
 
 **Icons.** `static/icons/ui.svg`, 1.75px stroke at 24, `currentColor`, filled for the active tab. Added in
 run 1: `calendar` (the date field), `qr`, `trash`, `sparkle`, `sidebar` and `arrow-up-right` (the last four wait
-for runs 2 and 3). The level arc is CSS, not an icon.
+for run 3). Run 2 added `ellipsis` (More in the side nav). The level arc is CSS, not an icon.
 
 ## 7. The layer-stack builder
 
-A sheet at `max-height: 92dvh`. Its head is the stack's composite tip (`tip-xl`, 96 by 158) beside "Slot 3", the
+A sheet at `max-height: 92dvh` (a right-hand panel on the panel shell, section 12). Its head is the stack's composite tip (`tip-xl`, 96 by 158) beside "Slot 3", the
 wheel name as a caption and Cancel, with the summary under them as body text; every layer edit appends the new
 composite over the old one and fades it in once loaded. Layers are a list on a 2px rail through their
 tips: label (Base, 2nd, Top), name, an iOS-style hairline stepper for coats, move arrows from three layers on,
@@ -262,8 +278,10 @@ Four moments, on `transform`, `scale` and `opacity`:
 - Press: `scale(.96)` over 150ms ease-out; rows wash to `--fill` at once.
 - A ring tip lifts to 1.08 before the sheet rises; a saved slot gets one foil sweep (700ms).
 - A new builder tip fades in over the old one; the "+" of the Wheels list turns to ×.
-Under `prefers-reduced-motion` there is no scale, slide or turn; the sheet fades over 150ms and the save ring
-shows still for a second. Transitions name their properties (never `all`). Nothing animates on load. The
+The wider shells add: the centred modal arrives from `scale .96` and `opacity 0` over 240ms and leaves over
+240ms; the right-hand sheet slides in over 280ms and out over 200ms; the shade panel slides over 280ms and 200ms.
+Under `prefers-reduced-motion` there is no scale, slide or turn; the sheet and the panel fade over 150ms and the
+save ring shows still for a second. Transitions name their properties (never `all`). Nothing animates on load. The
 authored arrival of a new bottle's tip, view transitions and the theme-switch suppression are run 3.
 
 ## 9. Copy
@@ -310,3 +328,41 @@ stylised fingertip, on plum**. The source of truth is `src/polished/static/icons
 - Maskable 512: every meaningful part is inside the 80 percent safe circle (farthest point, the
   sparkle tip, is 37.7 units from the centre); the finger bleeds off the bottom by design.
 - No filters, no `<style>`, path data repeated instead of `<use>` so every rasteriser agrees.
+
+## 12. Three shells
+
+One HTML, three layouts chosen by viewport width (never by user agent): **phone** under 700px, **rail** from
+700 and **panel** from 1000 (**sidebar** from 1280 within it). Everything is the final block of `app.css`
+("17. Three shells") and overrides the phone rules above it.
+
+| | Phone, under 700 | Rail, 700 to 999 | Panel, 1000 and up (sidebar from 1280) |
+|---|---|---|---|
+| Navigation | frosted tab bar | 72px icon rail, tooltips under a pointer | the rail; from 1280 a 240px sidebar with words, `/` on Shades, More and "Signed in as" at the foot |
+| Page | 40rem column, gutter 16 | gutter 24; lists and grids use the width | gutter 24 (32 from 1280); `main.wide` is 1120px |
+| `#sheet` | bottom sheet, grabber drags it down | centred modal, max 560, radius 20, no grabber | right-anchored panel, 360 (400 from 1280), full height, sticky frosted head and footer |
+| Shade | a page | a page | `#panel` beside the list, 360 (400), non-modal |
+| Tips | `tip-m` 40 by 66, `-l` 72 by 118, `-xl` 96 by 158 | `-m` 44 by 72, `-l` 88 by 144, `-xl` 120 by 197 | as rail, `-l` 96 by 158 from 1280; `-xl` back to 96 by 158 in the panel and the sheet |
+
+The side nav is `--bg` mixed 30 percent toward `--fill` with a 1px `--line` on its trailing edge; the active link is a
+`--fill` row with the filled icon (as the tab bar's active tab). Labels are visually hidden on the rail and become
+tooltips (`data-tip`) on hover and keyboard focus; from 1280 they are shown. A modal sheet pads the page behind it
+(`padding-right`) so the wheel's ring stays beside the builder instead of under it.
+
+**The shade panel** is `position: fixed` on the right, `--surface` with a 1px `--line` on its leading edge, a
+frosted sticky bar ("Shade", and a 32px round close button with a 44px hit area) and the shade page's own content
+under it (two photos across, the head on its plate, Add bottle, Bottles, the facets). The selected row is `--fill`
+without its hairline. The panel is `inert` while closed.
+
+**The Shades list** keeps its row; at the foot, once a keyboard has focused something, a floating hint line
+(a frosted pill: "↑↓ move, Enter open, Esc close panel, / search, n add bottle" with `kbd` caps).
+
+**Grids.** Wheels: two columns from 700, three from 1000, each wheel its own bordered card. Bottles: two columns
+of shade groups from 900. History: a year's months in two columns from 1000. Wishlist: the checkout column is
+stuck at 23rem with the wished shades beside it from 1000. Status pages (offline, signed out, sign-in refused)
+are centred at 420px with no side nav.
+
+**Checklist** (390, 834, 1024 and 1440, light and dark): at 834 the rail shows and the tab bar does not; at 1024 and
+1440 a row click opens the panel without a page load, the URL updates, Esc closes it, Back closes it; the builder
+is a right panel at 1440 with its footer stuck; at 390 nothing changed but the grabber drags; `/` focuses search;
+Delete asks, deletes and lands on Wheels with "Deleted Holos"; the tag page shows the steps on the phone and the
+collapsed version with the iPhone lede on the rail and panel shells.

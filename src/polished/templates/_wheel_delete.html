@@ -1,17 +1,21 @@
-{# The delete confirmation sheet, swapped into #sheet-body. Only this form sends confirm=yes; the
-   server answers with HX-Redirect to /wheels. Context: wheel, swatches (saved swatches on it). #}
+{# The delete confirmation sheet, swapped into #sheet-body: the sheet is the confirmation, so the
+   form has no hx-confirm. Only this form sends confirm=yes; the server answers with HX-Redirect to
+   /wheels, which shows "Deleted <name>" once. Context: wheel, swatches (saved swatches on it),
+   tiles (the wheel's slot grid, for the small ring). #}
+{% from "_icons.html" import sheet_cancel with context %}
+{% from "_mini_ring.html" import mini_ring %}
 <form class="sheet-form" method="post" action="/wheels/{{ wheel.id }}/delete" hx-post="/wheels/{{ wheel.id }}/delete" hx-swap="none">
   <div class="grabber" aria-hidden="true"></div>
   <header class="sheet-head">
     <h2 tabindex="-1" autofocus>Delete {{ wheel.name }}?</h2>
-    <button type="button" class="btn btn-text" data-sheet-close>Cancel</button>
+    {{ sheet_cancel() }}
   </header>
   <input type="hidden" name="confirm" value="yes">
-  {% if swatches %}
-  <p>Its {{ swatches }} {{ "swatch goes" if swatches == 1 else "swatches go" }} too. Its tag and QR code stop working. This can’t be undone.</p>
-  {% else %}
-  <p>It has no swatches. This can’t be undone.</p>
-  {% endif %}
+  <p class="sheet-copy">This removes the wheel{% if swatches %}, its {{ swatches }} {{ "swatch" if swatches == 1 else "swatches" }}{% endif %} and its tag address. The sticker will stop opening anything.</p>
+  <div class="delete-wheel">
+    {{ mini_ring(tiles, wheel.slot_count, "mini") }}
+    <p class="delete-wheel-line"><strong>{{ wheel.name }}</strong>, {{ swatches }} of {{ wheel.slot_count }}</p>
+  </div>
   <div class="sheet-actions">
     <button type="submit" class="btn btn-block btn-danger">Delete wheel</button>
   </div>

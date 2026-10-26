@@ -35,7 +35,8 @@ def test_every_tab_of_the_bar_has_a_page(client):
         assert f'class="tab" href="{href}"' in html
         assert client.get(href).status_code == 200
     assert "No wheels yet" in client.get("/wheels").text
-    assert client.get("/shades").text.count('aria-current="page"') == 1
+    # the side nav and the tab bar each mark the page they are on
+    assert client.get("/shades").text.count('aria-current="page"') == 2
 
 
 def test_pages_that_need_no_account_have_no_tab_bar(client):
@@ -92,3 +93,23 @@ def test_the_display_face_is_used_by_four_roles_and_nothing_else():
             selectors |= {part.strip() for part in rule.group(1).split(",")}
     assert selectors == {".greeting", ".title-detail", ".title-wheel", ".wheel-name", ".hub-name"}
     assert "background-clip: text" not in css  # no gradient text
+
+
+def test_every_page_with_tabs_has_the_side_nav_beside_the_tab_bar(client):
+    html = client.get("/shades").text
+    nav = re.search(r'<nav class="side".*?</nav>', html, re.S).group(0)
+    for href in ("/", "/shades", "/bottles", "/wheels", "/wishlist", "/more"):
+        assert f'class="side-link" href="{href}"' in nav
+    assert 'class="side-key"' in nav and "Signed in as" in nav
+    assert 'aria-current="page"' in re.search(
+        r'<a class="side-link" href="/shades".*?</a>', nav
+    ).group(0)
+    for script in ("sheet.js", "panel.js", "keys.js"):
+        assert f'/static/js/{script}?v=dev"' in html
+    # pages without tabs (offline, signed out) have neither navigation
+    assert 'class="side"' not in client.get("/offline").text
+
+
+def test_the_more_page_marks_more_in_the_side_nav(client):
+    html = client.get("/more").text
+    assert re.search(r'<a class="side-link" href="/more"[^>]*aria-current="page"', html)

@@ -127,7 +127,8 @@ def test_detail_shows_price_status_images_and_the_shop_link(seeded):
     assert response.status_code == 200
     assert "Rest In Peach" in html and "Retiring soon" in html
     assert "$13.50" in html and "$16.50" in html and "Sale" in html
-    assert html.count("<img") == 4  # two photos, the tip beside the title, the tip in Tip colour
+    # two photos, the tip beside the title, the tip in Tip colour, the side nav's mark
+    assert html.count("<img") == 5
     assert 'href="https://holotaco.com/products/rest-in-peach"' in html
     assert 'rel="noopener noreferrer"' in html
     assert "/shades?finish=creme" in html
@@ -279,3 +280,74 @@ def test_home_has_a_sticky_search_that_waits_200ms(seeded):
     assert 'hx-get="/search"' in html and 'hx-target="#search-results"' in html
     assert "Search 12 shades" in html  # 9 fixture shades + 3 extra
     assert 'class="search-bar"' in html
+
+
+# --- the shell extras: the panel, the count line, the hint, the cursor --------------------
+
+
+def test_panel_renders_the_shade_without_the_page_chrome(seeded):
+    client, conn = seeded
+    sid = shade_id(conn, "rest-in-peach")
+    panel = client.get(f"/shades/{sid}", params={"panel": 1}, headers=HX).text
+    assert "<html" not in panel and 'class="side"' not in panel and 'class="tabbar"' not in panel
+    assert "data-panel-close" in panel and 'aria-label="Close panel"' in panel
+    assert "<title>Rest In Peach | Polished</title>" in panel
+    assert '<h2 class="title title-detail">Rest In Peach</h2>' in panel and "<h1" not in panel
+    assert 'id="shade-actions"' in panel and 'id="bottles"' in panel
+    assert 'class="back"' not in panel
+
+
+def test_the_full_shade_page_carries_the_deep_link_marker_and_an_empty_panel(seeded):
+    client, conn = seeded
+    sid = shade_id(conn, "rest-in-peach")
+    page = client.get(f"/shades/{sid}").text
+    assert "<html" in page and f'data-deep-panel="{sid}"' in page
+    assert '<aside id="panel" class="panel"' in page and 'class="back"' in page
+    assert '<h1 class="title title-detail">Rest In Peach</h1>' in page
+    # the colour form's error page is a page of its own, never a panel
+    bad = client.post(f"/shades/{sid}/tip-colour", data={"hex": "nope"})
+    assert bad.status_code == 422 and "data-deep-panel" not in bad.text
+
+
+def test_the_list_has_the_panel_and_rows_that_open_it(seeded):
+    client, _ = seeded
+    page = client.get("/shades").text
+    assert '<aside id="panel" class="panel"' in page and "keys-hint" in page
+    assert re.search(r'<a class="row-link" href="/shades/\d+" data-panel>', page)
+    assert '<main id="main" class="wide">' in page
+
+
+def test_the_first_result_of_a_search_is_the_cursor(seeded):
+    client, _ = seeded
+    listing = client.get("/shades", params={"q": "thirst"}, headers=HX).text
+    assert listing.count('aria-current="true"') == 1
+    first = re.search(r'<li class="shade-row">(.*?)</li>', listing, re.S).group(1)
+    assert 'aria-current="true"' in first
+    assert "aria-current" not in client.get("/shades", headers=HX).text  # no query, no cursor
+    typeahead = client.get("/search", params={"q": "thirst"}).text
+    assert typeahead.count('aria-current="true"') == 1
+
+
+def test_the_count_line_says_closest_first_only_for_a_fuzzy_match(seeded):
+    client, _ = seeded
+    exact = client.get("/shades", params={"q": "thirst"}).text
+    assert re.search(r'id="result-count"[^>]*>\s*1 shade<', exact)
+    assert "closest first" not in exact
+    one = client.get("/shades", params={"q": "thrist trap"}, headers=HX).text
+    assert re.search(r'id="result-count" hx-swap-oob="true">1 shade<', one)  # one match: no count
+    many = client.get("/shades", params={"q": "holl"}, headers=HX).text
+    assert re.search(r'id="result-count" hx-swap-oob="true">3 matches, closest first<', many)
+    assert "3 matches, closest first" in client.get("/shades", params={"q": "holl"}).text
+    assert "3 matches, closest first" in client.get("/search", params={"q": "holl"}).text
+    plain = client.get("/shades", params={"q": "holo"}, headers=HX).text
+    assert "closest first" not in plain  # every word is a word of the title: no typo tolerance
+
+
+def test_lookalike_names_get_the_collection_or_year_to_tell_them_apart(seeded):
+    client, conn = seeded
+    conn.execute("update shade set official_collection = 'Gems' where title = 'Holo One'")
+    conn.execute("update shade set released_on = '2021-03-02' where title = 'Holo Gone'")
+    page = client.get("/shades", params={"q": "holo", "sort": "name"}).text
+    assert '<span class="row-hint">Gems</span>' in page
+    assert '<span class="row-hint">2021</span>' in page
+    assert page.count('class="row-hint"') == 2  # Holo Two is not alike, so it needs no hint

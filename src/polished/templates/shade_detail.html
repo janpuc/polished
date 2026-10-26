@@ -1,11 +1,12 @@
-{% extends "base.html" %}
+{% extends "_panel_frame.html" if panel else "base.html" %}
 {% from "_icons.html" import icon with context %}
 {% from "_tip.html" import tip, stack %}
 {% set tab = "shades" %}
 {% block title %}{{ shade.title }} | Polished{% endblock %}
-{% block scripts %}<script type="module" src="/static/js/sheet.js?v={{ version }}"></script>{% endblock %}
+{% block body_attrs %}{% if not tip_error %} data-deep-panel="{{ shade.id }}"{% endif %}{% endblock %}
+{% block aside %}<aside id="panel" class="panel" aria-label="Shade" tabindex="-1" inert></aside>{% endblock %}
 {% block content %}
-<a class="back" href="/shades">{{ icon("chevron-left") }}Shades</a>
+{% if not panel %}<a class="back" href="/shades">{{ icon("chevron-left") }}Shades</a>{% endif %}
 {% if shade.images %}
 <div class="gallery" tabindex="0" role="group" aria-label="Photos of {{ shade.title }}">
   {% for src in shade.images %}
@@ -16,7 +17,7 @@
 <div class="detail-head">
   {{ tip(shade, "xl", false) }}
   <div class="detail-title">
-    <h1 class="title title-detail">{{ shade.title }}</h1>
+    <h{{ 2 if panel else 1 }} class="title title-detail">{{ shade.title }}</h{{ 2 if panel else 1 }}>
     <p class="detail-meta">
       {% if shade.price_cents is not none %}
       <span class="price">{{ shade.price_cents|money }}</span>

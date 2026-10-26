@@ -3,6 +3,7 @@
 {% from "_mini_ring.html" import mini_ring %}
 {% set tab = "wheels" %}
 {% block title %}{{ "Archived wheels" if archived else "Wheels" }} | Polished{% endblock %}
+{% block main_class %}wide{% endblock %}
 {% block content %}
 {% macro new_form() %}
 <form class="new-wheel" method="post" action="/wheels">
@@ -22,6 +23,7 @@
 <header class="page-head{% if cards and not archived %} has-add{% endif %}">
   <h1 class="title">{{ "Archived" if archived else "Wheels" }}</h1>
 </header>
+{% if flash %}<p class="notice" role="status">{{ flash }}</p>{% endif %}
 {% if cards %}
 {% if not archived %}
 <details class="new-wheel-box"{% if error %} open{% endif %}>

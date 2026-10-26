@@ -1,6 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
   <!-- UI icon sprite on a 24 grid. app.css (.icon) sets the stroke, fill and caps and colours it
-       with currentColor: <svg class="icon"><use href="/static/icons/ui.svg#name"/></svg>. No style
+       with currentColor: <svg class="icon"><use href="/static/icons/ui.svg#name"/>  <symbol id="ellipsis" viewBox="0 0 24 24">
+    <circle cx="6" cy="12" r="1.1"/>
+    <circle cx="12" cy="12" r="1.1"/>
+    <circle cx="18" cy="12" r="1.1"/>
+  </symbol>
+</svg>. No style
        element here, the CSP of a document forbids one. -->
   <symbol id="home" viewBox="0 0 24 24">
     <path d="M4 11.4 12 4.2l8 7.2V19a1 1 0 0 1-1 1h-4.2v-5.4H9.2V20H5a1 1 0 0 1-1-1z"/>
@@ -102,5 +107,10 @@
   </symbol>
   <symbol id="arrow-up-right" viewBox="0 0 24 24">
     <path d="M7 17 17 7M8.5 7H17v8.5"/>
+  </symbol>
+  <symbol id="ellipsis" viewBox="0 0 24 24">
+    <circle cx="6" cy="12" r="1.1"/>
+    <circle cx="12" cy="12" r="1.1"/>
+    <circle cx="18" cy="12" r="1.1"/>
   </symbol>
 </svg>

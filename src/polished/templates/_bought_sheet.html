@@ -1,13 +1,14 @@
 {# The "I bought these" sheet, swapped into #sheet-body: the wishlist as checkable rows, a price
    each and one date for all. A failed validation comes back here (HX-Retarget) with the messages
    and what was typed. #}
+{% from "_icons.html" import sheet_cancel with context %}
 {% from "_tip.html" import tip %}
 {% from "_date_field.html" import date_field with context %}
 <form class="sheet-form" method="post" action="/wishlist/bought" hx-post="/wishlist/bought" hx-target="#wishlist" hx-swap="outerHTML">
   <div class="grabber" aria-hidden="true"></div>
   <header class="sheet-head">
     <h2 tabindex="-1" autofocus>I bought these<span class="sheet-note">They move from the wishlist to your bottles.</span></h2>
-    <button type="button" class="btn btn-text" data-sheet-close>Cancel</button>
+    {{ sheet_cancel() }}
   </header>
   {{ date_field("bought_on", "Bought on", bought_on, errors.bought_on) }}
   <fieldset class="buy-list">

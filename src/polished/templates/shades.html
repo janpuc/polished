@@ -2,6 +2,7 @@
 {% from "_icons.html" import icon with context %}
 {% set tab = "shades" %}
 {% block title %}Shades | Polished{% endblock %}
+{% block main_class %}wide{% endblock %}
 {% block content %}
 <header class="page-head">
   <h1 class="title">Shades</h1>
@@ -9,7 +10,7 @@
 </header>
 <div class="sentinel" aria-hidden="true"></div>
 <form id="shade-filters" class="search-bar" action="/shades" method="get" role="search"
-      hx-get="/shades" hx-trigger="input from:#q delay:200ms, change" hx-target="#shade-list"
+      hx-get="/shades" hx-trigger="input from:#q delay:200ms, change from:.filter-panel" hx-target="#shade-list"
       hx-swap="innerHTML" hx-push-url="true" hx-sync="this:replace">
   <div class="search-row">
     <div class="search-field">
@@ -104,8 +105,18 @@
     </details>
   </div>
 </form>
-<p id="result-count" class="count" aria-live="polite">{{ result.total }} shade{{ '' if result.total == 1 else 's' }}</p>
+<p id="result-count" class="count" aria-live="polite">{% include "_result_count.html" %}</p>
 <ul id="shade-list" class="list">
   {% include "_shade_rows.html" %}
 </ul>
+<p class="keys-hint" aria-hidden="true">
+  <span><kbd>↑</kbd><kbd>↓</kbd> move</span>
+  <span><kbd>Enter</kbd> open</span>
+  <span><kbd>Esc</kbd> close panel</span>
+  <span><kbd>/</kbd> search</span>
+  <span><kbd>n</kbd> add bottle</span>
+</p>
+{% endblock %}
+{% block aside %}
+<aside id="panel" class="panel" aria-label="Shade" tabindex="-1" inert></aside>
 {% endblock %}

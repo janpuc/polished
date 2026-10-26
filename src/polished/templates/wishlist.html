@@ -1,7 +1,8 @@
 {% extends "base.html" %}
 {% set tab = "wishlist" %}
 {% block title %}Wishlist | Polished{% endblock %}
-{% block scripts %}<script type="module" src="/static/js/copy.js?v={{ version }}"></script><script type="module" src="/static/js/sheet.js?v={{ version }}"></script>{% endblock %}
+{% block main_class %}wide{% endblock %}
+{% block scripts %}<script type="module" src="/static/js/copy.js?v={{ version }}"></script>{% endblock %}
 {% block content %}
 <header class="page-head">
   <h1 class="title">Wishlist</h1>
