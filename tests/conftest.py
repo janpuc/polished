@@ -61,6 +61,7 @@ def make_settings(tmp_path: Path, **overrides) -> Settings:
         "auth_mode": "none",
         "session_secret": SECRET,
         "sync_enabled": False,
+        "release_sheet_url": "",  # the release sheet is a second request; its tests switch it on
     }
     values.update(overrides)
     return Settings(_env_file=None, **values)

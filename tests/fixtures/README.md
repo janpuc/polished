@@ -33,3 +33,18 @@ python3 -I scripts/make_fixtures.py
 
 Expected roles: 9 shades (7 polish, 1 topcoat, 1 basecoat), 2 bundles, 4 aliases (3 resolve),
 1 skipped.
+
+`release_sheet_trimmed.csv` is Holo Taco's release list (the public Google Sheet) cut down to the
+preamble, the header row and 13 real rows: the sheet's own columns (release date, shade name,
+collection, retired), nothing else. The preamble keeps the quoted cell with a line break, as the
+live export has it. Tests parse it with a lowered row minimum (`min_rows=`); nothing is fetched.
+
+| Shade | Why it is here |
+|---|---|
+| Royal-Tea Blue, Aurora Unicorn Skin, Thirst Trap, Rest In Peach, Jam Session | match fixture shades (the feed's titles carry a ™, or not) |
+| Gold Play Button | retired in both the shop's tags and the sheet |
+| Hit The Lights | `Retired` in the sheet, only sold out in the shop |
+| Silver Flake Taco, Red Flake Taco | sheet-only toppers (the second `Retired`) |
+| Silent Night, Diamond Dasher Taco | sheet-only, the Mini Advent Calendar; one polish, one topper |
+| Glow In The Dark Taco | sheet-only, `Seasonal`, which is not retired |
+| Play Rosé | sheet-only, with an accent |

@@ -25,12 +25,13 @@
       {% include "_owned_pill.html" %}
       {% if shade.status is none %}<span class="status status-manual">Added by hand</span>{% elif shade.status.key != 'available' %}<span class="status status-{{ shade.status.key }}">{{ shade.status.label }}</span>{% endif %}
     </p>
+    {% if shade.released_on %}<p class="detail-released footnote muted">Released {{ shade.released_on|day }}{% if shade.retired and shade.status and shade.status.key != 'retired' %}, retired{% endif %}</p>{% endif %}
   </div>
 </div>
 {% include "_shade_actions.html" %}
 {% include "_bottles.html" %}
 {% set kinds = (["Topper"] if shade.is_topper else []) + (["Base coat"] if shade.kind == 'basecoat' else []) %}
-{% if kinds or shade.tags.finish or shade.tags.color or shade.tags.collection %}
+{% if kinds or shade.tags.finish or shade.tags.color or shade.tags.collection or shade.official_collection %}
 <dl class="facets">
   {% if kinds or shade.tags.finish %}
   <dt>Finish</dt>
@@ -43,9 +44,9 @@
   <dt>Colour</dt>
   <dd class="chips">{% for value in shade.tags.color %}<a class="chip" href="/shades?color={{ value|urlencode }}">{{ value|label }}</a>{% endfor %}</dd>
   {% endif %}
-  {% if shade.tags.collection %}
+  {% if shade.tags.collection or shade.official_collection %}
   <dt>Collections</dt>
-  <dd class="chips">{% for value in shade.tags.collection %}<a class="chip" href="/shades?collection={{ value|urlencode }}">{{ value|label }}</a>{% endfor %}</dd>
+  <dd class="chips">{% if shade.official_collection %}<a class="chip chip-long" href="/shades?collection={{ shade.official_collection|urlencode }}">{{ shade.official_collection }}</a>{% endif %}{% for value in shade.tags.collection %}<a class="chip" href="/shades?collection={{ value|urlencode }}">{{ value|label }}</a>{% endfor %}</dd>
   {% endif %}
 </dl>
 {% endif %}

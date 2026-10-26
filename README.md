@@ -80,6 +80,13 @@ pages with the same code and no network (use this for development: `tests/fixtur
 trimmed feed, and a full snapshot of three pages works too). A 429 or 5xx stops the run with
 nothing written. Shades are never deleted.
 
+After the shop pages the sync reads Holo Taco's official release list (a public Google Sheet, CSV
+export, one request) for each shade's release date, official collection name and retired flag, and
+adds the few shades the sheet lists and the shop does not as "Not in the shop" shades you can still
+own, swatch and wish for. A sheet that fails or changes layout is logged as a warning and changes
+nothing; the shop sync never depends on it. `POLISHED_RELEASE_SHEET_URL` changes the address (empty
+turns it off); `sync --from-files PAGE.json ... --sheet SHEET.csv` applies a local copy.
+
 ## Settings
 
 Environment variables, all prefixed `POLISHED_` (see `src/polished/config.py`). Secrets come only
@@ -101,6 +108,7 @@ from the environment.
 | `POLISHED_SYNC_HOUR`, `POLISHED_SYNC_JITTER_MIN` | `6`, `30` | Daily run, local time, plus up to this many minutes of jitter |
 | `POLISHED_SYNC_MIN_INTERVAL_S` | `1.0` | Gap between requests to the store; values below `1.0` are refused |
 | `POLISHED_SYNC_MANUAL_COOLDOWN_S` | `3600` | Minimum time between runs started from the page |
+| `POLISHED_RELEASE_SHEET_URL` | the CSV export of Holo Taco's release list | Read once per sync after the shop pages, for release dates, collections and retired flags; empty turns it off |
 | `POLISHED_TIMEZONE` | `Europe/Warsaw` | Household timezone |
 | `POLISHED_OVER_BLACK_HANDLE` | `one-coat-black` | Shade the "Over black" template inserts (stage 7) |
 | `POLISHED_LOG_LEVEL`, `POLISHED_VERSION` | `INFO`, `dev` | Logging; the image build sets the version |

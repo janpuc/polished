@@ -1,7 +1,8 @@
 """Applying the feed to the database (DESIGN 5.2), and running a sync (DESIGN 5.1).
 
 apply_feed() is the algorithm, one transaction over pages already in memory. SyncRunner wraps it
-with the single-flight lock, the sync_run row, the fetch and the cooldown.
+with the single-flight lock, the sync_run row, the fetch and the cooldown, then reads the release
+sheet (DESIGN 5.6) and the polish colours.
 """
 
 import asyncio
@@ -32,6 +33,15 @@ from .parse import (
     search_text,
     swatch_image_url,
     tag_pairs,
+)
+from .sheet import (
+    SheetCounts,
+    SheetError,
+    SheetRow,
+    apply_sheet,
+    fetch_sheet,
+    parse_sheet,
+    refresh_retired,
 )
 
 log = logging.getLogger("polished.sync")
@@ -288,6 +298,7 @@ def apply_feed(
                     )
 
         counts.unresolved_aliases = _resolve_aliases(conn)
+        refresh_retired(conn)  # a changed product must not undo what the release sheet said
 
         trustworthy = (
             previous is None or len(parsed_products) >= TRUST_RATIO * previous["products_seen"]
@@ -379,8 +390,10 @@ class SyncRunner:
         now: Callable[[], datetime] = utc_now,
         colour_transport: httpx.BaseTransport | None = None,
         colour_sleep: Callable[[float], None] | None = None,
+        sheet_transport: httpx.AsyncBaseTransport | None = None,
     ):
         self.settings = settings
+        self.sheet_transport = sheet_transport
         self.colour_options = {
             key: value
             for key, value in (("transport", colour_transport), ("sleep", colour_sleep))
@@ -430,8 +443,12 @@ class SyncRunner:
         finally:
             conn.close()
 
-    async def execute(self, run_id: int, files: list[Path] | None = None) -> RunOutcome:
-        """Fetches (or reads files), applies, closes the row. Releases the lock taken by begin()."""
+    async def execute(
+        self, run_id: int, files: list[Path] | None = None, sheet: Path | None = None
+    ) -> RunOutcome:
+        """Fetches (or reads files), applies, closes the row. Releases the lock taken by begin().
+        Then the release sheet: read from the `sheet` file, else fetched, but not when the shop
+        pages came from `files` (an offline run stays offline)."""
         try:
             if files is None:
                 pages = await fetch_feed(
@@ -444,6 +461,7 @@ class SyncRunner:
             else:
                 pages = await asyncio.to_thread(read_pages, files)
             counts = await asyncio.to_thread(self._apply, run_id, pages)
+            await self._read_sheet(sheet, offline=files is not None)
             await asyncio.to_thread(self._read_colours)
         except asyncio.CancelledError:
             self._record_error(run_id, "interrupted")
@@ -462,13 +480,45 @@ class SyncRunner:
         log.info("sync run %d ok: %s", run_id, counts)
         return RunOutcome(run_id, "ok")
 
-    async def run(self, trigger: str, files: list[Path] | None = None) -> RunOutcome:
-        return await self.execute(await self.begin(trigger), files)
+    async def run(
+        self, trigger: str, files: list[Path] | None = None, sheet: Path | None = None
+    ) -> RunOutcome:
+        return await self.execute(await self.begin(trigger), files, sheet)
 
     def _apply(self, run_id: int, pages: list[list[dict]]) -> SyncCounts:
         conn = connect(self.settings.db_path)
         try:
             return apply_feed(conn, run_id, pages, self.now(), self.tz)
+        finally:
+            conn.close()
+
+    async def _read_sheet(self, sheet: Path | None, *, offline: bool) -> None:
+        """After the shop is applied: the release dates, collections and retired flags (DESIGN 5.6).
+        One request, or the `sheet` file. Never raises: a sheet that cannot be fetched or read, or
+        whose layout changed, is logged as a warning and the data stays as it was."""
+        url = self.settings.release_sheet_url
+        if sheet is None and (offline or not url):
+            return
+        try:
+            if sheet is not None:
+                text = await asyncio.to_thread(sheet.read_text, "utf-8-sig")
+            else:
+                text = await fetch_sheet(
+                    url, version=self.settings.version, transport=self.sheet_transport
+                )
+            rows = parse_sheet(text)
+            counts = await asyncio.to_thread(self._apply_sheet, rows)
+        except (SheetError, OSError, ValueError) as exc:
+            log.warning("release sheet skipped: %s", exc)
+        except Exception:
+            log.exception("release sheet step failed")
+        else:
+            log.info("release sheet applied: %s", counts)
+
+    def _apply_sheet(self, rows: list[SheetRow]) -> SheetCounts:
+        conn = connect(self.settings.db_path)
+        try:
+            return apply_sheet(conn, rows)
         finally:
             conn.close()
 

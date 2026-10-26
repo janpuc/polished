@@ -9,6 +9,17 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 LOCAL_HOSTS = ("localhost", "127.0.0.1")
 LOOPBACK_BINDS = ("127.0.0.1", "::1", "localhost")
 MIN_SESSION_SECRET = 32
+RELEASE_SHEET_URL = (
+    "https://docs.google.com/spreadsheets/d/1NzRWMdQngZg_xnehoUtjtvUnc4nIaSbqUBqmE7KwB8g"
+    "/export?format=csv&gid=186001220"
+)
+
+
+def _check_http_url(value: str) -> str:
+    parts = urlsplit(value)
+    if parts.scheme not in ("http", "https") or not parts.hostname:
+        raise ValueError(f"must be an http(s) URL, got {value!r}")
+    return value
 
 
 class Settings(BaseSettings):
@@ -44,6 +55,9 @@ class Settings(BaseSettings):
     # Gap between requests to the store; the store is small, so values below 1.0 are rejected.
     sync_min_interval_s: float = Field(1.0, ge=1.0)
     sync_manual_cooldown_s: int = Field(3600, ge=0)
+    # Holo Taco's official release list (a public Google Sheet, CSV export), read once per sync
+    # after the shop pages. Empty turns it off.
+    release_sheet_url: str = RELEASE_SHEET_URL
 
     timezone: str = "Europe/Warsaw"
     over_black_handle: str = "one-coat-black"
@@ -51,10 +65,13 @@ class Settings(BaseSettings):
     @field_validator("public_url", "store_url", "oidc_issuer")
     @classmethod
     def _http_url(cls, value: str) -> str:
-        parts = urlsplit(value)
-        if parts.scheme not in ("http", "https") or not parts.hostname:
-            raise ValueError(f"must be an http(s) URL, got {value!r}")
-        return value.rstrip("/")
+        return _check_http_url(value).rstrip("/")
+
+    @field_validator("release_sheet_url")
+    @classmethod
+    def _optional_http_url(cls, value: str) -> str:
+        value = value.strip()
+        return _check_http_url(value) if value else ""
 
     @field_validator("timezone")
     @classmethod

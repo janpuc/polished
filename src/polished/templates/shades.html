@@ -69,15 +69,28 @@
           <label for="collection">Collection</label>
           <select id="collection" name="collection">
             <option value="">Any collection</option>
+            {% if facets.official %}
+            <optgroup label="Official collections">
+              {% for value in facets.official %}
+              <option value="{{ value }}"{% if value == query.collection %} selected{% endif %}>{{ value }}</option>
+              {% endfor %}
+            </optgroup>
+            <optgroup label="Shop tags">
+              {% for value in facets.collection %}
+              <option value="{{ value }}"{% if value == query.collection %} selected{% endif %}>{{ value|label }}</option>
+              {% endfor %}
+            </optgroup>
+            {% else %}
             {% for value in facets.collection %}
             <option value="{{ value }}"{% if value == query.collection %} selected{% endif %}>{{ value|label }}</option>
             {% endfor %}
+            {% endif %}
           </select>
         </div>
         <div class="field">
           <label for="sort">Sort by</label>
           <select id="sort" name="sort">
-            {% for value, text in [("name", "Name"), ("newest", "Newest"), ("price", "Price, low to high")] %}
+            {% for value, text in [("name", "Name"), ("released", "Release date, newest first"), ("newest", "Recently listed"), ("price", "Price, low to high")] %}
             <option value="{{ value }}"{% if query.sort == value %} selected{% endif %}>{{ text }}</option>
             {% endfor %}
           </select>

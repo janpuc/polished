@@ -99,11 +99,12 @@ iPhone Safari / PWA ──https──> Cloudflare tunnel ──> envoy-external 
 
 ```
 __init__.py          __version__ = "0.1.0"  # x-release-please-version
-__main__.py, cli.py  python -m polished {serve | migrate | sync [--from-files …]}
+__main__.py, cli.py  python -m polished {serve | migrate | sync [--from-files … --sheet …] | colours}
 config.py            Settings (pydantic-settings, env prefix POLISHED_), section 12
 db.py                connect(path), request-scoped connection dependency, transaction helper
-migrate.py           numbered-SQL runner (serendip's, schema_version table)
-migrations/          001_catalog.sql … 006_swatch_colour.sql
+migrate.py           numbered-SQL runner (serendip's, schema_version table); foreign keys off, a
+                     migration may not leave more violations than it found
+migrations/          001_catalog.sql … 007_release_sheet.sql
 server.py            create_app(): middleware order, routers, templates, static, lifespan
 web.py               Jinja environment, render(): full page vs partial, filters (money, thumb, dates)
 security.py          Origin check for unsafe methods, security headers and CSP, cache headers
@@ -115,6 +116,8 @@ catalog/
   fetch.py           polite Shopify client: fetch_feed(), rate limiter, User-Agent, 429 handling
   sync.py            apply_feed(): the feed in one transaction, absence accounting; SyncRunner: lock,
                      sync_run row, fetch or files, cooldown
+  sheet.py           the release sheet: parse_sheet(), normalise_name(), fetch_sheet(), apply_sheet(),
+                     merge_sheet_shade(), refresh_retired() (5.6)
   colour.py          extract_colours(): the polish colour from a photo; fill_colours(): the sync step
   scheduler.py       next_run_at(), catchup_due(), close_stale_runs(), Scheduler loop
 shades.py            list/filter/search queries, status derivation, detail, manual shades
@@ -206,8 +209,8 @@ create index product_role on product (role);
 -- The app-facing copy of the product's facts, so queries need no join.
 create table shade (
   id               integer primary key,
-  product_id       integer unique references product (id),   -- null for source = 'manual'
-  source           text not null default 'holotaco' check (source in ('holotaco', 'manual')),
+  product_id       integer unique references product (id),   -- null for source = 'manual' and 'sheet'
+  source           text not null default 'holotaco' check (source in ('holotaco', 'manual')),   -- 007 adds 'sheet'
   kind             text not null check (kind in ('polish', 'topcoat', 'basecoat')),
   title            text not null,
   handle           text,
@@ -216,6 +219,7 @@ create table shade (
   hero_image_url   text,                                      -- images[position = 1].src
   -- swatch_image_url text: added by 005 (4.3), the photo of the polish on a nail (the colour's source)
   -- swatch_hex, swatch_hex2, swatch_hex_src, swatch_override_hex text: added by 006 (4.3), the tip colour
+  -- released_on, official_collection, sheet_retired, sheet_key: added by 007 (4.3), from the release sheet (5.6)
   price_cents      integer,
   compare_at_cents integer,
   available        integer check (available in (0, 1)),       -- null for manual shades
@@ -394,6 +398,24 @@ duochromes), `swatch_hex_src` (the image URL the two were read from, so a new ph
 and `swatch_override_hex` (the household's own colour; only the shade page writes it, the sync
 never does). The tip colour is `swatch_override_hex`, else `swatch_hex`, else a neutral grey-mauve.
 
+`007_release_sheet.sql` (the release sheet, 5.6) widens `shade.source` to `'holotaco' | 'manual' | 'sheet'`
+and adds `released_on` (ISO date, the official release date), `official_collection` (text),
+`sheet_retired` (0/1, from the sheet's Retired column) and `sheet_key` (the normalised sheet name the
+shade matched; a partial unique index makes it unique among `source = 'sheet'` shades). SQLite cannot
+alter a CHECK, so the migration **rebuilds `shade`** the way sqlite.org's ALTER TABLE section 7
+prescribes: drop `shade_status`, create `shade_new` with every column in the old order plus the
+four, copy every row with its id, drop `shade`, rename `shade_new`, recreate the three indexes and
+the view. It is safe on a live database for three reasons: `migrate.py` now turns foreign keys
+off, so dropping the old table cascades nowhere (`shade_tag` and `shade_identifier` delete on
+cascade, and with foreign keys on, dropping would have emptied them); the whole file is one transaction,
+so a failure leaves the old table; and the runner compares `pragma foreign_key_check` before and
+after each file and rolls back a file that leaves more violations. Tables that reference `shade`
+keep their `references shade (id)` text because the new table takes the old name. The migration runs
+in the init container before the app starts, so nothing writes during the rebuild. Tested on a
+populated database (`tests/test_migrate.py`) and on a copy of the development database (372 shades,
+10 bottles: every row identical, `foreign_key_check` empty). A rollback is a restore of the PVC
+snapshot, as for every migration; there are no down migrations.
+
 ### 4.4 Later tables (sketch only, not created in v1)
 
 ```
@@ -432,6 +454,8 @@ Until `shade_observation` exists, price, availability and sale state are the lat
   most one retry an hour later on a 5xx. A 429 is never retried the same day. Redirects are not
   followed off `holotaco.com`.
 - **No per-product `.json` fetches** (section 7 explains why). A first sync is 3 requests, not 372.
+- **The release sheet** (5.6) adds one more fetch after the shop pages: the Google Sheet's CSV
+  export, once per run, never more.
 
 ### 5.2 Algorithm
 
@@ -475,7 +499,8 @@ failed page leaves the database untouched.
    recompute `search_text` (title, handle words, tag values; lowercase, accent-folded);
    replace the `shade_tag` rows from the `finish:`, `color:`, `collection:` tags; set
    `retired`, `retiring`, `is_topper` (kind `topcoat`, or kind `polish` and tag `toppers` or `color:clear`:
-   known false positives `sticky-base` and `pink-smoothing-base`, harmless in a layer picker).
+   known false positives `sticky-base` and `pink-smoothing-base`, harmless in a layer picker). `retired` is then
+   set to the tag **or** the release sheet's flag (`refresh_retired`, 5.6), so a changed product cannot undo the sheet.
 5. **Resolve aliases** for `role = alias` products with no `shade_alias` row: target handle
    (stripped suffix, or the manual map) looked up among `shade.handle`. Found → insert the
    alias row. Not found → leave unresolved, counted in `unresolved_aliases`, retried next sync.
@@ -496,13 +521,15 @@ Stored: `available`, `retired`, `retiring`, `missing_since` (on the product). De
 
 | Status | Condition | Label | Buyable |
 |---|---|---|---|
+| `sheet_only` | `source = 'sheet'` (checked first, after manual) | Not in the shop | no |
 | `missing` | product `missing_since` set | Not listed | no |
 | `retired` | `retired` | Retired (or "Retired, last stock" when `available`) | only if `available` |
 | `sold_out` | not `available` | Sold out (plus "retiring" when `retiring`) | no |
 | `retiring` | `retiring` | Retiring soon | yes |
 | `available` | otherwise | In stock | yes |
 
-Sale is `price_cents < compare_at_cents` (strict). Manual shades have no status and no price.
+Sale is `price_cents < compare_at_cents` (strict). Manual shades have no status and no price. A sheet-only
+shade says "Not in the shop" whatever its retirement; it is in none of the Status filters.
 
 ### 5.4 Sync command and fixtures
 
@@ -541,6 +568,63 @@ the first colour instead. On the 2026-10-25 snapshot: 372 of 372 shades, 223 wit
 
 **Colour sampling.** A shade's colour comes from its swatch photo (centre box) and, only when that colour looks like skin, its bottle photo (lit glass under the cap). Skin is judged in CIE LCh: single pixels in a narrow band (hue 36–75°, L ≥ 22) are dropped before clustering; the cluster colour is skin-like at hue 20–70°, chroma 5–36, L 22–72. A skin-like swatch colour is replaced by the bottle colour when the bottle's is not skin-like or differs by ΔE > 20; a nude both photos agree on stays. Very dark grey pixels are dropped as backdrop when they are under 20% of the region, so black and dark-glitter polishes keep them. Base coats and clear top coats (no glitter, flakie or holographic finish) get the fixed sheer neutral `#f1e9e6` without sampling. Five shades whose photos defeat the sampler (Gold Flake Taco, Tax Haven, Solo Mission, Pink Steel, Trophy Life) take colours checked by eye from `colour.KNOWN_COLOURS`. `python -m polished colours --recompute [--only "A,B"]` re-samples ignoring `swatch_hex_src`, at the same 0.5 s spacing, and never writes `swatch_override_hex`.
 
+### 5.6 Release sheet (`catalog/sheet.py`)
+
+Holo Taco publishes its "Official Simply Holo Taco nail polish release list" as a public Google Sheet.
+It has what the feed lacks: the **release date** (the feed's `published_at` is a re-publish date and
+wrong for old shades), the **official collection name**, an official **Retired** flag (143 retired
+against the shop's 118 tags) and shades the shop does not list (10 on 2026-10-25). It leaves out
+top and base coats. `POLISHED_RELEASE_SHEET_URL` (default: the CSV export of that sheet; empty turns the
+step off) is read once per sync run, **after the shop pages were applied and the run was closed**,
+before the colour step. The fetch is one GET with the `polished/<version>` User-Agent, a 30 s
+timeout, no retry and a 2 MB cap; Google answers the export URL with a 307 to `*.googleusercontent.com`,
+which is followed (at most 3 hops, https only, only to Google or the configured host), so a fetch
+is two HTTP requests. `sync --from-files` stays offline and skips the sheet unless `--sheet
+SHEET.csv` gives a local copy (which is then read instead of fetched).
+
+**Reading.** `parse_sheet(text)` finds the header row (the first with "Release date" and "Shade
+name") and the columns "In Collection" and "Retired?" by name, so a moved column is fine; the
+preamble above it (quoted cells with line breaks) and rows below it without a name or a date are
+skipped. A row is `(key, name, released_on, collection, retired)`: the date is "Jul 6, 2019" read
+to `2019-07-06`; **only the word `Retired` retires** (the column also says `Seasonal` on six
+shades, which is not retirement); a name listed twice keeps its earliest date. `key` is the
+**normalised name**: ™ and ® and apostrophes dropped, `&` read as "and", accents folded, case
+folded, other punctuation one space ("Flakie Holo Taco™" and "Play Rosé" become "flakie holo taco" and
+"play rose"). `ALIASES` maps a sheet key to a shop key for a real naming difference; it is empty
+because on the 2026-10-25 snapshot all 364 matching names agree after normalising. A layout the
+parser cannot trust raises `SheetError`: no header row, a header without a needed column, fewer
+than `MIN_ROWS` (300) shades, or an HTTP error, redirect off Google, oversized or non-UTF-8 body.
+
+**Applying** (`apply_sheet`, one transaction, called by `SyncRunner` and never allowed to fail the
+run: a `SheetError` or any other exception is logged as a warning and the data stays as it was):
+1. Each row is matched by key to a shop shade (`source = 'holotaco'`, a polish before a top coat of
+   the same name). A match gets `released_on`, `official_collection`, `sheet_retired` and
+   `sheet_key`. 364 of 372 match; the eight that do not (Sticky Base, Pink Smoothing Base,
+   Quick-Dry Base, Peely Base, Smoothing Base, Long-Lasting Base, Matte Taco, Glossy Taco) are
+   essentials the sheet excludes.
+2. A row with no shop shade becomes a **sheet-only shade** (`source = 'sheet'`, `kind polish`, no
+   product, handle, SKU, price, availability or photo; `search_text` the normalised name;
+   `is_topper` when the name has the word Taco, Flake or Flakie: no false positive on the 364
+   matches, 14 toppers without those words missed; the tip is neutral until the household sets the
+   colour with Tip colour). It is created once (`sheet_key` is unique among sheet shades), follows its row on later runs,
+   and is never deleted, even when the row leaves the sheet. More than 40 new sheet-only shades in one run
+   is treated as a naming mismatch (the shop renamed its shades, say): `SheetError`, nothing written.
+3. **Merge.** When a sheet-only shade's key matches a shop shade (the shop has started listing it),
+   `merge_sheet_shade` moves its bottles, stack layers, learned codes and aliases to the shop
+   shade, moves its wishlist entry (both wished: the lower priority number and the existing note
+   win), keeps the household's tip colour unless the shop shade already has one, and deletes the
+   sheet-only row. A test checks that every table with a foreign key to `shade` is handled.
+   Between the shop run and the sheet step of the same sync the shade can exist twice; a failed
+   sheet fetch keeps both until the next run.
+4. `retired` is the shop's `collection:retirement` tag **or** `sheet_retired`
+   (`refresh_retired`, run last by both the shop apply and the sheet apply, so a changed product
+   cannot undo the sheet). On the snapshot: 118 tagged, 134 of the matches retired by the sheet, 140
+   shop shades retired by either (six are tagged by the shop and not retired by the sheet), 9 of 10
+   sheet-only shades retired.
+
+The shop's `published_at` and its tags are untouched, and "Newest" (`sort=newest`, Home's "New and
+in stock") still reads `published_at`; `released_on` is only for the sort and the facts below.
+
 ## 6. Searching and browsing
 
 - `search_text` is lowercase, accent-folded (`NFKD`, marks stripped), punctuation to spaces.
@@ -553,12 +637,15 @@ the first colour instead. On the 2026-10-25 snapshot: 372 of 372 shades, 223 wit
   when sorted by name.
 - Filters on `/shades`, one GET form (so the URL is the state and works without JavaScript):
   `finish` and `color` (multi-select, any-of within a namespace, AND between filters),
-  `collection` (one), `kind` (`polish|topper|base`; `topper` is `shade.is_topper`, `polish` is a
+  `collection` (one: an official collection name from the release sheet, or one of the shop's collection tags; the
+  panel's select lists the official names under "Official collections" and the tags under "Shop tags", and only the
+  tags until the sheet has been read), `kind` (`polish|topper|base`; `topper` is `shade.is_topper`, `polish` is a
   polish that is not a topper, `base` is a base coat, so the three partition the catalog),
   `status` (`buyable|retired|sold_out`, the derived status of 5.3: `buyable` is the "Buyable
   yes" rows, `retired` and `sold_out` the rows with that status; a missing shade is in none of
-  them), `owned` (`any|owned|not_owned|wishlist`, stage 4), `sort` (`name|newest|price`;
-  newest = `published_at`; manual shades without a date or price sort last), `page` (40 a page,
+  them), `owned` (`any|owned|not_owned|wishlist`, stage 4), `sort` (`name|released|newest|price`;
+  released = the sheet's `released_on`, newest first, labelled "Release date, newest first"; newest = `published_at`,
+  labelled "Recently listed"; shades without a date or price sort last), `page` (40 a page,
   a "Load more" button, not infinite scroll). A value the page does not know means "no filter".
   The form sits in a `<details>` next to the sticky search field; the panel drops down over the
   list, always shut on load (the badge on its button counts the active filters), and ends in a bar
@@ -578,7 +665,11 @@ the first colour instead. On the 2026-10-25 snapshot: 372 of 372 shades, 223 wit
   list of Finish, Colour and Collections with outlined chips that link back to the filtered list,
   "Swatched on" rows (the stack's composite tip and "Holos, slot 1"), the Tip colour disclosure
   (section 9), and a link to `POLISHED_STORE_URL/products/<handle>` (replaced by "No longer
-  listed" for a missing shade).
+  listed" for a missing shade). A shade with a release date has a footnote under the subhead,
+  "Released 6 Jul 2019" (", retired" is added for a sheet-only shade the sheet calls retired), and its official
+  collection is the first chip of the Collections row, linking to `/shades?collection=<name>`. A sheet-only
+  shade has no photo strip (the tip at `tip-l` is the hero), no price, no SKU and no store link; its subhead
+  says "Not in the shop". In list rows the same words stand where the price would, in `--ink-2`.
 - Images are hotlinked from `cdn.shopify.com` with `&width=` added for thumbnails (Shopify's
   image CDN resizes by query parameter) and `loading="lazy"`. The service worker does not cache
   cross-origin images.
@@ -937,6 +1028,7 @@ All environment variables, prefix `POLISHED_`. Secrets come only from the enviro
 | `SYNC_HOUR`, `SYNC_JITTER_MIN` | `6`, `30` | Daily run, local time |
 | `SYNC_MIN_INTERVAL_S` | `1.0` | Gap between requests; values below 1.0 are rejected at startup |
 | `SYNC_MANUAL_COOLDOWN_S` | `3600` | Minimum time between runs started by the button |
+| `RELEASE_SHEET_URL` | the CSV export of Holo Taco's release list (Google Sheets) | Read once per sync after the shop pages (5.6); empty turns it off |
 | `TIMEZONE` | `Europe/Warsaw` | Household timezone |
 | `OVER_BLACK_HANDLE` | `one-coat-black` | Shade the "Over black" template inserts |
 | `LOG_LEVEL`, `VERSION` | `INFO`, `dev` | Logging; the image build sets `VERSION` |
@@ -1497,6 +1589,36 @@ carry the shade page's action bar as an out-of-band copy when `ctx=shade`, becau
       (`_result_card.html`) puts the bottle photo (72 by 96) beside the shade's tip-l; both smoke tests are
       unchanged and pass. Supersedes 33's "full-screen".
     - Wheel list "mini ring of dots" and the "This wheel" group (55) are superseded.
+
+83. **The release sheet** (Jan: the shop's dates are wrong for old shades and it does not list every shade;
+    the sheet is Holo Taco's own "Official Simply Holo Taco nail polish release list"). Section 5.6 has the
+    design. Where it goes beyond what was asked, or departs from it:
+    - **Table rebuild, not a side column.** `shade.source` gets `'sheet'` (migration 007 rebuilds the table,
+      4.3) rather than putting sheet-only shades under `'manual'` plus a flag: `manual` means "typed by the
+      household" in the UI and in `status()`, and a sheet shade must not look like that. The cost is a
+      rebuild, made safe by foreign keys off in `migrate.py` and a before and after `foreign_key_check` per
+      file; every other migration is unchanged by it.
+    - **Only `Retired` retires.** The sheet's Retired? column holds 143 `Retired` and 6 `Seasonal` (149 non-empty,
+      the number in the brief). `Seasonal` (Glow In The Dark Taco, Aqua Glow In The Dark Taco, four of the
+      Declassified Tacos Set [003]) is a seasonal release that can return, so it is not retired.
+    - **No aliases were needed.** After normalising ™, accents, case and punctuation, all 364 sheet names that
+      the shop lists match; `ALIASES` exists and is empty, with a test that proves the mechanism.
+    - **The fetch is two HTTP requests.** Google redirects the export URL (307) to googleusercontent.com; the
+      one logical fetch follows it, to Google hosts only.
+    - **`--from-files` stays offline.** It skips the sheet unless `--sheet FILE.csv` is given, so a local run
+      never reaches Google by surprise.
+    - **A sheet-only shade says "Not in the shop" even when retired** (nine of the ten are). It is in none of
+      the Status filters, like a shade the shop dropped. Its retirement shows as ", retired" on the release line.
+    - **Two sorts about dates.** "Release date, newest first" is new; "Newest" is relabelled "Recently listed"
+      because it still reads the shop's `published_at`, which is the date the sheet corrects. Home's "New and
+      in stock" link still uses it (not changed; `sort=released` would suit it better).
+    - **Guards** that were not asked for: more than 40 new sheet-only shades in a run, or fewer than 300 rows,
+      stops the step with nothing written; a failed step is a warning and the next run tries again.
+    - **A merge folds the sheet-only row into the shop shade** (moving bottles, layers, codes, aliases and the
+      wish) instead of converting the row in place, so one code path serves a shade that appears in the same
+      sync, a later one, and a duplicate made by hand.
+    - Shop and sheet are not one transaction: between a shop run that adds a shade and the sheet step that
+      merges it the shade exists twice, for seconds, or until the next run when the sheet is down.
 
 ## 15. Home-ops manifests
 

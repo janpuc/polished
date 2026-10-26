@@ -87,6 +87,9 @@ curl -fsS https://polished.janpuc.com/healthz
 - [ ] `/sync` shows the catch-up run (it starts on its own about a minute after the first start)
       and 372 shades. The first run then reads every shade's colour from cdn.shopify.com at one
       picture every 0.5 s, about 7 minutes; until then tips are a neutral grey.
+- [ ] After that run, a shade page shows "Released ..." and its official collection, and the Shades list
+      has the "Release date, newest first" sort and ten "Not in the shop" shades (Holo Taco's release
+      sheet; the log says `release sheet applied`, or `release sheet skipped` and why).
 - [ ] Scan a bottle on `/lookup` (the camera needs https, so only on the real hostname) and
       pick its shade.
 - [ ] Make a wheel, write its address on an NFC tag with NFC Tools (Wheels, the wheel, Tag and

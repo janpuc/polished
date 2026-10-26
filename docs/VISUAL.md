@@ -143,6 +143,11 @@ shades".
 word. "Add bottle" is the one filled action, the heart sits beside it. Then "Bottles" (a group), a quiet list
 of Finish, Colour and Collections (a 13px label over outlined chips), "Swatched on" rows led by the stack's
 tip, a closed "Tip colour" disclosure, and the store link and SKU as footnotes.
+A shade with a release date adds a footnote under that line, "Released 6 Jul 2019" in `--ink-2`, and its
+official collection is the first chip of Collections (`.chip-long`: it wraps instead of running off the
+screen, since a name can be 51 characters). A shade only the release sheet lists has no strip and no price:
+the tip is the hero, "Not in the shop" is a quiet `--ink-2` word in the subhead (and in rows, where the
+price would be), and the store link and SKU are absent.
 
 **Lookup.** The camera is first: a 4:3 viewfinder (radius 16) with a "Scan the barcode" button on an idle tile
 until the camera runs, a caption "Point at the barcode under the bottle", one field "Type the digits, a P code,

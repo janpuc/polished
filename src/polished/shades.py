@@ -14,11 +14,11 @@ SEARCH_LIMIT = 30
 KINDS = ("polish", "topper", "base")
 STATUSES = ("buyable", "retired", "sold_out")
 OWNED = ("any", "owned", "not_owned", "wishlist")
-SORTS = ("name", "newest", "price")
+SORTS = ("name", "newest", "released", "price")
 
 # shade s left join product p left join shade_status ss. Same conditions as status() below, so a filter and a row's
 # status never disagree (tests/test_shades.py checks it on every shade).
-_LISTED = "p.missing_since is null"
+_LISTED = "s.source = 'holotaco' and p.missing_since is null"
 STATUS_SQL = {
     "buyable": f"{_LISTED} and s.available = 1",
     "retired": f"{_LISTED} and s.retired = 1",
@@ -38,6 +38,7 @@ ORDER_SQL = {
     "name": "s.title collate nocase, s.id",
     "newest": "datetime(s.published_at) is null, datetime(s.published_at) desc,"
     " s.title collate nocase, s.id",
+    "released": "s.released_on is null, s.released_on desc, s.title collate nocase, s.id",
     "price": "s.price_cents is null, s.price_cents, s.title collate nocase, s.id",
 }
 _NOT_WORD = re.compile(r"[\W_]+")
@@ -50,7 +51,7 @@ FROM = (
 
 @dataclass(frozen=True)
 class Status:
-    key: str  # missing | retired | sold_out | retiring | available
+    key: str  # missing | retired | sold_out | retiring | available | sheet_only
     label: str
     buyable: bool
 
@@ -58,9 +59,12 @@ class Status:
 def status(shade) -> Status | None:
     """The state of a shade, first match wins (DESIGN 5.3). `shade` needs source, missing_since,
     retired, retiring and available (a row of the list or detail query). Manual shades have no
-    status: nothing is known about a shop listing."""
+    status: nothing is known about a shop listing. A shade only the release sheet lists is "Not in
+    the shop", whatever the sheet says about its retirement."""
     if shade["source"] == "manual":
         return None
+    if shade["source"] == "sheet":
+        return Status("sheet_only", "Not in the shop", False)
     if shade["missing_since"]:
         return Status("missing", "Not listed", False)
     available = bool(shade["available"])
@@ -180,7 +184,12 @@ def _where(query: ShadeQuery) -> tuple[str, list]:
     if query.color:
         _tag_clause("color", query.color, where, args)
     if query.collection:
-        _tag_clause("collection", (query.collection,), where, args)
+        # An official collection name (the release sheet), or one of the shop's collection tags.
+        where.append(
+            "(s.official_collection = ? or exists (select 1 from shade_tag t"
+            " where t.shade_id = s.id and t.ns = 'collection' and t.value = ?))"
+        )
+        args.extend((query.collection, query.collection))
     if query.kind:
         where.append(KIND_SQL[query.kind])
     if query.status:
@@ -270,8 +279,9 @@ def pick(
 
 
 def facets(conn: sqlite3.Connection) -> dict[str, list[str]]:
-    """The tag values to offer as filters: finishes and colours most common first,
-    collections alphabetical."""
+    """The values to offer as filters: finishes and colours most common first, the shop's
+    collection tags alphabetical, and under `official` the release sheet's collection names
+    alphabetical (empty until the sheet has been read)."""
     result: dict[str, list[str]] = {}
     for ns, order in (
         ("finish", "count(*) desc, value"),
@@ -284,6 +294,13 @@ def facets(conn: sqlite3.Connection) -> dict[str, list[str]]:
                 f"select value from shade_tag where ns = ? group by value order by {order}", (ns,)
             )
         ]
+    result["official"] = [
+        r[0]
+        for r in conn.execute(
+            "select distinct official_collection from shade where official_collection is not null"
+            " order by official_collection collate nocase"
+        )
+    ]
     return result
 
 

@@ -605,6 +605,15 @@ a.chip:not(.is-on):active {
   color: var(--ink-2);
 }
 
+/* An official collection name can be longer than the screen is wide. */
+.chip-long {
+  justify-content: flex-start;
+  padding-block: 8px;
+  max-width: 100%;
+  text-align: left;
+  white-space: normal;
+}
+
 @media (hover: hover) {
   .pick input:not(:checked):hover + span,
   a.chip:not(.is-on):hover {
@@ -975,6 +984,7 @@ a.chip:not(.is-on):active {
 }
 
 .status-manual,
+.status-sheet_only,
 .status-available {
   color: var(--ink-2);
 }
@@ -1313,6 +1323,15 @@ a.chip:not(.is-on):active {
 
 .detail-meta .status {
   font-weight: 600;
+}
+
+/* The "Owned" slot is always in the markup (bottle fragments swap it); empty, it takes no gap. */
+.detail-meta #owned-pill:empty {
+  display: none;
+}
+
+.detail-released {
+  margin: 2px 0 0;
 }
 
 /* Finish, Colour and Collections: a quiet label and outlined chips on the same row. */

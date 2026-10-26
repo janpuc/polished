@@ -240,6 +240,11 @@ def state(**values):
         (state(retiring=1), Status("retiring", "Retiring soon", True)),
         (state(), Status("available", "In stock", True)),
         (state(source="manual", available=None), None),
+        (state(source="sheet", available=None), Status("sheet_only", "Not in the shop", False)),
+        (
+            state(source="sheet", available=None, retired=1),
+            Status("sheet_only", "Not in the shop", False),
+        ),
     ],
 )
 def test_status_table(row, expected):
@@ -292,3 +297,92 @@ def test_detail_of_a_missing_shade_and_a_manual_one(catalog):
     detail = shades.get_shade(catalog, manual)
     assert detail["status"] is None and detail["images"] == [] and detail["on_sale"] is False
     assert shades.get_shade(catalog, 9999) is None
+
+
+# The release sheet: sort, collection filter, sheet-only shades
+
+
+@pytest.fixture
+def sheeted(catalog):
+    from conftest import FIXTURES
+
+    from polished.catalog import sheet
+
+    text = (FIXTURES / "release_sheet_trimmed.csv").read_text(encoding="utf-8")
+    sheet.apply_sheet(catalog, sheet.parse_sheet(text, min_rows=1))
+    return catalog
+
+
+def test_sort_by_release_date_puts_the_newest_first_and_the_undated_last(sheeted):
+    order = titles(find(sheeted, sort="released"))
+    assert order[:4] == ["Hit The Lights", "Diamond Dasher Taco", "Silent Night", "Thirst Trap"]
+    assert (
+        order.index("Aurora Unicorn Skin™")
+        < order.index("Play Rosé")
+        < order.index("Royal-Tea Blue")
+    )
+    assert set(order[-2:]) == {"Peely Base", "Sticky Base"}  # not on the sheet
+    assert order[-2:] == sorted(order[-2:])
+    assert ShadeQuery.from_params(sort="released").params() == [("sort", "released")]
+
+
+def test_the_collection_filter_takes_an_official_name_or_a_shop_tag(sheeted):
+    assert titles(find(sheeted, collection="Mini Advent Calendar Collection")) == [
+        "Diamond Dasher Taco",
+        "Silent Night",
+    ]
+    assert titles(find(sheeted, collection="soon-retiring")) == ["Jam Session", "Rest In Peach"]
+    assert titles(find(sheeted, collection="Holo Taco Unicorn Skin Collection")) == [
+        "Aurora Unicorn Skin™"
+    ]
+    assert find(sheeted, collection="Mini Advent Calendar Collection").total == 2
+    assert ShadeQuery.from_params(collection="Holo Taco x Julien Collection").filter_count() == 1
+
+
+def test_facets_add_the_official_collection_names(sheeted):
+    facets = shades.facets(sheeted)
+    assert "Mini Advent Calendar Collection" in facets["official"]
+    assert facets["official"] == sorted(facets["official"], key=str.casefold)
+    assert "soon-retiring" in facets["collection"]  # the shop's tags are still offered
+
+
+def test_facets_have_no_official_collections_before_the_sheet_is_read(catalog):
+    assert shades.facets(catalog)["official"] == []
+
+
+def test_a_sheet_only_shade_is_listed_and_found_but_is_in_no_status_filter(sheeted):
+    assert "Silent Night" in titles(find(sheeted))
+    assert titles(find(sheeted, q="advent")) == []  # search reads the name, not the collection
+    assert titles(find(sheeted, q="silent")) == ["Silent Night"]
+    assert titles(find(sheeted, q="rose")) == ["Play Rosé"]
+    for key in ("buyable", "retired", "sold_out"):
+        assert not {"Silent Night", "Red Flake Taco"} & set(titles(find(sheeted, status=key)))
+    row = next(r for r in find(sheeted).rows if r["title"] == "Silent Night")
+    assert row["status"].key == "sheet_only" and row["price_cents"] is None
+
+
+def test_toppers_and_polishes_filter_over_sheet_only_shades(sheeted):
+    assert {"Silver Flake Taco", "Red Flake Taco"} <= set(titles(find(sheeted, kind="topper")))
+    assert {"Silent Night", "Play Rosé"} <= set(titles(find(sheeted, kind="polish")))
+
+
+def test_a_filter_and_the_row_status_agree_with_sheet_only_shades_present(sheeted):
+    everything = find(sheeted).rows
+    for key in ("buyable", "retired", "sold_out"):
+        expected = {
+            r["title"]
+            for r in everything
+            if (r["status"].buyable if key == "buyable" else r["status"].key == key)
+        }
+        assert set(titles(find(sheeted, status=key))) == expected
+
+
+def test_detail_of_a_sheet_only_shade_has_no_photos_and_the_sheets_facts(sheeted):
+    detail = shades.get_shade(sheeted, shade_id_by_title(sheeted, "Red Flake Taco"))
+    assert detail["status"].label == "Not in the shop"
+    assert detail["images"] == [] and detail["handle"] is None
+    assert (detail["released_on"], detail["retired"]) == ("2022-12-06", 1)
+
+
+def shade_id_by_title(conn, title):
+    return conn.execute("select id from shade where title = ?", (title,)).fetchone()["id"]
