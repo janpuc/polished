@@ -7,7 +7,7 @@ adding, emptying or deleting a bottle changes whether the shade is owned.
 """
 
 import sqlite3
-from datetime import datetime
+from datetime import date, datetime
 from typing import Annotated
 from zoneinfo import ZoneInfo
 
@@ -186,7 +186,7 @@ def create_bottle(
         "opened_on": opened_on,
         "notes": notes,
     }
-    values, errors = bottles.parse_input(**raw)
+    values, errors = bottles.parse_input(**raw, today=date.fromisoformat(today(request)))
     if errors:
         return _form(
             request,
@@ -259,7 +259,7 @@ def update_bottle(
         "opened_on": opened_on,
         "notes": notes,
     }
-    values, errors = bottles.parse_input(**raw)
+    values, errors = bottles.parse_input(**raw, today=date.fromisoformat(today(request)))
     if errors:
         return _form(
             request,

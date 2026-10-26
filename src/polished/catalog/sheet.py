@@ -240,11 +240,14 @@ def _write_sheet_facts(conn: sqlite3.Connection, shade_id: int, row: SheetRow) -
 
 def merge_sheet_shade(conn: sqlite3.Connection, sheet_id: int, shop_id: int) -> None:
     """Folds a sheet-only shade into the shop shade that now lists it: its bottles, stack layers,
-    learned codes and aliases move over, a wishlist entry too (when both are wished, the more
+    learned codes, aliases and wearings move over (a day both were worn stays one row), a wishlist
+    entry too (when both are wished, the more
     wanted priority and the note stay), the household's tip colour stays unless the shop shade
     has one, and the sheet-only row goes. shade_tag has no rows for a sheet-only shade."""
     for table in ("bottle", "stack_layer", "shade_identifier", "shade_alias"):
         conn.execute(f"update {table} set shade_id = ? where shade_id = ?", (shop_id, sheet_id))
+    conn.execute("update or ignore wear set shade_id = ? where shade_id = ?", (shop_id, sheet_id))
+    conn.execute("delete from wear where shade_id = ?", (sheet_id,))
     theirs = conn.execute("select * from wishlist_item where shade_id = ?", (sheet_id,)).fetchone()
     if theirs is not None:
         ours = conn.execute("select * from wishlist_item where shade_id = ?", (shop_id,)).fetchone()

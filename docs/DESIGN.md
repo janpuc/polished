@@ -99,7 +99,7 @@ iPhone Safari / PWA ──https──> Cloudflare tunnel ──> envoy-external 
 
 ```
 __init__.py          __version__ = "0.1.0"  # x-release-please-version
-__main__.py, cli.py  python -m polished {serve | migrate | sync [--from-files … --sheet …] | colours}
+__main__.py, cli.py  python -m polished {serve | migrate | sync [--from-files … --sheet … --no-colours] | colours}
 config.py            Settings (pydantic-settings, env prefix POLISHED_), section 12
 db.py                connect(path), request-scoped connection dependency, transaction helper
 migrate.py           numbered-SQL runner (serendip's, schema_version table); foreign keys off, a
@@ -535,8 +535,9 @@ shade says "Not in the shop" whatever its retirement; it is in none of the Statu
 ### 5.4 Sync command and fixtures
 
 `python -m polished sync` fetches live. `python -m polished sync --from-files p1.json p2.json
-p3.json` applies local JSON pages with the same code path and no network, so local runs and
-agents never touch the shop. Tests feed trimmed fixtures through `httpx.MockTransport`.
+p3.json` applies local JSON pages with the same code path and no request to the shop, so local runs
+and agents never touch it. The colour step (5.5) still downloads photos from the image CDN, so a
+fully offline run adds `--no-colours`. Tests feed trimmed fixtures through `httpx.MockTransport`.
 
 `tests/fixtures/feed_trimmed.json` is generated once by `scripts/make_fixtures.py` from the
 snapshot (kept out of git) and committed: about 14 products, catalog fields only (title,
@@ -554,7 +555,8 @@ After the feed is applied and the run row is closed, the sync reads the colour o
 all of them on the first run, afterwards only new shades and changed photos. One download each from
 `cdn.shopify.com` (never holotaco.com) at `width=240`, 0.5 s apart, 8 s timeout, at most 450 per
 run, and the step stops after 4 failures in a row. It never fails the run: an error is logged, the
-colour stays as it was and the shade is tried again next sync. `sync --from-files` runs it too.
+colour stays as it was and the shade is tried again next sync. `sync --from-files` runs it too
+(downloading from cdn.shopify.com) unless `--no-colours` is given.
 
 `extract_colours(bytes, from_bottle, accent)` is pure (Pillow and numpy). Pixels come from the
 middle of a swatch photo (32 to 68 percent across, 30 to 70 down: the painted nail of a macro or
@@ -681,8 +683,8 @@ in stock") still reads `published_at`; `released_on` is only for the sort and th
   (its `aria-label` is "Owned ×N"); it opens the shade. A bottle photo appears only in the shade
   page's strip and in the lookup result card.
 - The detail page shows the images (every `images[]` entry of the product's stored feed JSON) in
-  a horizontally scrolling, scroll-snapped strip; under it the shade's painted tip (`tip-l`, 56 by 92)
-  beside the title, and on the subhead line the price (with the compare-at price and a "Sale" chip
+  a horizontally scrolling, scroll-snapped strip; under it the shade's painted tip (`tip-xl`, 96 by 158,
+  on the plate: `--velvet` in dark) beside the title in the display face, and on the subhead line the price (with the compare-at price and a "Sale" chip
   when `price < compare_at`), "Owned ×N" and the status word. Then the actions, the bottles, a quiet
   list of Finish, Colour and Collections with outlined chips that link back to the filtered list,
   "Swatched on" rows (the stack's composite tip and "Holos, slot 1"), the Tip colour disclosure
@@ -885,10 +887,17 @@ auth gate → routes.
   is flakes on black. With nothing opaque below, layers go on a sheer nude, so a lone topper shows.
   Every list shows tips (shade rows, the Home shelf, picker results, the wishlist, bottle groups); the
   bottle photo is kept only in the shade page's strip and the lookup result card.
+  **The light on a tip is CSS** (`_tip.html`: `.tip` > `.tip-face` > `<img>`; VISUAL.md section 5): the
+  drawing keeps the paint (base, finish, the gloss stripe, the small highlight at (66, 30), the dome whose
+  edge is .18) and the page adds the contact shadow, the die-cut edge, the occlusion, the specular pool and
+  the rim, because those depend on the board, the colour scheme and where the light is. `tips.DRAWING_VERSION`
+  goes into `revision()`: bump it whenever `render()` draws differently, since the image URLs are cached
+  for good and only a new revision makes a browser fetch the new drawing.
 - **The ring at small sizes** (`_mini_ring.html`, the same `.slot` and `.tip` CSS with `--ring`,
   `--slot-h` and `--rail` set per size, tips only, nothing to tap): `.ring-home` is 200px (radius 78,
   tips 20 by 32) and links to the wheel from Home with "Holos, 13 of 20"; `.ring-mini` is 72px (radius 28,
-  tips 9 by 14) in front of each wheel in the Wheels list. A tip is never wider than its pitch on the ring,
+  tips 9 by 14) in front of each wheel in the Wheels list; at these sizes the tip keeps only its mat (no
+  specular pool or rim). A tip is never wider than its pitch on the ring,
   so a 40-slot wheel gets narrower tips instead of overlapping ones. Home shows the wheel whose saved or
   draft swatch changed last (`wheels.most_recent`; the newest wheel when none has a swatch, a ring of
   unpainted tips and "No wheels yet" when there is no wheel). Opening a wheel is not recorded.
@@ -1503,7 +1512,7 @@ carry the shade page's action bar as an out-of-band copy when `ctx=shade`, becau
 78. **The colour step runs inside the sync's lock after the run row is closed,** so a run shows "ok" while
     the first colour read (about 7 minutes for 372 shades at 0.5 s apart) is still going; later runs read
     only new shades and changed photos. `sync --from-files` also reads colours from the CDN (a CDN, not the
-    store), and the unit tests inject `httpx.MockTransport` (`SyncRunner(colour_transport=...)`). A topper's
+    store) unless `--no-colours` is given, and the unit tests inject `httpx.MockTransport` (`SyncRunner(colour_transport=...)`). A topper's
     first colour is the livelier cluster, not the base it was photographed over.
 79. **Tip colour override instead of a photo picker:** the shade page has a colour input, not an image sheet;
     `swatch_override_hex` replaces `swatch_hex` and drops `swatch_hex2`; the sync never writes it. Effective
@@ -1697,9 +1706,68 @@ carry the shade page's action bar as an out-of-band copy when `ctx=shade`, becau
       caret by setting `style` on inputs and leaves empty `style` attributes behind; htmx then copies them during a
       swap and the browser logs a CSP violation (`style-src-attr`) that no real user has. The flows capture with
       `Page.captureScreenshot` instead.
-    - **Found while writing the flows, not changed:** after a swatch is saved or removed the ring's `aria-label`
-      ("Holos, 0 of 20 swatched") is not refreshed, only the hub's count is, so a screen reader hears the old
-      number until the page is reloaded.
+    - **Found while writing the flows:** after a swatch is saved or removed the ring's `aria-label`
+      ("Holos, 0 of 20 swatched") was not refreshed, only the hub's count was, so a screen reader heard the old
+      number until the page was reloaded. Fixed in item 85.
+
+85. **v3 run 1, "light and letters"** (`docs/advice/fable-v3-web-2026-10-26.md` sections 2, 4.1 to 4.3 and 4.6;
+    VISUAL.md is rewritten for it). The screens, tokens and components of run 1 only; the shells (run 2) and the
+    Home shelf and wear (run 3) are not built. What was built and where it departs from the spec:
+    - **Tokens** are the spec's table (warm light neutrals, dark unchanged) plus `--velvet`, `--shadow-ink`,
+      `--rim` and `--material-light`; the `theme-color` metas and the manifest's light colour follow `--bg`
+      (`#f7f3f2`).
+    - **Fraunces** is vendored under `static/vendor/fraunces/` (Fontsource 5.3.0, from the npm tarball, hashes in
+      `VERSIONS.txt`), instanced with fonttools to `wght` 500 to 700 and `opsz` 72 to 144 and subset to Latin
+      (52 KB, preloaded and precached) and Latin-ext (29 KB, by `unicode-range`). It is used at 600 with `opsz`
+      144 in four roles: the greeting, the shade title, the wheel name (34 on the wheel page, 22 in the list) and
+      the hub number (56). A test fails if another selector takes `--display`. The fallback face is Georgia at a
+      measured `size-adjust` of 77.4 percent, not the guessed value the build started with. The Home greeting's
+      mark moved from the end of the greeting's row to the date's row, because "Good afternoon, Georgia" is 322px at
+      34px and the mark left 269px; now a seven-letter name fits one line at 390 for every greeting.
+    - **The lit tip** is the spec's `.tip > .tip-face` structure at every tip site (`_tip.html`, the builder head,
+      the ring slots, the Home and Wheels rings), with the sizes of 2.4 for the phone shell (`tip-l` 72 by 118 and
+      `tip-xl` 96 by 158 replace the older 56 by 92 and 72 by 118). The ring's slots are lit with the light turned
+      back against the slot's angle; the small rings (200px and 72px) keep only the edge and a contact shadow. The
+      two `tips.py` tweaks are in (dome edge .18, highlight at (66, 30)) and `tips.DRAWING_VERSION` joins the hash
+      behind the image URLs: not in the spec, but those URLs are cached for good, so without it a browser would
+      keep showing the old drawing under the new light. A ring slot's keyboard focus is the foil ring (spec 2.6)
+      with the ink outline kept beyond it, since pale foil alone does not carry 3:1.
+    - **The per-tip blur** (the contact shadow is a 4px blur on a pseudo-element) was measured on the full
+      372-row Shades list (10 "Load more" taps) on Chromium's iPhone 15 profile with a 4x CPU throttle: 60 fps
+      throughout, 0.0 to 0.2 percent of frames over 20ms, no difference with the blur, the soft-light blend or the
+      shadow removed. The pre-blurred gradient fallback was not needed. WebKit is not installed here, so real iOS
+      Safari is unmeasured.
+    - **The level arc** replaces `_level_glyph.html` everywhere (bottle rows, the edit sheet's segments). It is
+      ink in both modes; Low and Empty keep their word colour.
+    - **Bottle rows and the edit sheet** follow 4.3: the first line is the purchase, the P code trails it at 13px
+      `--ink-3`, and the sheet reads Level, Bought on, then More details (Price paid, Opened on, P code, Notes). A
+      bottle with no purchase facts and no code reads "Added <date>" so its row is not empty (the spec omits "No P
+      code" and says nothing for this case); a bottle with a code and no purchase facts shows the code alone.
+    - **The date field** is the spec's overlay over a transparent native input, with words, the presets and `max`
+      = today. It is on every date input: Bought on and Opened on (bottle sheet), Bought on (the bought sheet) and
+      Swatched on (the builder). The server refuses a date after today in the household's time zone for all four
+      (bottles, `wishlist/bought` and `stacks.save`, which raises `FutureDate`); a browser already holds a future
+      value back through `max`, so the message is the back stop for a request that did not come from the page.
+      The preset buttons are not wrapped in a labelled group: a group named "Quick dates for bought on" matched a
+      lookup by the label "Bought on", which made the field ambiguous to assistive tech and to the flows.
+    - **The shade head** is the tip at `tip-xl` beside the title on a plate (`--surface` in light, `--velvet` in
+      dark).
+    - **Search marks and no results:** `<mark>` is styled as in 4.6, and both no-result states (the Shades list and
+      the typeahead) show a lit unpainted tip, drawn in CSS rather than `nail-tip.svg` (no new asset), with "Try
+      fewer letters". The count line "3 matches, closest first", the collection or year hint on near-duplicate
+      names, `aria-current` on the first result and `Enter` opening it are not built: they belong with the panel
+      shell of run 2.
+    - **Icons** `calendar`, `qr`, `trash`, `sparkle`, `sidebar`, `arrow-up-right` are added to `ui.svg`; only
+      `calendar` is used so far.
+    - **The ring's `aria-label`** (item 84's finding) is fixed: the ring is labelled by `#ring-label`, a visually
+      hidden element that `_slot_swap.html` (save, clear, cancel, open a draft) and the rename response swap out of
+      band with the hub's number.
+    - **`sync --from-files ... --no-colours`** is added: the colour step downloads shade photos from
+      `cdn.shopify.com`, so `--from-files` alone was not offline. The README, AGENTS.md and section 5.4 say so;
+      the flag makes a run touch no network at all.
+    - **Flows** changed only where markup legitimately did: Home's `h1` is the greeting now, not "Polished". New
+      steps: the date field's words and presets and the refusal of a future day (add-bottle), "Try fewer letters"
+      (search) and the ring's label after a save (wheel-build).
 
 ## 15. Home-ops manifests
 
@@ -1803,3 +1871,21 @@ images per shade min/median/max 3 10 20 | alt set 0
 shades with finish/color/collection tags 346 361 372
 color:clear 14 | max product id digits 14
 ```
+
+## 17. API and the native app
+
+The iPhone and iPad app (docs/NATIVE.md) talks to a JSON API under `/api/v1`, in `src/polished/api/`. It reuses the domain modules unchanged and serialises their dicts through the response models in `api/schemas.py`; `spec/api/openapi.yaml` is generated from those models (`scripts/make_api_spec.py`, with `tests/test_api_spec.py` failing on drift) and `spec/api/fixtures/*.json` are recorded responses (and request bodies) from the seeded e2e database plus an invented household (`scripts/make_api_fixtures.py`).
+
+**17.1 Auth.** `/api/v1` accepts only `Authorization: Bearer <token>`; cookies are ignored. A missing, unknown or revoked token is a 401 `{"error":{"code":"unauthorized"}}`, never a redirect. The Origin check skips `/api/v1` (nothing there authenticates by cookie). Tokens are per device, stored as sha256 (`api_token`, migration 008); `last_used_at` moves at most once a minute. Sign-in: the app opens `/auth/app/start?challenge=&device=` in `ASWebAuthenticationSession`; the web session keeps the PKCE challenge through the Pocket ID login; `/auth/app/finish` mints a single-use 60 s code (`app_login_code`, sha256) bound to the user and challenge; `POST /api/v1/auth/exchange` checks TTL, single use and `sha256(verifier) == challenge` (a wrong verifier burns the code) and returns `{token, token_id, user}`. `POST /auth/revoke`, `GET /auth/devices` and `DELETE /auth/devices/{id}` work on the calling user's tokens.
+
+**17.2 Sign-in callback.** The app's sign-in ends at an app-claimed https address, `https://<host of PUBLIC_URL>/auth/app/callback?code=<code>`, never a custom URL scheme: any installed app can register a scheme, and `/auth/app/start` takes the PKCE challenge from a public GET, so a scheme callback would let a hostile app choose the verifier and collect the victim's code (security review of c6a7475, 2026-10-26). iOS hands `ASWebAuthenticationSession` an https redirect only for an address the app has claimed through the domain's own AASA (`webcredentials` with the app ID) and the `webcredentials:` entitlement. The AASA's `applinks` never lists `/auth/*`. `/auth/app/finish` redirects there with `Cache-Control: no-store`. `GET /auth/app/callback` is a public page that never reads, mints or redeems anything, and the access log drops its query. `/auth/app/start` keeps one pending sign-in per session (a new start replaces it), at most 10 minutes old.
+
+**17.3 Dev token and UI-test reset.** Only with `POLISHED_AUTH_MODE=none` (so a loopback bind): `POLISHED_DEV_TOKEN` is accepted as a bearer token as user `dev`, and `POLISHED_TEST_RESET_FROM=<template.db>` registers `POST /__test/reset`, which copies the template over the live DB with SQLite's backup API, from loopback only (404 elsewhere). Settings refuse both variables in oidc mode. Never tunnel a none-mode server.
+
+**17.4 Reads.** Every GET answers `ETag` (hash of the body), honours `If-None-Match` (304) and sends `Cache-Control: private, no-cache` and `Vary: Authorization`; every answer under `/api/v1` carries `X-Polished-Api: 1`. Errors are `{"error":{"code","message","field"?,"fields"?}}`. Shade rows carry the tip recipe (`Tip`: the same `TipShade` and `revision()` the web uses) and `marks` as Unicode-scalar offsets.
+
+**17.5 Universal links.** `GET /.well-known/apple-app-site-association` is public JSON, registered only when `POLISHED_APPLE_TEAM_ID` is set: applinks for `<team>.com.janpuc.polished` on `/w/*` and `/shades/*` (`/shades/new` excluded), and `webcredentials` for the same app ID.
+
+**17.6 Writes.** Every write of NATIVE.md §3 lives under `src/polished/api/` and calls the domain modules; no rule is restated. Bodies are JSON, a PATCH changes only the keys it sends, money is cents, dates may not pass today in the household timezone, and errors carry the web's sentences (`field`, and `fields` when several are wrong). Stack refusals map as in the web: NotADraft 409, StackFull and EmptyStack 422, the not-found kinds 404. Multi-row writes (`/wishlist/bought`, save, wheel delete, bottle create with its learned P code) are single transactions. A write without a Bearer token is a 401 and changes nothing.
+
+**17.7 Wear.** `wear(shade_id, worn_on, created_at)`, unique per shade per day (migration 009), written by `POST /api/v1/wear/{shade_id}` in the household's local date. `src/polished/wear.py` holds the rules (framework-free, shared with the web's Home): the candidates are shades with a bottle that is neither archived nor empty; today's pick is drawn by a generator seeded with the date, weighted by wearings of the previous 30 days (a recent wearing counts for between 0.1 and 1); the shade already worn today is shown instead; "Another" is a random draw excluding the shown shade, with the same weights counting today too. A sheet-shade merge moves wearings to the shop shade.

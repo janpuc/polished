@@ -1,11 +1,13 @@
-"""GET /wheels, /wheels/{id} and /w/{slug} (what the NFC tag opens)."""
+"""Wheels: GET /wheels, /wheels/{id} and /w/{slug} (what the NFC tag opens), and the writes
+(create, rename, archive, delete, the tag's slug, the slots)."""
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Response
 
-from .. import wheels
+from .. import stacks, wheels
 from . import rows, schemas
-from .errors import not_found
+from .errors import ApiError, invalid, not_found
 from .routing import ApiRoute, AppSettings, Conn
+from .stacks import sheet_body
 
 router = APIRouter(route_class=ApiRoute, tags=["wheels"])
 
@@ -65,3 +67,142 @@ def wheel_by_slug(conn: Conn, settings: AppSettings, slug: str):
     if wheel is None:
         raise not_found("There is no wheel with that address. The tag may be old.")
     return _detail(conn, settings, wheel)
+
+
+def wheel_or_404(conn, wheel_id: int) -> dict:
+    wheel = wheels.get(conn, wheel_id)
+    if wheel is None:
+        raise not_found("There is no wheel with that address.")
+    return wheel
+
+
+def wheel_body(conn, settings, wheel_id: int) -> schemas.Wheel:
+    wheel = wheel_or_404(conn, wheel_id)
+    return rows.wheel(wheel, settings.public_url, wheels.slot_grid(conn, wheel))
+
+
+@router.post(
+    "/wheels",
+    status_code=201,
+    response_model=schemas.Wheel,
+    summary="Make a wheel",
+    responses={422: {"description": "`validation`: `name` or `slot_count`."}},
+)
+def create_wheel(conn: Conn, settings: AppSettings, body: schemas.WheelRequest):
+    try:
+        wheel_id = wheels.create(conn, body.name, body.slot_count)
+    except ValueError as exc:
+        field = "slot_count" if "slots" in str(exc) else "name"
+        raise invalid({field: str(exc)}) from None
+    return wheel_body(conn, settings, wheel_id)
+
+
+@router.patch(
+    "/wheels/{wheel_id}",
+    response_model=schemas.Wheel,
+    summary="Rename, archive or restore a wheel",
+    responses={404: {"description": "`not_found`"}, 422: {"description": "`validation`"}},
+)
+def edit_wheel(conn: Conn, settings: AppSettings, wheel_id: int, body: schemas.WheelPatch):
+    """`name` and/or `archived`. The slug stays, so the tag keeps opening the wheel."""
+    wheel_or_404(conn, wheel_id)
+    sent = body.model_fields_set & {"name", "archived"}
+    if not sent or (body.name is None and body.archived is None):
+        raise invalid({"name": "Give a name or archived."})
+    if body.name is not None:
+        try:
+            wheels.rename(conn, wheel_id, body.name)
+        except ValueError as exc:
+            raise invalid({"name": str(exc)}) from None
+    if body.archived is not None:
+        wheels.set_archived(conn, wheel_id, body.archived)
+    return wheel_body(conn, settings, wheel_id)
+
+
+@router.delete(
+    "/wheels/{wheel_id}",
+    response_model=schemas.WheelDeleted,
+    summary="Delete a wheel with its swatches and drafts",
+    responses={404: {"description": "`not_found`"}},
+)
+def delete_wheel(conn: Conn, wheel_id: int):
+    """For good, no undo: the app asks first (the web's confirmation sheet). Shades and bottles
+    are untouched; the tag then opens a 404."""
+    try:
+        deleted = wheels.delete(conn, wheel_id)
+    except wheels.WheelNotFound:
+        raise not_found("There is no wheel with that address.") from None
+    return schemas.WheelDeleted(deleted_swatches=deleted)
+
+
+@router.post(
+    "/wheels/{wheel_id}/slug/regenerate",
+    response_model=schemas.Wheel,
+    summary="Give the wheel a new tag address",
+    responses={404: {"description": "`not_found`"}},
+)
+def regenerate_slug(conn: Conn, settings: AppSettings, wheel_id: int):
+    """The old sticker then opens a 404."""
+    try:
+        wheels.regenerate_slug(conn, wheel_id)
+    except wheels.WheelNotFound:
+        raise not_found("There is no wheel with that address.") from None
+    return wheel_body(conn, settings, wheel_id)
+
+
+@router.post(
+    "/wheels/{wheel_id}/slug/take",
+    response_model=schemas.Wheel,
+    summary="Take the tag of another wheel",
+    responses={
+        404: {"description": "`not_found`: either wheel."},
+        422: {"description": "`same_wheel`"},
+    },
+)
+def take_tag(conn: Conn, settings: AppSettings, wheel_id: int, body: schemas.TakeTagRequest):
+    """The two wheels swap slugs: the sticker on `from_wheel_id` now opens this wheel and the
+    other way round."""
+    try:
+        wheels.take_tag(conn, wheel_id, body.from_wheel_id)
+    except wheels.WheelNotFound:
+        raise not_found("There is no wheel with that address.") from None
+    except ValueError as exc:
+        raise ApiError(422, "same_wheel", str(exc), "from_wheel_id") from None
+    return wheel_body(conn, settings, wheel_id)
+
+
+@router.post(
+    "/wheels/{wheel_id}/slots/{position}/draft",
+    response_model=schemas.StackOpened,
+    summary="Open the builder on a slot",
+    responses={
+        404: {"description": "`not_found`: no such wheel, or a position outside the wheel."}
+    },
+)
+def open_slot_draft(conn: Conn, wheel_id: int, position: int):
+    """Resumes the slot's draft (`resumed` true), or starts one holding a copy of the saved
+    swatch's layers."""
+    try:
+        opened = stacks.open_draft(conn, wheel_id, position)
+    except stacks.SlotNotFound:
+        raise not_found("There is no such slot.") from None
+    return schemas.StackOpened(
+        **sheet_body(conn, opened.stack_id).model_dump(), resumed=opened.resumed
+    )
+
+
+@router.delete(
+    "/wheels/{wheel_id}/slots/{position}",
+    status_code=204,
+    summary="Clear a slot's swatch",
+    responses={
+        404: {"description": "`not_found`: no such wheel, or a position outside the wheel."}
+    },
+)
+def clear_slot(conn: Conn, wheel_id: int, position: int) -> Response:
+    """The saved swatch and any draft go. Clearing an empty slot is fine."""
+    wheel = wheel_or_404(conn, wheel_id)
+    if not 1 <= position <= wheel["slot_count"]:
+        raise not_found("There is no such slot.")
+    stacks.clear_slot(conn, wheel_id, position)
+    return Response(status_code=204)

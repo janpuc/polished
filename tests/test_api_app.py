@@ -40,8 +40,23 @@ def test_aasa_is_public_json_without_a_redirect(tmp_path):
                     ],
                 }
             ]
-        }
+        },
+        # The app's sign-in callback (an https address ASWebAuthenticationSession claims) needs this.
+        "webcredentials": {"apps": [f"{TEAM}.com.janpuc.polished"]},
     }
+
+
+def test_aasa_does_not_open_the_sign_in_in_the_app(tmp_path):
+    """A tapped /auth/* link must stay in the browser: applinks lists only /w/* and /shades/*."""
+    client = make_client(make_settings(tmp_path, apple_team_id=TEAM))
+    aasa = client.get(AASA).json()
+    assert set(aasa) == {"applinks", "webcredentials"}
+    paths = [c["/"] for d in aasa["applinks"]["details"] for c in d["components"]]
+    assert paths == ["/w/*", "/shades/new", "/shades/*"]
+    assert not any(
+        p.startswith("/auth") or p == "*" or p.endswith("/*") and p[:-2] == "" for p in paths
+    )
+    assert aasa["webcredentials"] == {"apps": [f"{TEAM}.com.janpuc.polished"]}
 
 
 def test_aasa_excludes_new_shades_before_the_shades_wildcard(tmp_path):
@@ -199,8 +214,9 @@ def test_008_adds_two_tables_and_leaves_the_data_alone(tmp_path):
     conn.commit()
     conn.close()
 
-    assert migrate(db) == ["008_api_tokens.sql"]
-    assert migrate(db) == []  # idempotent
+    below_9 = migrations_below(tmp_path, 9)
+    assert migrate(db, below_9) == ["008_api_tokens.sql"]
+    assert migrate(db, below_9) == []  # idempotent
 
     conn = sqlite3.connect(db)
     assert conn.execute("select max(version) from schema_version").fetchone()[0] == 8
@@ -222,6 +238,35 @@ def test_008_adds_two_tables_and_leaves_the_data_alone(tmp_path):
                 "insert into api_token (user_sub, user_name, device_name, platform, token_hash)"
                 " values ('u', 'U', 'd', 'ios', 'same')"
             )
+    conn.close()
+
+
+def test_009_adds_the_wear_log_and_leaves_the_data_alone(tmp_path):
+    db = str(tmp_path / "live.db")
+    assert migrate(db, migrations_below(tmp_path, 9))[-1] == "008_api_tokens.sql"
+    conn = sqlite3.connect(db)
+    conn.execute("insert into shade (title, search_text, kind) values ('Old', 'old', 'polish')")
+    conn.execute("insert into bottle (shade_id, state) values (1, 'half')")
+    conn.commit()
+    conn.close()
+
+    assert migrate(db) == ["009_wear.sql"]
+    assert migrate(db) == []  # idempotent
+
+    conn = sqlite3.connect(db, isolation_level=None)
+    conn.execute("pragma foreign_keys = on")
+    assert conn.execute("select max(version) from schema_version").fetchone()[0] == 9
+    assert conn.execute("select state from bottle").fetchall() == [("half",)]
+    columns = [r[1] for r in conn.execute("pragma table_info(wear)")]
+    assert columns == ["id", "shade_id", "worn_on", "created_at"]
+    conn.execute("insert into wear (shade_id, worn_on) values (1, '2026-10-26')")
+    with pytest.raises(sqlite3.IntegrityError):  # one row per shade per day
+        conn.execute("insert into wear (shade_id, worn_on) values (1, '2026-10-26')")
+    conn.execute("insert into wear (shade_id, worn_on) values (1, '2026-10-27')")
+    with pytest.raises(sqlite3.IntegrityError):  # a shade that exists
+        conn.execute("insert into wear (shade_id, worn_on) values (99, '2026-10-26')")
+    with pytest.raises(sqlite3.IntegrityError):  # a date
+        conn.execute("insert into wear (shade_id, worn_on) values (1, 'today')")
     conn.close()
 
 

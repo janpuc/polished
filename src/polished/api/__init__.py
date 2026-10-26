@@ -15,6 +15,7 @@ from . import (
     stacks,
     sync,
     testing,
+    wear,
     wellknown,
     wishlist,
 )
@@ -32,6 +33,7 @@ for module in (
     stacks,
     lookup,
     sync,
+    wear,
 ):
     router.include_router(module.router)
 

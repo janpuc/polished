@@ -152,7 +152,11 @@ def rename_wheel(request: Request, conn: Conn, wheel_id: int, name: Annotated[st
         return response
     if not is_partial_request(request):
         return RedirectResponse(f"/w/{wheel['slug']}", status_code=302)
-    response = render(request, "_wheel_name.html", {"wheel": _wheel(conn, wheel_id)})
+    wheel = _wheel(conn, wheel_id)
+    filled = sum(tile["filled"] for tile in wheels.slot_grid(conn, wheel))
+    response = render(
+        request, "_wheel_name.html", {"wheel": wheel, "filled_count": filled, "oob": True}
+    )
     response.headers.update(SHEET_CLOSE)
     return response
 

@@ -1,0 +1,17 @@
+{
+  "request": {
+    "method": "POST",
+    "path": "/api/v1/wheels/3/slug/take",
+    "body": {
+      "from_wheel_id": 3
+    }
+  },
+  "status": 422,
+  "body": {
+    "error": {
+      "code": "same_wheel",
+      "message": "A wheel cannot take its own tag.",
+      "field": "from_wheel_id"
+    }
+  }
+}

@@ -20,7 +20,7 @@
 </section>
 {% endif %}
 <header class="page-head">
-  <h1 id="wheel-name" class="title">{{ wheel.name }}</h1>
+  <h1 id="wheel-name" class="title title-wheel">{{ wheel.name }}</h1>
 </header>
 {% if hl %}
 <p class="notice hl-note" role="status">
@@ -28,7 +28,8 @@
   <a href="/w/{{ wheel.slug }}">Show all</a>
 </p>
 {% endif %}
-<div class="ring{% if hl %} has-hl{% endif %}" role="group" aria-label="{{ wheel.name }}, {{ filled_count }} of {{ wheel.slot_count }} swatched">
+<div class="ring{% if hl %} has-hl{% endif %}" role="group" aria-labelledby="ring-label">
+  {% include "_ring_label.html" %}
   <div class="hub">
     <span id="hub-name" class="hub-name">{{ filled_count }}</span>
     <span id="hub-count" class="hub-count">of {{ wheel.slot_count }}</span>

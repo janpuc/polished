@@ -28,7 +28,7 @@ uv sync --extra dev
 export POLISHED_DB_PATH=./data/polished.db POLISHED_AUTH_MODE=none \
        POLISHED_PUBLIC_URL=http://localhost:8080
 uv run python -m polished migrate
-uv run python -m polished sync --from-files tests/fixtures/feed_trimmed.json   # offline
+uv run python -m polished sync --from-files tests/fixtures/feed_trimmed.json --no-colours   # offline
 uv run python -m polished serve    # http://localhost:8080
 uv run pytest -q
 uv run ruff check && uv run ruff format --check
@@ -45,7 +45,7 @@ export POLISHED_DB_PATH=$(mktemp -d)/polished.db POLISHED_AUTH_MODE=none \
        POLISHED_PUBLIC_URL=http://localhost:8080 POLISHED_SYNC_ENABLED=false \
        POLISHED_SESSION_SECRET=dev-secret-dev-secret-dev-secret-00
 uv run python -m polished migrate
-uv run python -m polished sync --from-files tests/fixtures/feed_trimmed.json
+uv run python -m polished sync --from-files tests/fixtures/feed_trimmed.json --no-colours
 (uv run python -m polished serve & echo $! > /tmp/polished.pid); sleep 2
 curl -fsS localhost:8080/healthz      # {"status":"ok","version":"dev","schema":1}
 curl -fsS localhost:8080/sync         # the run just made
@@ -112,9 +112,12 @@ The app syncs the shop's public `products.json` feed once a day (06:00 local plu
 minutes of jitter), once at startup if the last good run is older than 30 hours, and on demand
 from `/sync`. That is 3 requests a day, at least a second apart, with an identifying User-Agent.
 `python -m polished sync` does one live run; `sync --from-files PAGE.json ...` applies local
-pages with the same code and no network (use this for development: `tests/fixtures/` holds a
-trimmed feed, and a full snapshot of three pages works too). A 429 or 5xx stops the run with
-nothing written. Shades are never deleted.
+pages with the same code and no request to the shop (use this for development: `tests/fixtures/`
+holds a trimmed feed, and a full snapshot of three pages works too). The run's last step reads each
+shade's polish colour from its product photo and downloads those photos from the Shopify image CDN
+(cdn.shopify.com), so `--from-files` alone is not offline; add `--no-colours` to skip that step and
+touch no network at all (`python -m polished colours` does the step later). A 429 or 5xx stops the
+run with nothing written. Shades are never deleted.
 
 After the shop pages the sync reads Holo Taco's official release list (a public Google Sheet, CSV
 export, one request) for each shade's release date, official collection name and retired flag, and

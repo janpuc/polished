@@ -122,7 +122,8 @@ async def mark_bought(request: Request, conn: Conn):
         except ValueError:
             price_errors[item_id] = "Use an amount like 15.50."
     try:
-        date.fromisoformat(bought_on)
+        if date.fromisoformat(bought_on) > date.fromisoformat(today(request)):
+            errors["bought_on"] = bottles.FUTURE_DATE
     except ValueError:
         errors["bought_on"] = "Use a date like 2026-10-25."
     if not item_ids:

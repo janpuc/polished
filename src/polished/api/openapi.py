@@ -18,6 +18,7 @@ APP_PATHS = frozenset(
         "/__test/reset",
         "/auth/app/start",
         "/auth/app/finish",
+        "/auth/app/callback",
     }
 )
 PUBLIC_OPERATIONS = frozenset(
@@ -27,6 +28,7 @@ PUBLIC_OPERATIONS = frozenset(
         "/__test/reset",
         "/auth/app/start",
         "/auth/app/finish",
+        "/auth/app/callback",
     }
 )
 DESCRIPTION = """\
@@ -90,6 +92,11 @@ def build_spec(app: FastAPI) -> dict:
     for path, name, summary in (
         ("/auth/app/start", "app_start", "Start the app's sign-in (in a browser session)"),
         ("/auth/app/finish", "app_finish", "Finish the app's sign-in (in a browser session)"),
+        (
+            "/auth/app/callback",
+            "app_callback",
+            "The app's https sign-in callback (a harmless page)",
+        ),
     ):
         operation = spec["paths"][path]["get"]
         operation.update(operationId=name, summary=summary, tags=["auth"])
@@ -128,10 +135,18 @@ def build_spec(app: FastAPI) -> dict:
             status: {
                 "description": "Redirects to `/auth/login?next=/auth/app/finish`."
                 if path.endswith("start")
-                else "Redirects to `polished://auth?code=<code>`, the app's callback.",
+                else "Redirects to `https://<host of PUBLIC_URL>/auth/app/callback?code=<code>`, "
+                "which the app claims as its `ASWebAuthenticationSession` callback.",
             },
             "400": {"description": "A page saying the sign-in cannot start or finish."},
         }
+    spec["paths"]["/auth/app/callback"]["get"]["responses"] = {
+        "200": {
+            "description": "A page that says to open Polished. It never reads the `code`. "
+            "`Cache-Control: no-store`, `X-Robots-Tag: noindex`, no referrer.",
+            "content": {"text/html": {"schema": {"type": "string"}}},
+        }
+    }
     used: set[str] = set()
     _refs(spec["paths"], used)
     pending = list(used)

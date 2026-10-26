@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="htmx-config" content='{"historyCacheSize": 0, "includeIndicatorStyles": false, "responseHandling": [{"code": "204", "swap": false}, {"code": "[23]..", "swap": true}, {"code": "422", "swap": true}, {"code": "[45]..", "swap": false, "error": true}, {"code": "...", "swap": true}]}'>
   <meta name="color-scheme" content="light dark">
-  <meta name="theme-color" content="#F6F2F5" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#F7F3F2" media="(prefers-color-scheme: light)">
   <meta name="theme-color" content="#160B14" media="(prefers-color-scheme: dark)">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -17,10 +17,12 @@
   <link rel="icon" type="image/png" sizes="32x32" href="/static/icons/favicon-32.png">
   <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png">
   <title>{% block title %}Polished{% endblock %}</title>
+  <link rel="preload" href="/static/vendor/fraunces/fraunces-latin.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="/static/css/app.css?v={{ version }}">
   <script src="/static/vendor/htmx.min.js?v={{ version }}" defer></script>
   <script type="module" src="/static/js/register-sw.js?v={{ version }}"></script>
   <script type="module" src="/static/js/chrome.js?v={{ version }}"></script>
+  <script type="module" src="/static/js/date.js?v={{ version }}"></script>
   {% block scripts %}{% endblock %}
 </head>
 <body{% if not tab %} class="bare"{% endif %}>

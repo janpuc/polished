@@ -49,7 +49,8 @@ class SecurityHeadersMiddleware:
                     headers.setdefault("Cache-Control", "private, no-cache")
                     headers.append("Vary", "Authorization")
                 if headers.get("content-type", "").startswith("text/html"):
-                    headers["Cache-Control"] = "private, no-cache"
+                    if headers.get("cache-control") != "no-store":
+                        headers["Cache-Control"] = "private, no-cache"
                     present = {v.strip().lower() for v in headers.get("vary", "").split(",")}
                     for name in VARY_HTML:
                         if name.lower() not in present:

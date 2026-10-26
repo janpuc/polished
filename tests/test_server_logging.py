@@ -25,3 +25,10 @@ def test_other_paths_keep_their_query():
     entry = record("/shades?q=spirit")
     HideCallbackQuery().filter(entry)
     assert "/shades?q=spirit" in entry.getMessage()
+
+
+def test_the_app_callback_query_never_reaches_the_access_log():
+    entry = record("/auth/app/callback?code=app_secret_code")
+    HideCallbackQuery().filter(entry)
+    assert "app_secret_code" not in entry.getMessage()
+    assert "/auth/app/callback?…" in entry.getMessage()

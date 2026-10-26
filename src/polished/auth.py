@@ -12,7 +12,13 @@ from authlib.integrations.starlette_client import OAuth
 from fastapi import APIRouter, Request
 from joserfc.errors import JoseError
 from starlette.requests import Request as StarletteRequest
-from starlette.responses import JSONResponse, PlainTextResponse, RedirectResponse, Response
+from starlette.responses import (
+    HTMLResponse,
+    JSONResponse,
+    PlainTextResponse,
+    RedirectResponse,
+    Response,
+)
 from starlette.types import ASGIApp, Receive, Scope, Send
 
 from .api import auth as api_tokens
@@ -38,6 +44,7 @@ PUBLIC_PATHS = frozenset(
         "/auth/logout",
         "/auth/signed-out",
         "/auth/app/start",
+        "/auth/app/callback",
         # The app's universal links fetch this unsigned; the route exists only when
         # POLISHED_APPLE_TEAM_ID is set, and the reset only in AUTH_MODE=none (both 404 otherwise).
         "/.well-known/apple-app-site-association",
@@ -48,7 +55,19 @@ PUBLIC_PATHS = frozenset(
 API_PUBLIC_PATHS = frozenset({"/api/v1/auth/exchange"})
 APP_LOGIN_MAX_AGE_S = 600
 APP_FINISH_PATH = "/auth/app/finish"
-APP_CALLBACK = "polished://auth"
+APP_CALLBACK_PATH = "/auth/app/callback"
+# Shown when the callback is opened in a browser instead of being claimed by the app's session.
+# No script, no style, no link; the code in the address is never read.
+APP_CALLBACK_PAGE = """<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<meta name="robots" content="noindex">
+<meta name="referrer" content="no-referrer">
+<title>Open Polished</title></head>
+<body><main><h1>Open Polished to finish signing in</h1>
+<p>This page does nothing by itself. Go back to the Polished app on your phone.</p></main></body></html>
+"""
 PUBLIC_PREFIXES = ("/static/",)
 
 router = APIRouter(prefix="/auth")
@@ -324,7 +343,8 @@ def signed_out(request: Request):
 @router.get("/app/start")
 def app_start(request: Request, challenge: str = "", device: str = ""):
     """The native app opens this in ASWebAuthenticationSession (docs/NATIVE.md 2.4): remember its
-    PKCE challenge in the web session, then sign in as usual and come back to /auth/app/finish."""
+    PKCE challenge in the web session, then sign in as usual and come back to /auth/app/finish.
+    One sign-in is pending at a time: a second start replaces the first."""
     if not api_tokens.CHALLENGE.fullmatch(challenge):
         return _message_page(
             request, 400, "Sign-in can't start", "Open Polished on your phone and try again."
@@ -355,6 +375,17 @@ def app_finish(request: Request):
         )
     finally:
         conn.close()
+    callback = f"https://{urlsplit(settings.public_url).hostname}{APP_CALLBACK_PATH}"
     return RedirectResponse(
-        f"{APP_CALLBACK}?code={code}", status_code=302, headers={"Cache-Control": "no-store"}
+        f"{callback}?code={code}", status_code=302, headers={"Cache-Control": "no-store"}
+    )
+
+
+@router.get("/app/callback", response_class=HTMLResponse)
+def app_callback() -> HTMLResponse:
+    """The address the app claims as its https callback (ASWebAuthenticationSession never loads it).
+    Opened anywhere else it only says what to do: it does not read the code, mint one or
+    redeem one, and nothing on it reveals anything."""
+    return HTMLResponse(
+        APP_CALLBACK_PAGE, headers={"Cache-Control": "no-store", "X-Robots-Tag": "noindex"}
     )

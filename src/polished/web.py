@@ -1,7 +1,8 @@
 """Jinja environment, page rendering (DESIGN 3.2) and template filters."""
 
-from datetime import date
+from datetime import date, datetime, timedelta
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 from fastapi import Request
 from fastapi.templating import Jinja2Templates
@@ -19,6 +20,7 @@ def _context(request: Request) -> dict:
     settings = request.app.state.settings
     return {
         "user": getattr(request.state, "user", None),
+        "today_iso": datetime.now(ZoneInfo(settings.timezone)).date().isoformat(),
         "version": settings.version,
         "store_url": settings.store_url,
     }
@@ -61,6 +63,23 @@ def day(value: str | None) -> str:
     return f"{parsed.day} {parsed:%b %Y}"
 
 
+def date_words(value: str | None, today: str) -> tuple[str, str]:
+    """A date field's value in words, as (main, rest): ("Today", "26 Oct 2026"), ("Yesterday",
+    "25 Oct 2026"), ("21 Jul 2026", "Tuesday") or ("", "") for no date. static/js/date.js draws
+    the same words when the field changes."""
+    try:
+        parsed = date.fromisoformat(value or "")
+        current = date.fromisoformat(today)
+    except ValueError:
+        return "", ""
+    long = f"{parsed.day} {parsed:%b %Y}"
+    if parsed == current:
+        return "Today", long
+    if parsed == current - timedelta(days=1):
+        return "Yesterday", long
+    return long, f"{parsed:%A}"
+
+
 def marked(text: str, spans: list[tuple[int, int]] | None) -> str | Markup:
     """`text` with the character spans from search.marks() wrapped in <mark>. Everything outside
     the tags is escaped; with no spans the plain text is returned for the template to escape."""
@@ -77,7 +96,13 @@ def marked(text: str, spans: list[tuple[int, int]] | None) -> str | Markup:
 
 templates = Jinja2Templates(directory=PACKAGE_DIR / "templates", context_processors=[_context])
 templates.env.filters.update(
-    money=money, thumb=thumb, label=label, words=words, day=day, marked=marked
+    money=money,
+    thumb=thumb,
+    label=label,
+    words=words,
+    day=day,
+    date_words=date_words,
+    marked=marked,
 )
 templates.env.globals.update(
     tip_shade_url=tips.shade_url, tip_stack_url=tips.stack_url, tip_hex=tips.effective_hex

@@ -1,0 +1,21 @@
+{
+  "request": {
+    "method": "PATCH",
+    "path": "/api/v1/wheels/3",
+    "body": {
+      "name": "Jelly wheel"
+    }
+  },
+  "status": 200,
+  "body": {
+    "id": 3,
+    "slug": "j7g2hm",
+    "name": "Jelly wheel",
+    "slot_count": 12,
+    "archived": false,
+    "filled": 0,
+    "drafts": 0,
+    "tag_url": "http://localhost:8080/w/j7g2hm",
+    "created_at": "2026-10-26T16:30:00Z"
+  }
+}

@@ -1,6 +1,7 @@
 {# The add / edit bottle sheet, swapped into #sheet-body. A failed validation comes back here
    (HX-Retarget) with the messages and what was typed. #}
 {% from "_icons.html" import icon with context %}
+{% from "_date_field.html" import date_field with context %}
 {% if bottle %}
 <form class="sheet-form" method="post" action="/bottles/{{ bottle.id }}" hx-post="/bottles/{{ bottle.id }}" hx-target="#bottle-{{ bottle.id }}" hx-swap="outerHTML">
   <input type="hidden" name="ctx" value="{{ ctx }}">
@@ -17,31 +18,23 @@
     <legend class="legend">Level</legend>
     <div class="segmented">
       {% for key, text in states.items() %}
-      <label class="pick"><input type="radio" name="state" value="{{ key }}"{% if values.state == key %} checked{% endif %}><span>{{ text }}</span></label>
+      <label class="pick"><input type="radio" name="state" value="{{ key }}"{% if values.state == key %} checked{% endif %}><span class="level level-{{ key }}"><i class="level-arc"></i>{{ text }}</span></label>
       {% endfor %}
     </div>
     {% if errors.state %}<p class="field-error" role="alert">{{ errors.state }}</p>{% endif %}
   </fieldset>
-  <div class="field">
-    <label for="printed_code">P code</label>
-    <input id="printed_code" name="printed_code" value="{{ values.printed_code or '' }}" inputmode="numeric" enterkeyhint="done" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="12" placeholder="259, stored as P259…">
-  </div>
-  <div class="field">
-    <label for="bought_on">Bought on</label>
-    <input id="bought_on" name="bought_on" type="date" value="{{ values.bought_on or '' }}">
-    {% if errors.bought_on %}<p class="field-error" role="alert">{{ errors.bought_on }}</p>{% endif %}
-  </div>
-  <details class="more-fields"{% if values.price_paid or values.opened_on or values.notes or errors.price_paid or errors.opened_on %} open{% endif %}>
+  {{ date_field("bought_on", "Bought on", values.bought_on, errors.bought_on, clear="Don’t know") }}
+  <details class="more-fields"{% if values.price_paid or values.opened_on or values.printed_code or values.notes or errors.price_paid or errors.opened_on %} open{% endif %}>
     <summary>{{ icon("chevron-right", "icon-sm") }}More details</summary>
     <div class="field">
       <label for="price_paid">Price paid ($)</label>
       <input id="price_paid" name="price_paid" value="{{ values.price_paid or '' }}" inputmode="decimal" autocomplete="off" placeholder="For example 15.50…">
       {% if errors.price_paid %}<p class="field-error" role="alert">{{ errors.price_paid }}</p>{% endif %}
     </div>
+    {{ date_field("opened_on", "Opened on", values.opened_on, errors.opened_on, clear="Not opened") }}
     <div class="field">
-      <label for="opened_on">Opened on</label>
-      <input id="opened_on" name="opened_on" type="date" value="{{ values.opened_on or '' }}">
-      {% if errors.opened_on %}<p class="field-error" role="alert">{{ errors.opened_on }}</p>{% endif %}
+      <label for="printed_code">P code</label>
+      <input id="printed_code" name="printed_code" value="{{ values.printed_code or '' }}" inputmode="numeric" enterkeyhint="done" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="12" placeholder="259, stored as P259…">
     </div>
     <div class="field">
       <label for="notes">Notes</label>

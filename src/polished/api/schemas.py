@@ -7,10 +7,20 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 
+def one_of(*values, default=...):
+    """A field that takes one of `values`. The type stays str or int so the answer to a wrong
+    value is the web's sentence (written by the route), not a validation message of pydantic's."""
+    allowed = [*values, None] if default is None else list(values)
+    return Field(default, json_schema_extra={"enum": allowed})
+
+
 class ErrorBody(BaseModel):
     code: str = Field(description="snake_case: bad_request, unauthorized, not_found, validation, …")
     message: str = Field(description="In the household's words, ready to show.")
     field: str | None = Field(None, description="The input at fault, for a validation error.")
+    fields: dict[str, str] | None = Field(
+        None, description="Every wrong input and its message, when more than one is wrong."
+    )
     retry_after_s: int | None = Field(None, description="For a cooldown.")
 
 
@@ -185,8 +195,14 @@ class Me(BaseModel):
 
 class Wear(BaseModel):
     shade: ShadeRow
-    bottle: Bottle
+    bottle: Bottle = Field(
+        description="The newest bottle of the shade that is not archived or empty."
+    )
     worn_today: bool
+
+
+class Worn(BaseModel):
+    worn_on: str = Field(description="The household's date, YYYY-MM-DD.")
 
 
 class RecentBottle(BaseModel):
@@ -204,7 +220,10 @@ class HomeCounts(BaseModel):
 class Home(BaseModel):
     greeting_name: str
     date: str
-    wear: Wear | None = Field(description="null until the wear log exists, or nothing is owned.")
+    wear: Wear | None = Field(
+        description="Today's pick, the same all day; the shade worn today once one was. "
+        "null when nothing is owned."
+    )
     recent: list[RecentBottle]
     wheel: WheelWithTiles | None
     counts: HomeCounts
@@ -447,3 +466,163 @@ class Sync(BaseModel):
     last: SyncRun | None
     runs: list[SyncRun] = Field(description="The latest ten, newest first.")
     cooldown_until: str | None = Field(description="When Sync now is allowed again; null if now.")
+
+
+# --- writes --------------------------------------------------------------------------------
+# Request bodies and the answers only writes give. A wrong value is a 422 `validation` with the
+# web's sentence and `field` set; fields left out of a PATCH keep their value.
+
+
+class ManualShadeRequest(BaseModel):
+    title: str = Field(max_length=500, description="Cut to 100 characters.")
+    kind: str = one_of("polish", "topper", "base")
+
+
+class TipColourRequest(BaseModel):
+    hex: str | None = Field(description='"#rrggbb", or null to go back to the sampled colour.')
+
+
+class BottleRequest(BaseModel):
+    state: str = one_of("full", "half", "low", "empty", default="full")
+    printed_code: str | None = Field(None, description='"259" and "p259" are stored as "P259".')
+    bought_on: str | None = Field(None, description="YYYY-MM-DD, not in the future.")
+    price_paid_cents: int | None = None
+    opened_on: str | None = Field(None, description="YYYY-MM-DD, not in the future.")
+    notes: str | None = Field(None, description="Cut to 500 characters.")
+
+
+class BottlePatch(BaseModel):
+    """Any subset of the bottle's fields; null clears the optional ones."""
+
+    state: str | None = one_of("full", "half", "low", "empty", default=None)
+    printed_code: str | None = None
+    bought_on: str | None = None
+    price_paid_cents: int | None = None
+    opened_on: str | None = None
+    notes: str | None = None
+    archived: bool | None = None
+
+
+class LearnedCode(BaseModel):
+    code: str
+    previous_shade: ShadeRow | None = Field(
+        description="The shade the code already pointed at when that is not this one (the old "
+        "match stays); null when the code is new."
+    )
+
+
+class BottleCreated(BaseModel):
+    bottle: Bottle
+    learned: LearnedCode | None = Field(
+        description="Set when the P code on the bottle was new, or already meant another shade; "
+        "null without a code, a code that is not a P number, or one already known for this shade."
+    )
+
+
+class WishlistAdd(BaseModel):
+    priority: int = one_of(1, 2, 3, default=2)
+
+
+class WishlistPatch(BaseModel):
+    priority: int | None = one_of(1, 2, 3, default=None)
+    note: str | None = Field(None, description="Cut to 200 characters; null or empty clears it.")
+
+
+class BoughtItem(BaseModel):
+    id: int
+    price_cents: int | None = None
+
+
+class BoughtRequest(BaseModel):
+    items: list[BoughtItem]
+    bought_on: str | None = Field(None, description="YYYY-MM-DD, not in the future; default today.")
+
+
+class Bought(BaseModel):
+    bottles: list[Bottle] = Field(description="One new full bottle per item, in the order given.")
+    wishlist: Wishlist
+
+
+class IdentifierRequest(BaseModel):
+    kind: str = one_of("gtin", "printed")
+    value: str = Field(max_length=100)
+    shade_id: int
+
+
+class IdentifierBrief(BaseModel):
+    id: int
+    kind: Literal["gtin", "printed"]
+    value: str
+    shade_id: int
+
+
+class IdentifierLearned(BaseModel):
+    identifier: IdentifierBrief
+    created: bool = Field(
+        description="False when the code was already known: it keeps the shade it had, which "
+        "`identifier.shade_id` and `shade` show."
+    )
+    shade: ShadeRow
+
+
+class WheelRequest(BaseModel):
+    name: str = Field(max_length=500, description="Cut to 60 characters.")
+    slot_count: int = Field(20, description="1 to 40.")
+
+
+class WheelPatch(BaseModel):
+    name: str | None = None
+    archived: bool | None = None
+
+
+class WheelDeleted(BaseModel):
+    deleted_swatches: int
+
+
+class TakeTagRequest(BaseModel):
+    from_wheel_id: int
+
+
+class StackOpened(StackSheet):
+    resumed: bool = Field(description="True when the slot already had a draft.")
+
+
+class LayerRequest(BaseModel):
+    shade_id: int
+
+
+class LayerPatch(BaseModel):
+    """One of the two."""
+
+    coats_delta: int | None = one_of(-1, 1, default=None)
+    move: str | None = one_of("up", "down", default=None)
+
+
+class TemplateRequest(BaseModel):
+    kind: str = one_of("over_black", "copy", "last")
+    source_stack_id: int | None = Field(None, description="For `copy`: a saved stack.")
+
+
+class StackTemplated(StackSheet):
+    result: Literal["added", "already", "unavailable", "copied", "nothing_saved"] = Field(
+        description="`over_black`: added, already (nothing changed) or unavailable (the catalog has "
+        "no black base). `copy`: copied. `last`: copied, or nothing_saved (the draft is untouched)."
+    )
+
+
+class SaveRequest(BaseModel):
+    name: str | None = Field(None, description="Cut to 80 characters.")
+    note: str | None = Field(None, description="Cut to 500 characters.")
+    painted_on: str | None = Field(
+        None, description="YYYY-MM-DD, not in the future; default today."
+    )
+
+
+class SlotResult(BaseModel):
+    wheel_id: int
+    position: int
+    tile: Tile
+
+
+class SyncStarted(BaseModel):
+    run_id: int

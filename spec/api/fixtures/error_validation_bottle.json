@@ -1,0 +1,24 @@
+{
+  "request": {
+    "method": "POST",
+    "path": "/api/v1/shades/1/bottles",
+    "body": {
+      "state": "nearly",
+      "bought_on": "2099-01-01",
+      "price_paid_cents": -5
+    }
+  },
+  "status": 422,
+  "body": {
+    "error": {
+      "code": "validation",
+      "message": "Pick full, half, low or empty.",
+      "field": "state",
+      "fields": {
+        "state": "Pick full, half, low or empty.",
+        "bought_on": "That date is in the future. Pick today or an earlier day.",
+        "price_paid_cents": "Use an amount like 15.50."
+      }
+    }
+  }
+}

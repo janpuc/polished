@@ -444,11 +444,16 @@ class SyncRunner:
             conn.close()
 
     async def execute(
-        self, run_id: int, files: list[Path] | None = None, sheet: Path | None = None
+        self,
+        run_id: int,
+        files: list[Path] | None = None,
+        sheet: Path | None = None,
+        colours: bool = True,
     ) -> RunOutcome:
         """Fetches (or reads files), applies, closes the row. Releases the lock taken by begin().
         Then the release sheet: read from the `sheet` file, else fetched, but not when the shop
-        pages came from `files` (an offline run stays offline)."""
+        pages came from `files` (an offline run stays offline). Then the polish colours, which
+        download shade photos from the image CDN, unless `colours` is False."""
         try:
             if files is None:
                 pages = await fetch_feed(
@@ -462,7 +467,8 @@ class SyncRunner:
                 pages = await asyncio.to_thread(read_pages, files)
             counts = await asyncio.to_thread(self._apply, run_id, pages)
             await self._read_sheet(sheet, offline=files is not None)
-            await asyncio.to_thread(self._read_colours)
+            if colours:
+                await asyncio.to_thread(self._read_colours)
         except asyncio.CancelledError:
             self._record_error(run_id, "interrupted")
             raise
@@ -481,9 +487,13 @@ class SyncRunner:
         return RunOutcome(run_id, "ok")
 
     async def run(
-        self, trigger: str, files: list[Path] | None = None, sheet: Path | None = None
+        self,
+        trigger: str,
+        files: list[Path] | None = None,
+        sheet: Path | None = None,
+        colours: bool = True,
     ) -> RunOutcome:
-        return await self.execute(await self.begin(trigger), files, sheet)
+        return await self.execute(await self.begin(trigger), files, sheet, colours)
 
     def _apply(self, run_id: int, pages: list[list[dict]]) -> SyncCounts:
         conn = connect(self.settings.db_path)

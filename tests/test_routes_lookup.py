@@ -82,9 +82,10 @@ def test_the_result_card_pairs_the_bottle_photo_with_the_shades_own_tip(seeded):
     assert f'href="/shades/{shade}"' in card
     assert re.search(r'<img class="thumb" src="https://cdn\.shopify\.com/[^"]+"', card)
     assert re.search(
-        rf'<span class="tip-l" aria-hidden="true"><img src="/tips/shade/{shade}\.svg', card
+        rf'<span class="tip tip-l" aria-hidden="true"><span class="tip-face"><img src="/tips/shade/{shade}\.svg',
+        card,
     )
-    assert card.index('class="thumb"') < card.index('class="tip-l"')
+    assert card.index('class="thumb"') < card.index('class="tip tip-l"')
 
 
 def test_a_code_in_the_query_resolves_without_javascript(seeded):

@@ -1,0 +1,10 @@
+{
+  "request": {
+    "method": "DELETE",
+    "path": "/api/v1/wheels/3"
+  },
+  "status": 200,
+  "body": {
+    "deleted_swatches": 0
+  }
+}

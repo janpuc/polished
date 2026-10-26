@@ -1,0 +1,24 @@
+{
+  "request": {
+    "method": "POST",
+    "path": "/api/v1/wheels/3/slots/3/draft"
+  },
+  "status": 200,
+  "body": {
+    "stack_id": 4,
+    "wheel": {
+      "id": 3,
+      "slug": "7b2vdc",
+      "name": "Jelly wheel"
+    },
+    "position": 3,
+    "name": null,
+    "note": null,
+    "painted_on": null,
+    "layers": [],
+    "summary": "",
+    "full": false,
+    "tip": [],
+    "resumed": true
+  }
+}

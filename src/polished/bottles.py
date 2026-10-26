@@ -56,6 +56,9 @@ def parse_price(raw: str) -> int | None:
     return int(whole) * 100 + int((fraction or "0").ljust(2, "0"))
 
 
+FUTURE_DATE = "That date is in the future. Pick today or an earlier day."
+
+
 def _parse_date(raw: str) -> str | None:
     text = raw.strip()
     if not text:
@@ -70,8 +73,10 @@ def parse_input(
     price_paid: str = "",
     opened_on: str = "",
     notes: str = "",
+    today: date | None = None,
 ) -> tuple[BottleInput, dict[str, str]]:
-    """The form's strings as a BottleInput, and a message per field that is wrong."""
+    """The form's strings as a BottleInput, and a message per field that is wrong. A date after
+    `today` (default: the machine's date; routes pass the household's) is wrong."""
     errors: dict[str, str] = {}
     if state not in STATES:
         errors["state"] = "Pick full, half, low or empty."
@@ -85,6 +90,9 @@ def parse_input(
             setattr(values, name, _parse_date(raw))
         except ValueError:
             errors[name] = "Use a date like 2026-10-25."
+            continue
+        if (getattr(values, name) or "") > (today or date.today()).isoformat():
+            errors[name] = FUTURE_DATE
     try:
         values.price_paid_cents = parse_price(price_paid)
     except ValueError:

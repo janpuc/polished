@@ -6,18 +6,50 @@
    the builder, motion preferences. */
 
 /* 1. Tokens */
+@font-face {
+  font-family: "Fraunces";
+  font-style: normal;
+  font-weight: 500 700;
+  font-display: swap;
+  src: url("../vendor/fraunces/fraunces-latin.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2013-2014, U+2018-201D, U+2026, U+2074, U+20AC, U+2122, U+2212, U+2215;
+}
+
+@font-face {
+  font-family: "Fraunces";
+  font-style: normal;
+  font-weight: 500 700;
+  font-display: swap;
+  src: url("../vendor/fraunces/fraunces-latin-ext.woff2") format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+/* What shows until Fraunces arrives: Georgia scaled to the width of Fraunces 600 at opsz 144
+   (measured over the greeting and some shade names: 77.4 percent) with Fraunces' own ascent and
+   descent (1956 and 510 of 2000, divided by the scale), so the greeting does not jump when it
+   swaps in. */
+@font-face {
+  font-family: "Fraunces fallback";
+  src: local("Georgia");
+  font-weight: 600;
+  size-adjust: 77.4%;
+  ascent-override: 126.4%;
+  descent-override: 32.9%;
+  line-gap-override: 0%;
+}
+
 :root {
   color-scheme: light dark;
 
-  --bg: #f6f2f5;
-  --surface: #fdfbfc;
-  --fill: #ece5ea;
-  --fill-2: #e3dbe1;
-  --line: #ddd5db;
-  --line-2: #c5bac2;
-  --ink: #261322;
-  --ink-2: #6b5666;
-  --ink-3: #8c7a87;
+  --bg: #f7f3f2;
+  --surface: #fefcfb;
+  --fill: #efe8e6;
+  --fill-2: #e6dcd9;
+  --line: #e3dad8;
+  --line-2: #c9bcb9;
+  --ink: #2a1623;
+  --ink-2: #6e5a63;
+  --ink-3: #8f7d86;
   --primary: #381531;
   --primary-on: #fff;
   --heart: #d83486;
@@ -25,17 +57,22 @@
   --warn: #975800;
   --bad: #be222a;
   --mat: oklch(0 0 0 / 0.1);
+  --shadow-ink: 40 20 30;
+  --rim: oklch(1 0 0 / 0.55);
+  --velvet: var(--surface);
   --ring-edge: 0 0 0 1px oklch(0 0 0 / 0.06);
   --gloss: oklch(1 0 0 / 0.3);
-  --scrim: rgb(38 19 34 / 0.45);
-  --material: rgb(246 242 245 / 0.78);
-  --material-edge: rgb(38 19 34 / 0.08);
-  --sheet-shadow: 0 -12px 48px rgb(38 19 34 / 0.22);
-  --panel-shadow: 0 16px 48px rgb(38 19 34 / 0.2), var(--ring-edge);
-  --sheet-material: rgb(253 251 252 / 0.82);
+  --scrim: rgb(42 22 35 / 0.45);
+  --material: rgb(247 243 242 / 0.78);
+  --material-edge: rgb(42 22 35 / 0.08);
+  --material-light: inset 0 1px 0 oklch(1 0 0 / 0.35);
+  --sheet-shadow: 0 -12px 48px rgb(42 22 35 / 0.22);
+  --panel-shadow: 0 16px 48px rgb(42 22 35 / 0.2), var(--ring-edge);
+  --sheet-material: rgb(254 252 251 / 0.82);
   --foil: conic-gradient(from 200deg, #ffb3c7, #ffe29a, #b7f5c8, #9fd8ff, #d3b4ff, #ffb3c7);
 
   --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --display: "Fraunces", "Fraunces fallback", ui-serif, Georgia, serif;
 
   --gutter: 16px;
   --tap: 44px;
@@ -50,6 +87,16 @@
   --r-tip: 50% 50% 38% 38% / 62% 62% 30% 30%;
   --ease-out: cubic-bezier(0.22, 0.9, 0.32, 1);
   --ease-in: cubic-bezier(0.68, 0, 0.78, 0.1);
+
+  /* Tip sizes (width by height); the rail and panel shells of a later run raise them. */
+  --tip-s-w: 28px;
+  --tip-s-h: 46px;
+  --tip-m-w: 40px;
+  --tip-m-h: 66px;
+  --tip-l-w: 72px;
+  --tip-l-h: 118px;
+  --tip-xl-w: 96px;
+  --tip-xl-h: 158px;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -70,11 +117,15 @@
     --warn: #f9b64f;
     --bad: #ff7f7f;
     --mat: oklch(1 0 0 / 0.1);
+    --shadow-ink: 0 0 0;
+    --rim: oklch(1 0 0 / 0.26);
+    --velvet: #0f070e;
     --ring-edge: 0 0 0 1px oklch(1 0 0 / 0.08);
     --gloss: oklch(1 0 0 / 0.18);
     --scrim: rgb(0 0 0 / 0.6);
     --material: rgb(22 11 20 / 0.72);
     --material-edge: rgb(255 255 255 / 0.1);
+    --material-light: inset 0 1px 0 oklch(1 0 0 / 0.08);
     --sheet-shadow: 0 -12px 48px rgb(0 0 0 / 0.5);
     --panel-shadow: 0 0 0 1px oklch(1 0 0 / 0.12);
     --sheet-material: rgb(32 19 29 / 0.82);
@@ -242,7 +293,7 @@ h3 {
   background: var(--material);
   -webkit-backdrop-filter: blur(20px) saturate(1.6);
   backdrop-filter: blur(20px) saturate(1.6);
-  box-shadow: 0 -1px 0 var(--material-edge);
+  box-shadow: 0 -1px 0 var(--material-edge), var(--material-light);
 }
 
 .tabbar-inner {
@@ -315,14 +366,55 @@ h3 {
   letter-spacing: -0.02em;
 }
 
-.title-brand {
-  display: flex;
+/* The display face, in four roles and nowhere else (docs/VISUAL.md section 3): the greeting,
+   the shade title, the wheel name and the big numbers. Never below 22px; opsz is set outright
+   because Safari's automatic optical sizing would pick the text cut at these sizes. */
+.greeting,
+.title-detail,
+.title-wheel,
+.wheel-name,
+.hub-name {
+  font-family: var(--display);
+  font-weight: 600;
+  font-variation-settings: "opsz" 144;
+  letter-spacing: -0.015em;
+}
+
+/* The greeting has the full width, so "Good afternoon, Georgia" stays on one line at 390; the mark
+   trails on the date's row. */
+.greeting-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: 12px;
+  column-gap: 12px;
+  margin: 0.25rem 0 0.5rem;
+}
+
+.greeting-head .greeting {
+  grid-column: 1 / -1;
+}
+
+.greeting {
+  font-size: 2.125rem;
+  line-height: 2.25rem;
+}
+
+.greeting-date {
+  margin: 4px 0 0;
+  color: var(--ink-2);
+  font-size: 0.9375rem;
+  line-height: 1.25rem;
 }
 
 /* The icon is plum: on the dark board it needs the mat ring to read as a tile. */
-.title-brand img {
+.greeting-mark {
+  display: block;
+  margin: -4px -4px -4px 0;
+  padding: 4px;
+}
+
+.greeting-mark img {
+  display: block;
   width: 36px;
   height: 36px;
   border-radius: 9px;
@@ -332,7 +424,14 @@ h3 {
 
 .title-detail {
   font-size: 1.75rem;
-  line-height: 2.125rem;
+  line-height: 1.9375rem;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
+
+.title-wheel {
+  font-size: 2.125rem;
+  line-height: 2.25rem;
 }
 
 .back {
@@ -527,6 +626,85 @@ input[type="date"] {
   line-height: 1.25rem;
 }
 
+/* A date field (_date_field.html): the value in words over the real date input, which is
+   transparent and covers the box, so a tap opens the native picker. */
+.date-box {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 50px;
+  padding: 0 14px;
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-input);
+  background: var(--surface);
+}
+
+.date-box:has(input:focus-visible) {
+  outline: 2px solid var(--ink);
+}
+
+.date-box > .icon {
+  width: 1.25rem;
+  height: 1.25rem;
+  color: var(--ink-3);
+}
+
+.date-box > .icon-sm {
+  margin-left: auto;
+}
+
+.date-value {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+  font-size: 1.0625rem;
+  line-height: 1.375rem;
+  pointer-events: none;
+}
+
+.date-main {
+  font-weight: 600;
+}
+
+.date-rest {
+  color: var(--ink-2);
+  font-size: 0.9375rem;
+  line-height: 1.25rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.date-field.is-empty .date-main {
+  color: var(--ink-3);
+  font-weight: 400;
+}
+
+.date-box input[type="date"] {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  opacity: 0;
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.date-box input[type="date"]:focus-visible {
+  outline: 0;
+}
+
+.date-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
 fieldset {
   min-width: 0;
   margin: 0 0 16px;
@@ -579,13 +757,15 @@ fieldset {
 }
 
 .pick input:checked + span,
-a.chip.is-on {
+a.chip.is-on,
+button.chip[aria-pressed="true"] {
   border-color: var(--primary);
   background-color: var(--primary);
   color: var(--primary-on);
 }
 
-a.chip.is-on {
+a.chip.is-on,
+button.chip[aria-pressed="true"] {
   font-weight: 600;
 }
 
@@ -595,7 +775,8 @@ a.chip.is-on {
 }
 
 .pick input:not(:checked):active + span,
-a.chip:not(.is-on):active {
+a.chip:not(.is-on):active,
+button.chip[aria-pressed="false"]:active {
   background-color: var(--fill);
 }
 
@@ -621,7 +802,8 @@ a.chip:not(.is-on):active {
 
 @media (hover: hover) {
   .pick input:not(:checked):hover + span,
-  a.chip:not(.is-on):hover {
+  a.chip:not(.is-on):hover,
+  button.chip[aria-pressed="false"]:hover {
     background-color: var(--fill);
   }
 }
@@ -684,6 +866,23 @@ a.chip:not(.is-on):active {
 
 .segmented .pick input:not(:checked):active + span {
   background-color: var(--fill-2);
+}
+
+.segmented .pick .level {
+  gap: 5px;
+  padding: 0 4px;
+  white-space: nowrap;
+  overflow-wrap: normal;
+}
+
+.segmented .level-arc {
+  width: 16px;
+  height: 16px;
+}
+
+.segmented .pick input:checked + .level {
+  --arc: var(--primary-on);
+  --arc-track: color-mix(in oklab, var(--primary-on) 30%, transparent);
 }
 
 .segmented-fit {
@@ -783,63 +982,116 @@ a.chip:not(.is-on):active {
   outline-offset: -2px;
 }
 
-/* A painted nail tip (_tip.html): its own shape, a 1px mat, a gloss. Four sizes. */
-.tip-s,
-.tip-m,
-.tip-l,
-.tip-xl {
+/* A lit tip (_tip.html): the painted SVG is the paper, the CSS is the light. .tip holds the
+   contact shadow outside the clip; .tip-face clips the picture and carries the die-cut edge, the
+   lift and, on ::after, the specular pool, the gloss band, the mat and the rim. The light comes
+   from the top left (--lx, --ly). Four sizes, set by the --tip-* tokens. */
+.tip {
+  --lx: -0.35;
+  --ly: -0.55;
   position: relative;
-  flex: none;
   display: block;
-  overflow: hidden;
-  border-radius: var(--r-tip);
-  background: var(--fill);
+  flex: none;
 }
 
 .tip-s {
-  width: 28px;
-  height: 46px;
+  width: var(--tip-s-w);
+  height: var(--tip-s-h);
 }
 
 .tip-m {
-  width: 40px;
-  height: 66px;
+  width: var(--tip-m-w);
+  height: var(--tip-m-h);
 }
 
 .tip-l {
-  width: 56px;
-  height: 92px;
+  width: var(--tip-l-w);
+  height: var(--tip-l-h);
 }
 
 .tip-xl {
-  width: 72px;
-  height: 118px;
+  width: var(--tip-xl-w);
+  height: var(--tip-xl-h);
 }
 
-.tip-s img,
-.tip-m img,
-.tip-l img,
-.tip-xl img {
+.tip::before {
+  content: "";
+  position: absolute;
+  right: 12%;
+  bottom: -5%;
+  left: 12%;
+  height: 16%;
+  border-radius: 50%;
+  background: rgb(var(--shadow-ink) / 0.26);
+  filter: blur(4px);
+  pointer-events: none;
+}
+
+.tip-face {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+  isolation: isolate;
+  border-radius: var(--r-tip);
+  background: var(--fill);
+  box-shadow: 0 0 0 1.5px var(--surface), 0 1px 2px rgb(var(--shadow-ink) / 0.18),
+    0 8px 18px -6px rgb(var(--shadow-ink) / 0.35);
+}
+
+.tip-face img {
   display: block;
   width: 100%;
   height: 100%;
   object-fit: cover;
+  border-radius: inherit;
 }
 
-/* The mat, then the gloss: a soft sheen from the top left and a 1px highlight at the bottom
-   right. Every tip in the app (rows, ring, builder) gets this same finish. */
-.tip-s::after,
-.tip-m::after,
-.tip-l::after,
-.tip-xl::after,
+.tip-face::after,
 .tip-art::after {
   content: "";
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  background: linear-gradient(125deg, var(--gloss), transparent 42%);
-  box-shadow: inset 0 0 0 1px var(--mat), inset -1px -1px 1px var(--gloss);
+  background: radial-gradient(
+      60% 40% at calc(50% + var(--lx) * 40%) calc(50% + var(--ly) * 40%),
+      oklch(1 0 0 / 0.5),
+      transparent 70%
+    ),
+    linear-gradient(calc(115deg - var(--a, 0deg)), transparent 38%, oklch(1 0 0 / 0.35) 48%, transparent 58%);
+  mix-blend-mode: soft-light;
+  box-shadow: inset 0 0 0 1px var(--mat), inset 1px 1px 0 var(--rim),
+    inset -1px -2px 2px rgb(var(--shadow-ink) / 0.25);
   pointer-events: none;
+}
+
+.tip-s .tip-face {
+  box-shadow: 0 0 0 1px var(--surface), 0 1px 2px rgb(var(--shadow-ink) / 0.18);
+}
+
+@media (prefers-color-scheme: dark) {
+  .tip::before {
+    background: rgb(0 0 0 / 0.55);
+  }
+
+  .tip-face {
+    box-shadow: 0 0 0 1px oklch(1 0 0 / 0.14), 0 1px 2px rgb(0 0 0 / 0.5),
+      0 10px 22px -6px rgb(0 0 0 / 0.7);
+  }
+
+  .tip-s .tip-face {
+    box-shadow: 0 0 0 1px oklch(1 0 0 / 0.14), 0 1px 2px rgb(0 0 0 / 0.5);
+  }
+}
+
+/* The match in a search result: the letters that hit, a quiet wash and no colour. The name stays
+   one inline run, so the mark never opens a gap. */
+mark {
+  margin: 0 -2px;
+  padding: 0 2px;
+  border-radius: 3px;
+  background: color-mix(in oklab, var(--ink) 12%, transparent);
+  color: inherit;
 }
 
 /* A bottle photo, kept only where the bottle itself is the point: the lookup result. */
@@ -1038,6 +1290,10 @@ a.chip:not(.is-on):active {
   line-height: 1.3125rem;
 }
 
+.empty-state .tip {
+  margin-bottom: 8px;
+}
+
 .empty-state .btn {
   margin-top: 12px;
 }
@@ -1123,7 +1379,7 @@ a.chip:not(.is-on):active {
   background: var(--material);
   -webkit-backdrop-filter: blur(20px) saturate(1.6);
   backdrop-filter: blur(20px) saturate(1.6);
-  box-shadow: 0 1px 0 var(--material-edge);
+  box-shadow: 0 1px 0 var(--material-edge), var(--material-light);
 }
 
 .search-row {
@@ -1293,6 +1549,11 @@ a.chip:not(.is-on):active {
   align-items: center;
   gap: 16px;
   margin-top: 16px;
+  padding: 16px;
+  border: 1px solid transparent;
+  border-radius: 20px;
+  background: var(--velvet);
+  box-shadow: var(--ring-edge);
 }
 
 .detail-title {
@@ -1516,10 +1777,8 @@ a.chip:not(.is-on):active {
   padding: 0 4px;
 }
 
-/* 9. Bottles: a head per shade (tip and name), then one grouped list of plain rows. The level is a
-   small bottle filled to Full, Half, Low or Empty in the shade's own colour, the only colour in a
-   row (_level_glyph.html: inline SVG with presentation attributes, so the CSP has nothing to
-   block). The whole row opens the edit sheet. */
+/* 9. Bottles: a head per shade (tip and name), then one grouped list of plain rows. The level is
+   an ink arc (Full, Half, Low, Empty) with its word. The whole row opens the edit sheet. */
 /* Five chips share one row at 390pt and wrap, never scroll, when the text size grows. */
 .chip-row {
   display: flex;
@@ -1576,9 +1835,10 @@ a.chip:not(.is-on):active {
 }
 
 .bottle-row {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
   align-items: center;
-  gap: 12px;
+  column-gap: 12px;
   width: 100%;
   min-height: 64px;
   padding: 10px 10px 10px 13px;
@@ -1605,22 +1865,29 @@ a.chip:not(.is-on):active {
 }
 
 .bottle-body {
-  flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 2px;
 }
 
-.bottle-title {
-  font-size: 1.0625rem;
-  line-height: 1.375rem;
-  font-weight: 600;
+/* The first line is the purchase; the P code is the last and lightest fact, after a gap and
+   no separator. */
+.bottle-line {
+  font-size: 0.9375rem;
+  line-height: 1.25rem;
+  font-variant-numeric: tabular-nums;
 }
 
-.bottle-title.is-plain {
-  color: var(--ink-2);
-  font-weight: 500;
+.bottle-line .code {
+  margin-left: 8px;
+  color: var(--ink-3);
+  font-size: 0.8125rem;
+  white-space: nowrap;
+}
+
+.bottle-line .code.is-alone {
+  margin-left: 0;
 }
 
 .bottle-foot {
@@ -1638,28 +1905,56 @@ a.chip:not(.is-on):active {
   overflow-wrap: anywhere;
 }
 
-/* The glyph column is fixed, so the bottles line up down the list whatever the word. */
-.bottle-level {
-  flex: none;
-  display: grid;
-  grid-template-columns: 20px 3.25rem;
+/* The level: an arc in ink filled clockwise from twelve, readable for every shade in both
+   schemes, and the word. Low and Empty keep their word colour so colour is never the only
+   carrier. The share is a class because the CSP forbids inline style. */
+.level {
+  --arc: var(--ink);
+  --arc-track: var(--line-2);
+  display: inline-flex;
   align-items: center;
-  column-gap: 8px;
+  gap: 8px;
   color: var(--ink-2);
   font-size: 0.9375rem;
   line-height: 1.25rem;
   font-weight: 500;
 }
 
-.level-glyph {
-  display: block;
+.level-arc {
+  flex: none;
   width: 20px;
-  height: 35px;
-  color: var(--ink-3);
+  height: 20px;
+  border-radius: 50%;
+  background: conic-gradient(var(--arc) calc(var(--p) * 1%), var(--arc-track) 0);
+  -webkit-mask: radial-gradient(circle closest-side, transparent 65%, #000 67%);
+  mask: radial-gradient(circle closest-side, transparent 65%, #000 67%);
+}
+
+.level-full {
+  --p: 100;
+}
+
+.level-half {
+  --p: 50;
+}
+
+.level-low {
+  --p: 25;
+  color: var(--warn);
+}
+
+.level-empty {
+  --p: 0;
+  color: var(--bad);
+}
+
+/* The word column is the width of "Empty", so the arcs line up down the list. */
+.bottle-row .level {
+  min-width: 4.75rem;
 }
 
 .bottle.is-archived .bottle-body,
-.bottle.is-archived .bottle-level {
+.bottle.is-archived .level {
   opacity: 0.6;
 }
 
@@ -1814,7 +2109,7 @@ a.chip:not(.is-on):active {
   background: var(--sheet-material);
   -webkit-backdrop-filter: blur(20px) saturate(1.6);
   backdrop-filter: blur(20px) saturate(1.6);
-  box-shadow: 0 -1px 0 var(--material-edge);
+  box-shadow: 0 -1px 0 var(--material-edge), var(--material-light);
 }
 
 /* Quiet actions at the foot of a sheet: Archive, Remove. Red only where the action destroys. */
@@ -2506,9 +2801,8 @@ a.chip:not(.is-on):active {
 
 /* The hub says one thing: how many. "of 20" is a footnote under it. */
 .hub-name {
-  font-size: 2.75rem;
-  line-height: 3rem;
-  font-weight: 700;
+  font-size: 3.5rem;
+  line-height: 3.5rem;
   letter-spacing: -0.03em;
   font-variant-numeric: tabular-nums;
 }
@@ -2542,13 +2836,23 @@ a.chip:not(.is-on):active {
   opacity: 0.55;
 }
 
-.tip,
+.slot-tip,
 .tip-art {
   border-radius: var(--r-tip);
 }
 
-/* An empty slot is a --fill tip with its number and no foil; a filled one is the painted stack. */
-.tip {
+/* An empty slot is a --fill tip with its number and no foil; a filled one is the painted stack,
+   lit like every tip. A slot is turned to its angle, so the light is turned back: --c and --s
+   are the cosine and sine of the angle, and every offset below is the screen offset (right,
+   down) rotated into the slot's own frame. */
+.slot {
+  --c: cos(var(--a));
+  --s: sin(var(--a));
+  --lx: calc(-0.35 * var(--c) - 0.55 * var(--s));
+  --ly: calc(0.35 * var(--s) - 0.55 * var(--c));
+}
+
+.slot-tip {
   position: relative;
   width: min(calc(var(--slot-h) * 0.613), calc(2 * pi * var(--ring) / var(--n) - 2px));
   height: var(--slot-h);
@@ -2556,7 +2860,7 @@ a.chip:not(.is-on):active {
   transition: scale 150ms ease-out;
 }
 
-.tip::before {
+.slot-tip::before {
   content: "";
   position: absolute;
   inset: 0;
@@ -2565,9 +2869,39 @@ a.chip:not(.is-on):active {
   background: var(--fill);
 }
 
+.ring:not(.ring-home, .ring-mini) .is-filled .slot-tip::before {
+  box-shadow: 0 0 0 1.5px var(--surface),
+    calc(1px * var(--s)) calc(1px * var(--c)) 2px rgb(var(--shadow-ink) / 0.18),
+    calc(6px * var(--s)) calc(6px * var(--c)) 12px -4px rgb(var(--shadow-ink) / 0.35);
+}
+
+/* The small rings keep the edge and a contact shadow, which is all a tip of 20 by 32 or 9 by 14 can
+   carry. */
+.ring-home .is-filled .slot-tip::before {
+  box-shadow: 0 0 0 1px var(--surface), calc(0.5px * var(--s)) calc(1.5px * var(--c)) 2px
+    rgb(var(--shadow-ink) / 0.3);
+}
+
+.ring-mini .is-filled .slot-tip::before {
+  box-shadow: 0 0 0 0.5px var(--surface), 0 1px 1px rgb(var(--shadow-ink) / 0.3);
+}
+
+@media (prefers-color-scheme: dark) {
+  .ring:not(.ring-home, .ring-mini) .is-filled .slot-tip::before {
+    box-shadow: 0 0 0 1px oklch(1 0 0 / 0.14),
+      calc(1px * var(--s)) calc(1px * var(--c)) 2px rgb(0 0 0 / 0.5),
+      calc(8px * var(--s)) calc(8px * var(--c)) 14px -4px rgb(0 0 0 / 0.7);
+  }
+
+  .ring-home .is-filled .slot-tip::before,
+  .ring-mini .is-filled .slot-tip::before {
+    box-shadow: 0 0 0 1px oklch(1 0 0 / 0.14), 0 1px 2px rgb(0 0 0 / 0.5);
+  }
+}
+
 /* The foil ring behind the tip belongs to two moments only: a highlighted slot (?hl) and the
    sweep after a save. */
-.tip::after {
+.slot-tip::after {
   content: "";
   position: absolute;
   inset: -3px;
@@ -2577,11 +2911,11 @@ a.chip:not(.is-on):active {
   background: var(--foil);
 }
 
-.slot.is-hl .tip::after {
+.slot.is-hl .slot-tip::after {
   display: block;
 }
 
-.slot.is-saved .tip::after {
+.slot.is-saved .slot-tip::after {
   display: block;
   animation: saved-ring 700ms var(--ease-out) both;
 }
@@ -2607,6 +2941,7 @@ a.chip:not(.is-on):active {
   position: absolute;
   inset: 0;
   overflow: hidden;
+  isolation: isolate;
 }
 
 .tip-art > img {
@@ -2614,6 +2949,14 @@ a.chip:not(.is-on):active {
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+/* The small rings (Home, the wheels list) are too small for light: the mat and nothing else. */
+.ring-home .tip-art::after,
+.ring-mini .tip-art::after {
+  background: none;
+  mix-blend-mode: normal;
+  box-shadow: inset 0 0 0 1px var(--mat);
 }
 
 /* The tip colour is a quiet disclosure at the foot of the shade page: the current tip and where
@@ -2748,13 +3091,20 @@ input.tip-input {
 }
 
 /* Tapping a tip lifts it before the sheet rises. */
-.slot:has(.slot-hit:active) .tip {
+.slot:has(.slot-hit:active) .slot-tip {
   scale: 1.08;
 }
 
-.slot:has(.slot-hit:focus-visible) .tip {
+/* Keyboard focus: the foil ring, 2.5px outside the die-cut edge, and the ink outline beyond it,
+   which carries the contrast the pale foil cannot. */
+.slot:has(.slot-hit:focus-visible) .slot-tip {
   outline: 2px solid var(--ink);
-  outline-offset: 4px;
+  outline-offset: 5px;
+}
+
+.slot:has(.slot-hit:focus-visible) .slot-tip::after {
+  display: block;
+  inset: -4px;
 }
 
 .slot-hit:focus-visible {
@@ -2883,6 +3233,11 @@ input.tip-input {
   text-decoration: none;
 }
 
+.wheel-row .wheel-name {
+  font-size: 1.375rem;
+  line-height: 1.5rem;
+}
+
 .wheel-row:active {
   background: var(--fill);
 }
@@ -2947,15 +3302,15 @@ input.tip-input {
 
 @media (prefers-reduced-motion: reduce) {
   .slot,
-  .tip {
+  .slot-tip {
     transition: none;
   }
 
-  .slot:has(.slot-hit:active) .tip {
+  .slot:has(.slot-hit:active) .slot-tip {
     scale: none;
   }
 
-  .slot.is-saved .tip::after {
+  .slot.is-saved .slot-tip::after {
     animation: saved-fade 1s linear both;
   }
 

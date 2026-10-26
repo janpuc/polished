@@ -8,7 +8,7 @@ from fastapi import APIRouter, Query
 from .. import bottles, shades, wheels, wishlist
 from .. import search as name_search
 from . import rows, schemas
-from .errors import not_found
+from .errors import invalid, not_found
 from .routing import ApiRoute, AppSettings, Conn
 
 router = APIRouter(prefix="/shades", route_class=ApiRoute, tags=["shades"])
@@ -60,13 +60,7 @@ def shade_facets(conn: Conn):
     return shades.facets(conn)
 
 
-@router.get(
-    "/{shade_id}",
-    response_model=schemas.ShadeDetail,
-    summary="One shade",
-    responses={404: {"description": "`not_found`"}},
-)
-def shade_detail(conn: Conn, settings: AppSettings, shade_id: int):
+def detail_body(conn, settings, shade_id: int) -> schemas.ShadeDetail:
     shade = shades.get_shade(conn, shade_id)
     if shade is None:
         raise not_found("No such shade.")
@@ -108,3 +102,53 @@ def shade_detail(conn: Conn, settings: AppSettings, shade_id: int):
         ],
         tip_source=tip_source,
     )
+
+
+@router.get(
+    "/{shade_id}",
+    response_model=schemas.ShadeDetail,
+    summary="One shade",
+    responses={404: {"description": "`not_found`"}},
+)
+def shade_detail(conn: Conn, settings: AppSettings, shade_id: int):
+    return detail_body(conn, settings, shade_id)
+
+
+@router.post(
+    "",
+    status_code=201,
+    response_model=schemas.ShadeDetail,
+    summary="Add a shade by hand",
+    responses={422: {"description": "`validation`: `title` or `kind`."}},
+)
+def create_shade(conn: Conn, settings: AppSettings, body: schemas.ManualShadeRequest):
+    """For a gifted bottle that is not in the catalog: no product, no price, no availability."""
+    errors = {}
+    if not body.title.strip():
+        errors["title"] = "Give the shade a name."
+    if body.kind not in shades.MANUAL_KINDS:
+        errors["kind"] = "Pick polish, topper or base coat."
+    if errors:
+        raise invalid(errors)
+    shade_id = shades.create_manual(conn, body.title.strip()[:100], body.kind)
+    return detail_body(conn, settings, shade_id)
+
+
+@router.put(
+    "/{shade_id}/tip-colour",
+    response_model=schemas.ShadeDetail,
+    summary="Set or reset the colour of a shade's nail tip",
+    responses={404: {"description": "`not_found`"}, 422: {"description": "`validation`: `hex`."}},
+)
+def set_tip_colour(
+    conn: Conn, settings: AppSettings, shade_id: int, body: schemas.TipColourRequest
+):
+    """The household's own colour (`#rrggbb`), or `null` to go back to the one read from the photos.
+    The sync never touches it."""
+    try:
+        found = shades.set_tip_colour(conn, shade_id, body.hex)
+    except ValueError as exc:
+        raise invalid({"hex": str(exc)}) from None
+    if not found:
+        raise not_found("No such shade.")
+    return detail_body(conn, settings, shade_id)

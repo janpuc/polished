@@ -1,13 +1,10 @@
 """GET /me and GET /home."""
 
-from datetime import datetime
-from zoneinfo import ZoneInfo
-
 from fastapi import APIRouter, Query, Request
 
-from .. import bottles, stacks, wheels, wishlist
+from .. import bottles, stacks, wear, wheels, wishlist
 from . import rows, schemas
-from .routing import ApiRoute, AppSettings, Conn
+from .routing import ApiRoute, AppSettings, Conn, household_today
 
 router = APIRouter(route_class=ApiRoute, tags=["home"])
 
@@ -18,6 +15,19 @@ def first_name(name: str) -> str:
     """The first word of the name (the part before an @ when the name is an address)."""
     words = name.split("@")[0].split()
     return words[0] if words else ""
+
+
+def wear_body(conn, today, another: bool) -> schemas.Wear | None:
+    shade_id = wear.pick_today(conn, today)
+    if shade_id is not None and another:
+        shade_id = wear.pick_another(conn, today, not_this=shade_id)
+    if shade_id is None:
+        return None
+    return schemas.Wear(
+        shade=rows.rows_by_id(conn, [shade_id])[shade_id],
+        bottle=rows.bottle(wear.bottle_for(conn, shade_id)),
+        worn_today=wear.worn_today(conn, shade_id, today),
+    )
 
 
 @router.get("/me", response_model=schemas.Me, summary="Who is signed in, and the server's facts")
@@ -42,11 +52,15 @@ def home(
     request: Request,
     conn: Conn,
     settings: AppSettings,
-    another: bool = Query(False, description="Pick another shade to wear (needs the wear log)."),
+    another: bool = Query(
+        False,
+        description="Pick another owned shade to wear, weighted away from the last 30 days. "
+        "Random on every call, never the shade that would be shown without it.",
+    ),
 ):
     """Wear today, the six newest bottles, the wheel worked on last and the collection numbers.
-    `wear` is null until the wear log exists; `another` has no effect before then."""
-    today = datetime.now(ZoneInfo(settings.timezone)).date()
+    Today's pick is the same all day (or the shade already worn today); `another` replaces it."""
+    today = household_today(settings)
     recent = bottles.recent(conn, RECENT)
     shade_rows = rows.rows_by_id(conn, [b["shade_id"] for b in recent])
     wheel = wheels.most_recent(conn)
@@ -57,7 +71,7 @@ def home(
     return schemas.Home(
         greeting_name=first_name(user["name"]),
         date=today.isoformat(),
-        wear=None,
+        wear=wear_body(conn, today, another),
         recent=[
             schemas.RecentBottle(bottle=rows.bottle(b), shade=shade_rows[b["shade_id"]])
             for b in recent

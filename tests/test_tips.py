@@ -97,6 +97,22 @@ def test_matte_has_no_gloss_and_everything_else_has_one():
     assert creme.count("<path") > matte.count("<path")
 
 
+def test_the_dome_and_the_highlight_leave_room_for_the_lighting_in_css():
+    """The page's CSS adds an occlusion and a specular pool (DESIGN 9): the dome's edge is .18
+    and the small highlight sits at (66, 30), under the pool's default place."""
+    svg = render([shade(1, "#336699", "creme")])
+    assert 'stop-color="#000000" stop-opacity="0.18"' in svg
+    assert 'stop-opacity="0.24"' not in svg
+    assert '<ellipse cx="66" cy="30"' in svg and "rotate(14 66 30)" in svg
+
+
+def test_the_revision_follows_the_drawing_version(monkeypatch):
+    layers = [shade(1, "#336699", "creme")]
+    before = tips.revision(layers)
+    monkeypatch.setattr(tips, "DRAWING_VERSION", tips.DRAWING_VERSION + 1)
+    assert tips.revision(layers) != before
+
+
 def test_a_flakie_topper_over_black_shows_flakes_on_black():
     svg = render([shade(1, "#101010", "creme"), shade(2, "#ff66cc", "flakie", topper=True)])
     assert 'fill="#101010"' in svg and "<polygon" in svg

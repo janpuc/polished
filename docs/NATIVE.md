@@ -74,12 +74,12 @@ Settings: `SWIFT_VERSION 6.0` with strict concurrency, `IPHONEOS_DEPLOYMENT_TARG
 `Polished.entitlements`:
 ```xml
 com.apple.developer.nfc.readersession.formats  = [ NDEF ]
-com.apple.developer.associated-domains         = [ applinks:polished.janpuc.com ]
+com.apple.developer.associated-domains         = [ applinks:polished.janpuc.com, webcredentials:polished.janpuc.com ]
 com.apple.security.application-groups          = [ group.com.janpuc.polished ]
 ```
-`Polished-Debug.entitlements` adds `applinks:polished.janpuc.com?mode=developer` so a development build reads the AASA straight from the server (needs Developer Mode → "Associated Domains Development" on the device). Widget: the App Group only. No Keychain sharing: the widget never holds the token.
+`Polished-Debug.entitlements` adds `applinks:polished.janpuc.com?mode=developer` and `webcredentials:polished.janpuc.com?mode=developer` so a development build reads the AASA straight from the server (needs Developer Mode → "Associated Domains Development" on the device). Widget: the App Group only. No Keychain sharing: the widget never holds the token.
 
-`Info.plist`: `NFCReaderUsageDescription` "Polished writes the wheel's link to a sticker and checks it.", `NSCameraUsageDescription` "Polished reads the barcode under a bottle.", `CFBundleURLTypes` scheme `polished` (sign-in callback), `UIAppFonts` [Fraunces144pt-SemiBold.ttf], `UIApplicationSceneManifest` with `UIApplicationSupportsMultipleScenes YES` (Split View and Stage Manager). No `NSMotionUsageDescription`: `CMMotionManager` attitude does not need one.
+`Info.plist`: `NFCReaderUsageDescription` "Polished writes the wheel's link to a sticker and checks it.", `NSCameraUsageDescription` "Polished reads the barcode under a bottle.", no `CFBundleURLTypes` (the app registers no URL scheme; see 2.4), `UIAppFonts` [Fraunces144pt-SemiBold.ttf], `UIApplicationSceneManifest` with `UIApplicationSupportsMultipleScenes YES` (Split View and Stage Manager). No `NSMotionUsageDescription`: `CMMotionManager` attitude does not need one.
 
 ### 2.3 Modules and data flow
 
@@ -95,17 +95,24 @@ com.apple.security.application-groups          = [ group.com.janpuc.polished ]
 ```
 app:    verifier = 32 random bytes (base64url); challenge = base64url(SHA256(verifier))
         ASWebAuthenticationSession(url: <server>/auth/app/start?challenge=<c>&device=<"Nikola's iPhone">,
-                                   callback: .customScheme("polished"))   prefersEphemeralWebBrowserSession = false
-server: GET /auth/app/start  → session["app_login"] = {challenge, device, iat}; 302 /auth/login?next=/auth/app/finish
+                                   callback: .https(host: "polished.janpuc.com", path: "/auth/app/callback"))
+        prefersEphemeralWebBrowserSession = false
+server: GET /auth/app/start  → session["app_login"] = {challenge, device, iat} (replaces any pending one);
+                                302 /auth/login?next=/auth/app/finish
         (Pocket ID as today: passkey, remember-me, group check)
         GET /auth/app/finish → signed in; mints code (32 random bytes, 60 s TTL, single use, bound to sub + challenge)
-                                302 polished://auth?code=<code>
-app:    POST /api/v1/auth/exchange {code, verifier, device_name, platform:"ios", app_version}
+                                302 https://polished.janpuc.com/auth/app/callback?code=<code>   (Cache-Control: no-store)
+app:    the session claims that https address (it never loads); POST /api/v1/auth/exchange
+        {code, verifier, device_name, platform:"ios", app_version}
 server: checks TTL, single use, SHA256(verifier) == challenge → inserts api_token, answers {token, token_id, user}
 app:    Keychain generic password, kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly, service "com.janpuc.polished", account "api-token"
 ```
 
-`prefersEphemeralWebBrowserSession` is false so Pocket ID's passkey and remember-me are shared with Safari (she signs in once). The `https(host:path:)` callback form exists (iOS 17.4) but needs a `webcredentials:` association; the custom scheme is enough here. Tokens never expire by time; they are revoked by **Sign out** (`POST /api/v1/auth/revoke`), from the web's More page ("Devices", a phase-1 addition listed in the contract), or by deleting the row. A 401 from any call clears the Keychain and shows the sign-in screen with the reason. Token storage on the server is `sha256(token)`; the token is shown to nobody after the exchange.
+**Why an https callback and not a custom URL scheme.** Any app on a phone can register the scheme `polished`. `/auth/app/start` is a public GET that takes the PKCE challenge from the query, so an attacker who owns such an app could pick their own verifier, get the victim to open the start link, and receive the victim's one-time code at their own scheme handler: code and verifier in one hand, a permanent device token in the exchange. PKCE only protects the code when the callback cannot be intercepted. An https callback can: iOS 17.4+ hands `ASWebAuthenticationSession` the redirect only for an address the app has claimed, and an address is claimed by the domain's own AASA (`webcredentials` lists the app ID, which only the Team that owns the signing identity can ship) together with the `webcredentials:polished.janpuc.com` entitlement. No other app can claim `polished.janpuc.com`. The same file's `applinks` section lists `/w/*` and `/shades/*` only, never `/auth/*`, so a tapped link to the callback opens Safari, not the app.
+
+`GET /auth/app/callback` is a public page for when that address is opened outside the session (a pasted link, a browser, an app that was not signed in): "Open Polished to finish signing in", `noindex`, `Cache-Control: no-store`, no referrer, no script or link. It never reads the `code`, mints nothing and redeems nothing. `/auth/app/start` keeps one pending sign-in per browser session (a second start replaces the first) with a 10-minute maximum age; the code lives 60 seconds and is used up by the first exchange attempt, right or wrong.
+
+`prefersEphemeralWebBrowserSession` is false so Pocket ID's passkey and remember-me are shared with Safari (she signs in once). Tokens never expire by time; they are revoked by **Sign out** (`POST /api/v1/auth/revoke`), from the web's More page ("Devices", a phase-1 addition listed in the contract), or by deleting the row. A 401 from any call clears the Keychain and shows the sign-in screen with the reason. Token storage on the server is `sha256(token)`; the token is shown to nobody after the exchange.
 
 ---
 
@@ -115,7 +122,9 @@ Built by a separate worker (runs S1 and S2 in section 8). Written as the contrac
 
 **Transport rules.** `Authorization: Bearer <token>` is the only credential the API accepts (cookies are ignored under `/api/v1/`), so the Origin check and CSRF do not apply there; `OriginCheckMiddleware` skips `/api/v1/` when a Bearer header is present. 401 for a missing, unknown or revoked token with `{"error":{"code":"unauthorized"}}`. Every GET answers `ETag` and honours `If-None-Match` (304, empty body); `Cache-Control: private, no-cache`. `X-Polished-Api: 1` on every answer. Versioning: additive changes within v1 (new optional fields, new endpoints); a breaking change is `/api/v2`. Rate etiquette unchanged: the API never contacts the shop except `POST /sync/run` with the existing cooldown.
 
-**Errors.** `{"error": {"code": "<snake_case>", "message": "<her words>", "field": "<optional>"}}` with the status: 400 `bad_request`, 401 `unauthorized`, 403 `forbidden`, 404 `not_found`, 409 `not_a_draft` | `sync_running`, 422 `validation` (`field` set, `message` as the web shows it: "Use an amount like 15.50."), `stack_full`, `empty_stack`, `same_wheel`, 429 `cooldown` (`retry_after_s`), 5xx `server_error`.
+**Errors.** `{"error": {"code": "<snake_case>", "message": "<her words>", "field": "<optional>", "fields": {"<field>": "<message>"} (optional), "retry_after_s": 61 (cooldown)}}` with the status: 400 `bad_request`, 401 `unauthorized`, 403 `forbidden`, 404 `not_found`, 409 `not_a_draft` | `sync_running`, 422 `validation` (`field` set, `message` as the web shows it: "Use an amount like 15.50."; when several inputs are wrong `fields` lists every one and `field`/`message` are the first), `stack_full`, `empty_stack`, `same_wheel`, 429 `cooldown` (`retry_after_s`, also the `Retry-After` header), 5xx `server_error`.
+
+**Writes (S2).** Bodies are JSON; a PATCH changes only the keys it sends (`null` clears an optional one). Money is `*_cents` (an integer, 0 to 999999). Dates are `YYYY-MM-DD` and may not be after today in the household's time zone (`/me` → `server.timezone`); "today" is also the default for `bought_on` of `bought` and `painted_on` of `save`. Creates answer 201 (`POST /shades`, `/shades/{id}/bottles`, `/wheels`, and `/identifiers` when the code is new, 200 when it was known); deletes of a bottle, wishlist item, identifier and slot answer 204; every other write answers 200 with the changed resource, `POST /sync/run` 202. Repeating is safe where it means the same thing: `PUT /shades/{id}/wishlist` keeps the existing item, `PUT …/tip-colour`, `POST /wear/{id}` (one row per shade per day), `POST …/slots/{pos}/draft` (`resumed: true`), `DELETE …/slots/{pos}` and `PATCH` with the same values. The multi-row writes (`/wishlist/bought`, `/stacks/{id}/save`, bottle create with its learned P code, wheel delete, template, move) run in one transaction: if anything is wrong or fails, nothing changed. Auth: a write without a Bearer token is a 401 and changes nothing, cookie or not.
 
 **Shared shapes.**
 ```jsonc
@@ -142,16 +151,17 @@ Wheel    {"id": 2, "slug": "k3m9xq", "name": "Holos", "slot_count": 20, "archive
 
 | Method | Path | Request → Response |
 |---|---|---|
-| GET | `/.well-known/apple-app-site-association` | public, `application/json`, no redirect: `{"applinks":{"details":[{"appIDs":["<TEAMID>.com.janpuc.polished"],"components":[{"/":"/w/*"},{"/":"/shades/new","exclude":true},{"/":"/shades/*"}]}]}}`; `POLISHED_APPLE_TEAM_ID` setting (empty → 404 and the route is off) |
+| GET | `/.well-known/apple-app-site-association` | public, `application/json`, no redirect: `{"applinks":{"details":[{"appIDs":["<TEAMID>.com.janpuc.polished"],"components":[{"/":"/w/*"},{"/":"/shades/new","exclude":true},{"/":"/shades/*"}]}]},"webcredentials":{"apps":["<TEAMID>.com.janpuc.polished"]}}` (no `/auth/*` in `applinks`); `POLISHED_APPLE_TEAM_ID` setting (empty → 404 and the route is off) |
 | GET | `/auth/app/start` | browser, public; see 2.4 |
-| GET | `/auth/app/finish` | browser, needs the web session; 302 `polished://auth?code=` |
+| GET | `/auth/app/finish` | browser, needs the web session; 302 `https://<host of PUBLIC_URL>/auth/app/callback?code=` (`no-store`) |
+| GET | `/auth/app/callback` | browser, public; a harmless page that never reads the code (2.4) |
 | POST | `/api/v1/auth/exchange` | public; `{code, verifier, device_name, platform, app_version}` → `{token, token_id, user:{sub,name}}`; 400 `bad_code` |
 | POST | `/api/v1/auth/revoke` | revokes the calling token → 204 |
 | GET | `/api/v1/auth/devices` | `{items:[{id, device_name, platform, created_at, last_used_at, current}]}` |
 | DELETE | `/api/v1/auth/devices/{id}` | 204 (also exposed on the web's More page as "Devices") |
 | GET | `/api/v1/me` | `{user:{sub,name,first_name}, server:{version, public_url, store_url, timezone, over_black_available, shade_count}}` |
-| GET | `/api/v1/home` | `{greeting_name, date, wear:{shade: ShadeRow, bottle: Bottle, worn_today: bool} \| null, recent:[{bottle: Bottle, shade: ShadeRow}] (6), wheel: Wheel+tiles \| null, counts:{bottles, shades, wished, wished_cents}}`; `?another=1` picks another owned shade (weighted away from the last 30 days) |
-| POST | `/api/v1/wear/{shade_id}` | records today → `{worn_on}` (the `wear` table of web run 3; whichever run lands first adds `008_wear.sql`) |
+| GET | `/api/v1/home` | `{greeting_name, date, wear:{shade: ShadeRow, bottle: Bottle, worn_today: bool} \| null, recent:[{bottle: Bottle, shade: ShadeRow}] (6), wheel: Wheel+tiles \| null, counts:{bottles, shades, wished, wished_cents}}`; `wear` is today's pick, the same all day (the shade already worn today, once one was; null when nothing is owned); `?another=1` returns a random other owned shade (weighted away from the last 30 days), never the one shown without it, and does not move today's pick |
+| POST | `/api/v1/wear/{shade_id}` | records today (household time zone) → `{worn_on}`; 404 unknown shade; the `wear` table is migration `009_wear.sql`, the rules are `src/polished/wear.py` (the web's Home reuses them) |
 | GET | `/api/v1/shades` | same params as `/shades` (`q, finish[], color[], collection, kind, status, owned, sort, page`) → `{items:[ShadeRow], total, page, has_more, fuzzy: bool}` (40 a page) |
 | GET | `/api/v1/shades/facets` | `{finish:[], color:[], collection:[], official:[]}` |
 | GET | `/api/v1/shades/{id}` | `{shade: ShadeRow, images:[url], tags:{finish,color,collection}, sku, handle, store_url, on_sale, bottles:[Bottle], wishlist:{id, priority, note} \| null, swatched_on:[{wheel_id, slug, name, position, stack_id}], tip_source:"override" \| "sampled" \| "none"}` |
@@ -159,7 +169,7 @@ Wheel    {"id": 2, "slug": "k3m9xq", "name": "Holos", "slot_count": 20, "archive
 | PUT | `/api/v1/shades/{id}/tip-colour` | `{hex:"#rrggbb"}` or `{hex:null}` → detail; 422 `validation` |
 | GET | `/api/v1/bottles` | `?state&archived` → `{groups:[{shade: ShadeRow, bottles:[Bottle]}]}` |
 | GET | `/api/v1/bottles/history` | `{years:[{year, count, total_cents, unpriced, months:[{month, label, count, total_cents, unpriced, rows:[{bottle: Bottle, shade: ShadeRow, dated_by_entry}]}]}]}` |
-| POST | `/api/v1/shades/{id}/bottles` | `{state, printed_code, bought_on, price_paid_cents, opened_on, notes}` → `{bottle, learned:{code, previous_shade: ShadeRow \| null} \| null}` (201); 422 per field |
+| POST | `/api/v1/shades/{id}/bottles` | `{state, printed_code, bought_on, price_paid_cents, opened_on, notes}` (all optional, `state` defaults to `full`) → `{bottle, learned:{code, previous_shade: ShadeRow \| null} \| null}` (201); `learned` is set when the P code was new (`previous_shade` null) or already meant another shade (the old match stays, `previous_shade` is that shade), null otherwise; 422 per field |
 | PATCH | `/api/v1/bottles/{id}` | any subset of the same fields plus `archived` → Bottle |
 | DELETE | `/api/v1/bottles/{id}` | 204 |
 | GET | `/api/v1/wishlist` | `?max_priority=3` → `{items:[{id, shade: ShadeRow, priority, note, added_on, buyable}], summary:{count, total_cents, buyable_count, buyable_cents}, cart:{url \| null, total_cents, count, skipped, names:[…]}}` |
@@ -168,32 +178,32 @@ Wheel    {"id": 2, "slug": "k3m9xq", "name": "Holos", "slot_count": 20, "archive
 | DELETE | `/api/v1/wishlist/{item_id}` | 204 |
 | POST | `/api/v1/wishlist/bought` | `{items:[{id, price_cents \| null}], bought_on}` → `{bottles:[Bottle], wishlist: <body>}`; 404 unknown item, 422 |
 | GET | `/api/v1/lookup` | `?q&via=scan \| typed` → `{outcome: match \| suggestion \| unknown_code \| unknown_printed \| invalid_code \| results, code, kind, shade: ShadeRow+images \| null, identifier_id, results:{items, total} \| null}` |
-| POST | `/api/v1/identifiers` | `{kind, value, shade_id}` → `{identifier:{id, kind, value, shade_id}, created: bool, shade: ShadeRow}` |
+| POST | `/api/v1/identifiers` | `{kind, value, shade_id}` → `{identifier:{id, kind, value, shade_id}, created: bool, shade: ShadeRow}`; 201 when new, 200 when the code was known (it keeps its shade, `shade` is that one) |
 | GET | `/api/v1/identifiers` | `{items:[{id, kind, value, shade: ShadeRow, use_count, created_at, last_used_at}]}` |
 | DELETE | `/api/v1/identifiers/{id}` | 204 |
 | GET | `/api/v1/wheels` | `?archived` → `{items:[Wheel+{tiles:[Tile]}]}` (tiles included: the list draws mini rings) |
 | POST | `/api/v1/wheels` | `{name, slot_count}` → Wheel (201); 422 |
 | GET | `/api/v1/wheels/{id}` and `/api/v1/w/{slug}` | `Wheel + {tiles:[Tile], filled_count, others:[{id, name, slug}]}`; unknown → 404 (after auth, as the web) |
 | PATCH | `/api/v1/wheels/{id}` | `{name}` or `{archived}` → Wheel |
-| DELETE | `/api/v1/wheels/{id}` | → `{deleted_swatches: 3}` |
+| DELETE | `/api/v1/wheels/{id}` | → `{deleted_swatches: 3}`; no confirmation parameter, the app asks first |
 | POST | `/api/v1/wheels/{id}/slug/regenerate` | → Wheel (new slug) |
 | POST | `/api/v1/wheels/{id}/slug/take` | `{from_wheel_id}` → Wheel; 422 `same_wheel` |
 | POST | `/api/v1/wheels/{id}/slots/{pos}/draft` | → Sheet (below), `resumed: bool` |
 | DELETE | `/api/v1/wheels/{id}/slots/{pos}` | clear the swatch → 204 |
 | GET | `/api/v1/stacks/{id}` | Sheet `{stack_id, wheel:{id, slug, name}, position, name, note, painted_on, layers:[Layer], summary, full, tip: Tip[] (the composite recipe = layers' tips in order)}` ; 409 `not_a_draft` |
 | POST | `/api/v1/stacks/{id}/layers` | `{shade_id}` → Sheet; 422 `stack_full` |
-| PATCH | `/api/v1/stacks/{id}/layers/{layer_id}` | `{coats_delta: ±1}` or `{move: "up" \| "down"}` → Sheet |
+| PATCH | `/api/v1/stacks/{id}/layers/{layer_id}` | `{coats_delta: ±1}` or `{move: "up" \| "down"}` (exactly one) → Sheet; coats stay 1 to 5, `up` is towards the base |
 | DELETE | `/api/v1/stacks/{id}/layers/{layer_id}` | → Sheet |
-| POST | `/api/v1/stacks/{id}/template` | `{kind:"over_black"}` → Sheet + `{result: added \| already \| unavailable}`; `{kind:"copy", source_stack_id}`; `{kind:"last"}` → Sheet (+ `result: nothing_saved`) |
+| POST | `/api/v1/stacks/{id}/template` | `{kind:"over_black"}` → Sheet + `{result: added \| already \| unavailable}` (200; 422 `stack_full`); `{kind:"copy", source_stack_id}` → Sheet + `result: copied` (404 when the source is not a saved stack); `{kind:"last"}` → Sheet + `result: copied \| nothing_saved` |
 | GET | `/api/v1/stacks/copy-sources` | `?q` → `{items:[{stack_id, wheel_name, wheel_slug, position, name, painted_on, summary, layers}]}` |
 | GET | `/api/v1/stacks/pick` | `?q&scope=owned \| toppers \| all` → `{items:[ShadeRow], total, suggestion: ShadeRow \| null}` (the P-code suggestion row first) |
-| POST | `/api/v1/stacks/{id}/save` | `{name, note, painted_on}` → `{wheel_id, position, tile: Tile}`; 422 `empty_stack` |
+| POST | `/api/v1/stacks/{id}/save` | `{name, note, painted_on}` → `{wheel_id, position, tile: Tile}`; 422 `empty_stack`, or `validation` on `painted_on` (not a date, or in the future) |
 | POST | `/api/v1/stacks/{id}/cancel` | → `{wheel_id, position, tile: Tile}` |
 | GET | `/api/v1/sync` | `{running: bool, last:{started_at, finished_at, status, trigger, counts…}, runs:[…10], cooldown_until}` |
-| POST | `/api/v1/sync/run` | 202 `{run_id}`; 409 `sync_running`; 429 `cooldown` |
+| POST | `/api/v1/sync/run` | 202 `{run_id}` (the run goes on in the background; poll `GET /sync`); 409 `sync_running`; 429 `cooldown` with `retry_after_s` |
 | POST | `/__test/reset` | **only** when `POLISHED_AUTH_MODE=none` and `POLISHED_TEST_RESET_FROM=<template.db>`; copies the template over the live DB; loopback only. For the UI-test harness |
 
-Server-side files: new package `src/polished/api/` (`__init__.py` router, `auth.py` tokens, `schemas.py` pydantic models, `shades.py`, `bottles.py`, `wishlist.py`, `wheels.py`, `stacks.py`, `lookup.py`, `home.py`, `sync.py`), migration `008_api_tokens.sql` (`api_token(id, user_sub, user_name, device_name, platform, token_hash unique, created_at, last_used_at, revoked_at)`, `app_login_code(code_hash, user_sub, user_name, challenge, device_name, expires_at, used_at)`), `auth.py` gains the two browser routes and a Bearer branch in the gate (`/api/v1/` paths: Bearer or 401 JSON, never a redirect), `security.py` the Origin bypass, `server.py` one `include_router`. Domain modules are reused unchanged; the API serialises their dicts. Tests `tests/test_api_*.py` against the fixtures, plus a test that every fixture in `spec/api/fixtures/` validates against `openapi.yaml`.
+Server-side files: new package `src/polished/api/` (`__init__.py` router, `auth.py` tokens, `schemas.py` pydantic models, `shades.py`, `bottles.py`, `wishlist.py`, `wheels.py`, `stacks.py`, `lookup.py`, `home.py`, `sync.py`), migrations `008_api_tokens.sql` (`api_token(id, user_sub, user_name, device_name, platform, token_hash unique, created_at, last_used_at, revoked_at)`, `app_login_code(code_hash, user_sub, user_name, challenge, device_name, expires_at, used_at)`) and `009_wear.sql` (`wear(id, shade_id, worn_on, created_at)`, unique `(shade_id, worn_on)`), `auth.py` gains the three browser routes (start, finish, callback) and a Bearer branch in the gate (`/api/v1/` paths: Bearer or 401 JSON, never a redirect), `security.py` the Origin bypass (and `no-store` kept on HTML), `server.py` one `include_router`. Domain modules are reused unchanged; the API serialises their dicts. Tests `tests/test_api_*.py` against the fixtures, plus a test that every fixture in `spec/api/fixtures/` validates against `openapi.yaml`.
 
 ---
 
@@ -504,7 +514,7 @@ Each run is one agent, ≤ 90 minutes, ends with a build that passes `xcodebuild
 **Server runs (the API worker; its files are `src/polished/api/`, `spec/`, `tests/test_api_*.py`, `scripts/make_api_fixtures.py`, `scripts/make_tip_fixtures.py`, one migration, and single-line touches in `server.py`, `auth.py`, `security.py`; the web runs own `templates/`, `static/`, `routes/`, `web.py`):**
 - **S0 (30 min, first, before web run 1 or inside its brief since both edit `tips.py`):** split `tips.py` into `ops()` + `svg()`, `TipRandom` (SplitMix64), the two v3 tweaks, `revision()` salt `r2`, `scripts/make_tip_fixtures.py`, `spec/tips/cases.json`, `spec/tips/random.json`, `spec/identifiers/*.json`; tests pass; the SVG for the pinned cases is byte-identical before and after the split (apart from the RNG change, which has its own test).
 - **S1 (90 min):** Bearer gate, `008_api_tokens.sql`, `/auth/app/*`, `/api/v1/auth/*`, `/me`, `/home`, `/shades*`, `/bottles*` (GET), `/wishlist` (GET), `/wheels*` (GET), `/w/{slug}`, `/stacks/{id}` (GET), `/lookup`, `/identifiers` (GET), `/sync` (GET), the AASA route with `POLISHED_APPLE_TEAM_ID`, `/__test/reset`, `spec/api/openapi.yaml`, fixtures export, tests.
-- **S2 (90 min):** every write endpoint of section 3, `/wear/{id}` (with `008_wear.sql` or `009` depending on web run 3), the web More page's Devices list, tests, fixtures for every write response. The deploy (image release, `POLISHED_APPLE_TEAM_ID` in the HelmRelease env) is Jan's after S2.
+- **S2 (90 min):** every write endpoint of section 3, `/wear/{id}` with `009_wear.sql` and `wear.py`, the https sign-in callback (2.4), tests, fixtures for every write response (done in the S2 run; the web More page's Devices list is left to a web run). The deploy (image release, `POLISHED_APPLE_TEAM_ID` in the HelmRelease env) is Jan's after S2.
 
 **App runs:**
 1. **Skeleton and the painted tip** (needs S0): `project.yml`, targets, entitlements, Info.plist, `Team.xcconfig`, asset colours, Fraunces, `NailTips` (TipRandom, TipPainter, TipCanvas, TipShape, TipView with the static v3 light, LevelArc, Ledge, Rack, Ring geometry), the tab shell with placeholder screens showing fixture tips, the 1024 icon; Swift Testing: renderer parity, random vectors, GTIN vectors. Check: `xcodebuild test` green on iPhone 18 Pro; a debug gallery screen shows the 30 fixture tips at four sizes in light and dark (screenshot into the report dir).

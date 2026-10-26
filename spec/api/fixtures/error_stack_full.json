@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "POST",
+    "path": "/api/v1/stacks/5/layers",
+    "body": {
+      "shade_id": 14
+    }
+  },
+  "status": 422,
+  "body": {
+    "error": {
+      "code": "stack_full",
+      "message": "A swatch holds up to 8 layers."
+    }
+  }
+}

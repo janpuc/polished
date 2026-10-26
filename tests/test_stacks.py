@@ -419,6 +419,18 @@ def test_save_defaults_the_date_to_today_and_blank_text_to_null(catalog, draft, 
     assert catalog.execute("select name from stack").fetchone()[0] is None
 
 
+def test_save_refuses_a_painted_on_date_after_today(catalog, draft, black):
+    from datetime import date
+
+    stacks.append(catalog, draft, black)
+    with pytest.raises(stacks.FutureDate):
+        stacks.save(catalog, draft, painted_on="2026-10-26", today=date(2026, 10, 25))
+    assert (
+        catalog.execute("select status from stack where id = ?", (draft,)).fetchone()[0] == "draft"
+    )
+    stacks.save(catalog, draft, painted_on="2026-10-25", today=date(2026, 10, 25))
+
+
 def test_save_rejects_a_bad_date_and_an_empty_stack(catalog, draft, black):
     with pytest.raises(stacks.EmptyStack):
         stacks.save(catalog, draft)

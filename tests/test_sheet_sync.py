@@ -285,6 +285,19 @@ def test_merging_keeps_the_better_priority_and_the_notes_of_a_shade_wished_twice
     assert tuple(item) == (shop["id"], 1, "for winter")
 
 
+def test_merging_moves_the_wearings_and_keeps_one_row_for_a_day_both_were_worn(seeded):
+    sheet_id, _ = own_a_sheet_only_shade(seeded)
+    shop = appears_in_the_shop(seeded)
+    seeded.executemany(
+        "insert into wear (shade_id, worn_on) values (?, ?)",
+        [(sheet_id, "2026-10-01"), (sheet_id, "2026-10-02"), (shop["id"], "2026-10-02")],
+    )
+    merge_sheet_shade(seeded, sheet_id, shop["id"])
+    rows = seeded.execute("select shade_id, worn_on from wear order by worn_on").fetchall()
+    assert [tuple(r) for r in rows] == [(shop["id"], "2026-10-01"), (shop["id"], "2026-10-02")]
+    assert seeded.execute("pragma foreign_key_check").fetchall() == []
+
+
 def test_merging_does_not_overwrite_a_tip_colour_the_shop_shade_already_has(seeded):
     sheet_id, _ = own_a_sheet_only_shade(seeded)
     shop = appears_in_the_shop(seeded)
@@ -294,7 +307,7 @@ def test_merging_does_not_overwrite_a_tip_colour_the_shop_shade_already_has(seed
 
 
 def test_the_merge_handles_every_table_that_points_at_a_shade(conn):
-    handled = {"bottle", "stack_layer", "shade_identifier", "shade_alias", "wishlist_item"}
+    handled = {"bottle", "stack_layer", "shade_identifier", "shade_alias", "wishlist_item", "wear"}
     deleted_with_the_row = {"shade_tag"}  # a sheet-only shade has none
     pointing = {
         row["name"]

@@ -1,0 +1,10 @@
+{
+  "request": {
+    "method": "POST",
+    "path": "/api/v1/wear/13"
+  },
+  "status": 200,
+  "body": {
+    "worn_on": "2026-10-26"
+  }
+}

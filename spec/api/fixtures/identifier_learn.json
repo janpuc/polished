@@ -1,0 +1,59 @@
+{
+  "request": {
+    "method": "POST",
+    "path": "/api/v1/identifiers",
+    "body": {
+      "kind": "gtin",
+      "value": "5901234123457",
+      "shade_id": 1
+    }
+  },
+  "status": 201,
+  "body": {
+    "identifier": {
+      "id": 4,
+      "kind": "gtin",
+      "value": "5901234123457",
+      "shade_id": 1
+    },
+    "created": true,
+    "shade": {
+      "id": 1,
+      "title": "Thirst Trap",
+      "kind": "polish",
+      "source": "holotaco",
+      "is_topper": false,
+      "price_cents": 1550,
+      "compare_at_cents": 1550,
+      "status": {
+        "key": "available",
+        "label": "In stock",
+        "buyable": true
+      },
+      "finishes": [
+        "flakie"
+      ],
+      "owned_count": 2,
+      "wishlisted": false,
+      "hero_image_url": "https://cdn.shopify.com/s/files/1/0050/3001/9162/files/0009_HT-Holoween-SoloBottleHero-ThirstTrap.jpg?v=1760456220",
+      "released_on": "2025-10-04",
+      "official_collection": "Holoween Collection",
+      "marks": [],
+      "tip": {
+        "id": 1,
+        "hex": "#d1b947",
+        "hex2": null,
+        "finishes": [
+          "flakie"
+        ],
+        "topper": false,
+        "clear": false,
+        "coats": 1,
+        "colours": [
+          "red"
+        ],
+        "revision": "2a0c3309f5"
+      }
+    }
+  }
+}

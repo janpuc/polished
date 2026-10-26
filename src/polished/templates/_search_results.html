@@ -1,10 +1,12 @@
 {% from "_icons.html" import icon with context %}
+{% from "_tip.html" import unpainted %}
 {% if code_q %}
 <p class="more-link code-link"><a href="/lookup?q={{ code_q|urlencode }}">Look up “{{ code_q }}” as a code</a></p>
 {% endif %}
 {% if result is none %}{% elif not result.rows %}
 <div class="empty-state empty-compact">
-  <p>Nothing matches “{{ q }}”.</p>
+  {{ unpainted("l") }}
+  <p>Nothing matches “{{ q }}”. Try fewer letters.</p>
   {% if ctx != 'learn' %}<a class="btn btn-text" href="/shades/new?title={{ q|urlencode }}">Add it by hand</a>{% endif %}
 </div>
 {% else %}

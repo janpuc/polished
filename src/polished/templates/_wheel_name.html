@@ -1,3 +1,4 @@
-{# A rename: the page title swaps out of band (the request swaps nothing else) and the sheet
-   closes through the response header. #}
-<h1 id="wheel-name" class="title" hx-swap-oob="outerHTML">{{ wheel.name }}</h1>
+{# A rename: the page title and the ring's spoken label swap out of band (the request swaps
+   nothing else) and the sheet closes through the response header. #}
+<h1 id="wheel-name" class="title title-wheel" hx-swap-oob="outerHTML">{{ wheel.name }}</h1>
+{% include "_ring_label.html" %}

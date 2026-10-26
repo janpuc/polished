@@ -1,0 +1,14 @@
+{
+  "request": {
+    "method": "POST",
+    "path": "/api/v1/stacks/5/save",
+    "body": {}
+  },
+  "status": 422,
+  "body": {
+    "error": {
+      "code": "empty_stack",
+      "message": "Add at least one layer before saving."
+    }
+  }
+}

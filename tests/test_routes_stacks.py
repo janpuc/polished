@@ -113,11 +113,26 @@ def test_the_builder_flow_from_an_empty_slot_to_a_saved_swatch(client, catalog, 
     assert 'id="slot-list"' in saved.text
     assert 'id="hub-name" class="hub-name" hx-swap-oob="outerHTML">1<' in saved.text
     assert 'id="hub-count" class="hub-count" hx-swap-oob="outerHTML">of 20<' in saved.text
+    assert re.search(
+        r'<span id="ring-label" class="visually-hidden" hx-swap-oob="outerHTML">[^<]*, 1 of 20 swatched<',
+        saved.text,
+    )
     slot = wheels.slot_grid(catalog, wheels.get(catalog, wheel))[11]
     assert slot["filled"] and " + " in slot["summary"]
     assert slot["summary"] in saved.text
     row = catalog.execute("select note, painted_on from wheel_slot where position = 12").fetchone()
     assert (row["note"], row["painted_on"]) == ("Two coats", "2026-10-20")
+
+
+def test_a_swatched_on_date_in_the_future_is_refused_and_the_draft_stays(client, catalog, wheel):
+    stack_id, _ = open_sheet(client, wheel)
+    add(client, stack_id, catalog, "flakie-holo-taco")
+    refused = client.post(
+        f"/stacks/{stack_id}/save", data={"painted_on": "2999-01-01"}, headers=PARTIAL
+    )
+    assert refused.status_code == 422 and "in the future" in refused.text
+    assert refused.headers["HX-Retarget"] == "#save-error"
+    assert stacks.layers(catalog, stack_id)  # still a draft with its layer
 
 
 def test_edits_are_refused_after_the_save_with_409(client, catalog, wheel):
@@ -292,7 +307,10 @@ def test_the_head_shows_the_stacks_composite_tip_and_every_edit_appends_a_new_pi
 ):
     stack_id, opened = open_sheet(client, wheel)
     head = opened.text.split('class="builder-body')[0]
-    assert '<span id="stack-tip" class="tip-xl" aria-hidden="true"></span>' in head
+    assert (
+        '<span class="tip tip-xl" aria-hidden="true"><span id="stack-tip" class="tip-face"></span></span>'
+        in head
+    )
     assert "Slot 12" in head and 'class="builder-caption">Holos<' in head
     first = add(client, stack_id, catalog, "spirit-fingers")
     # Out of band, appended over the old picture (so the page can cross-fade), with a URL that
@@ -318,7 +336,7 @@ def test_the_head_shows_the_stacks_composite_tip_and_every_edit_appends_a_new_pi
     # A reopened draft draws its tip in the head from the start.
     add(client, stack_id, catalog, "flakie-holo-taco")
     again = client.get(f"/stacks/{stack_id}/sheet").text
-    assert re.search(r'<span id="stack-tip" class="tip-xl"[^>]*><img src="/tips/stack/', again)
+    assert re.search(r'<span id="stack-tip" class="tip-face"><img src="/tips/stack/', again)
     assert "tip-fresh" not in again
 
 
@@ -341,6 +359,7 @@ def test_a_saved_slot_opens_with_its_layers_name_and_remove(client, catalog, whe
     assert "Remove swatch" not in fresh.text
     removed = client.post(f"/wheels/{wheel}/slots/12/clear", headers=PARTIAL)
     assert removed.status_code == 200 and removed.headers["HX-Trigger"] == "sheetClose"
+    assert 'id="ring-label"' in removed.text and ", 0 of 20 swatched<" in removed.text
     assert client.post(f"/stacks/{stack_id}/layers", data={"shade_id": 1}).status_code == 409
     assert fresh_id != stack_id
 

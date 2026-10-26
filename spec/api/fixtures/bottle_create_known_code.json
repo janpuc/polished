@@ -1,0 +1,67 @@
+{
+  "request": {
+    "method": "POST",
+    "path": "/api/v1/shades/1/bottles",
+    "body": {
+      "state": "full",
+      "printed_code": "P259"
+    }
+  },
+  "status": 201,
+  "body": {
+    "bottle": {
+      "id": 8,
+      "shade_id": 1,
+      "state": "full",
+      "printed_code": "P259",
+      "bought_on": null,
+      "price_paid_cents": null,
+      "opened_on": null,
+      "notes": null,
+      "archived": false,
+      "created_at": "2026-10-26T16:30:00Z",
+      "updated_at": "2026-10-26T16:30:00Z"
+    },
+    "learned": {
+      "code": "P259",
+      "previous_shade": {
+        "id": 13,
+        "title": "Spirit Fingers",
+        "kind": "polish",
+        "source": "holotaco",
+        "is_topper": false,
+        "price_cents": 1550,
+        "compare_at_cents": 1550,
+        "status": {
+          "key": "available",
+          "label": "In stock",
+          "buyable": true
+        },
+        "finishes": [
+          "glitter"
+        ],
+        "owned_count": 2,
+        "wishlisted": false,
+        "hero_image_url": "https://cdn.shopify.com/s/files/1/0050/3001/9162/files/HT-Bottle-JamSession-Stylized.jpg?v=1767074115",
+        "released_on": null,
+        "official_collection": null,
+        "marks": [],
+        "tip": {
+          "id": 13,
+          "hex": "#a647d1",
+          "hex2": null,
+          "finishes": [
+            "glitter"
+          ],
+          "topper": false,
+          "clear": false,
+          "coats": 1,
+          "colours": [
+            "orange"
+          ],
+          "revision": "009e6d1af8"
+        }
+      }
+    }
+  }
+}

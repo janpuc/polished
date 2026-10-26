@@ -85,6 +85,10 @@ def create_app(settings: Settings) -> FastAPI:
     return app
 
 
+# Paths whose query carries a one-time sign-in code (the web's OIDC callback, the app's).
+SECRET_QUERY_PATHS = ("/auth/callback", "/auth/app/callback")
+
+
 class HideCallbackQuery(logging.Filter):
     """The sign-in callback's query holds the one-time authorization code and state: the access log
     keeps the path and drops the query."""
@@ -93,8 +97,9 @@ class HideCallbackQuery(logging.Filter):
         args = record.args
         if isinstance(args, tuple) and len(args) >= 3 and isinstance(args[2], str):
             path = args[2]
-            if path.startswith("/auth/callback?"):
-                record.args = (*args[:2], "/auth/callback?…", *args[3:])
+            for hidden in SECRET_QUERY_PATHS:
+                if path.startswith(hidden + "?"):
+                    record.args = (*args[:2], hidden + "?…", *args[3:])
         return True
 
 

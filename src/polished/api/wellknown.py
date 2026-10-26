@@ -1,4 +1,5 @@
-"""GET /.well-known/apple-app-site-association: lets iOS open /w/* and /shades/* in the app."""
+"""GET /.well-known/apple-app-site-association: lets iOS open /w/* and /shades/* in the app, and
+lets the app claim /auth/app/callback as its sign-in callback (webcredentials)."""
 
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
@@ -17,14 +18,17 @@ BUNDLE_ID = "com.janpuc.polished"
 )
 def apple_app_site_association(request: Request) -> JSONResponse:
     """Public, served as application/json with no redirect. Registered only when
-    POLISHED_APPLE_TEAM_ID is set. `/shades/new` is excluded before `/shades/*` (first match wins)."""
+    POLISHED_APPLE_TEAM_ID is set. `/shades/new` is excluded before `/shades/*` (first match wins).
+    `applinks` has no `/auth/*` component: a tapped link never opens the sign-in callback in the
+    app. The callback is claimed through `webcredentials` for ASWebAuthenticationSession alone."""
     team = request.app.state.settings.apple_team_id
+    app_id = f"{team}.{BUNDLE_ID}"
     return JSONResponse(
         {
             "applinks": {
                 "details": [
                     {
-                        "appIDs": [f"{team}.{BUNDLE_ID}"],
+                        "appIDs": [app_id],
                         "components": [
                             {"/": "/w/*"},
                             {"/": "/shades/new", "exclude": True},
@@ -32,6 +36,7 @@ def apple_app_site_association(request: Request) -> JSONResponse:
                         ],
                     }
                 ]
-            }
+            },
+            "webcredentials": {"apps": [app_id]},
         }
     )

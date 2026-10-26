@@ -4,6 +4,7 @@ scripts/make_api_fixtures.py, copied per test, and a client that sends the devel
 import importlib.util
 import shutil
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
@@ -18,6 +19,20 @@ from polished.server import create_app
 ROOT = Path(__file__).resolve().parents[1]
 DEV_TOKEN = "dev-token-for-tests"
 LOOPBACK = ("127.0.0.1", 50000)
+NOW = datetime(2026, 10, 26, 16, 30, tzinfo=UTC)  # 17:30 on 2026-10-26 in Warsaw
+TODAY = "2026-10-26"
+
+
+class FrozenDatetime(datetime):
+    @classmethod
+    def now(cls, tz=None):
+        return NOW.astimezone(tz) if tz else NOW
+
+
+@pytest.fixture
+def frozen_today(monkeypatch):
+    """The household's today (wear.local_today, which every API date check uses) is TODAY."""
+    monkeypatch.setattr("polished.wear.datetime", FrozenDatetime)
 
 
 def load_script(name: str):
@@ -51,6 +66,38 @@ class Api:
     def get(self, path: str, **kwargs):
         return self.client.get(path, **kwargs)
 
+    def shade(self, title: str) -> int:
+        conn = self.conn()
+        try:
+            return conn.execute("select id from shade where title = ?", (title,)).fetchone()["id"]
+        finally:
+            conn.close()
+
+    def count(self, table: str, where: str = "1", *args) -> int:
+        conn = self.conn()
+        try:
+            return conn.execute(f"select count(*) from {table} where {where}", args).fetchone()[0]
+        finally:
+            conn.close()
+
+    def rows(self, sql: str, *args) -> list[dict]:
+        conn = self.conn()
+        try:
+            return [dict(r) for r in conn.execute(sql, args)]
+        finally:
+            conn.close()
+
+
+def assert_error(response, status: int, code: str, field: str | None = None) -> dict:
+    """The /api/v1 error body: status, code, a message to show, and `field` when named."""
+    assert response.status_code == status, response.text
+    error = response.json()["error"]
+    assert error["code"] == code
+    assert error["message"]
+    if field is not None:
+        assert error["field"] == field
+    return error
+
 
 def make_api(tmp_path, template: Path, ids: dict[str, int], **overrides) -> Api:
     shutil.copy(template, tmp_path / "polished.db")
@@ -66,7 +113,7 @@ def make_api(tmp_path, template: Path, ids: dict[str, int], **overrides) -> Api:
 
 
 @pytest.fixture
-def api(tmp_path, api_template) -> Api:
+def api(tmp_path, api_template, frozen_today) -> Api:
     template, ids = api_template
     return make_api(tmp_path, template, ids)
 

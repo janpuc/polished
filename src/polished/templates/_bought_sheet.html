@@ -2,17 +2,14 @@
    each and one date for all. A failed validation comes back here (HX-Retarget) with the messages
    and what was typed. #}
 {% from "_tip.html" import tip %}
+{% from "_date_field.html" import date_field with context %}
 <form class="sheet-form" method="post" action="/wishlist/bought" hx-post="/wishlist/bought" hx-target="#wishlist" hx-swap="outerHTML">
   <div class="grabber" aria-hidden="true"></div>
   <header class="sheet-head">
     <h2 tabindex="-1" autofocus>I bought these<span class="sheet-note">They move from the wishlist to your bottles.</span></h2>
     <button type="button" class="btn btn-text" data-sheet-close>Cancel</button>
   </header>
-  <div class="field">
-    <label for="bought_on">Bought on</label>
-    <input id="bought_on" name="bought_on" type="date" value="{{ bought_on }}">
-    {% if errors.bought_on %}<p class="field-error" role="alert">{{ errors.bought_on }}</p>{% endif %}
-  </div>
+  {{ date_field("bought_on", "Bought on", bought_on, errors.bought_on) }}
   <fieldset class="buy-list">
     <legend class="legend">Shades</legend>
     {% if errors.none_ticked %}<p class="field-error" role="alert">{{ errors.none_ticked }}</p>{% endif %}

@@ -1,0 +1,102 @@
+{
+  "request": {
+    "method": "POST",
+    "path": "/api/v1/stacks/4/layers",
+    "body": {
+      "shade_id": 14
+    }
+  },
+  "status": 200,
+  "body": {
+    "stack_id": 4,
+    "wheel": {
+      "id": 3,
+      "slug": "7b2vdc",
+      "name": "Jelly wheel"
+    },
+    "position": 3,
+    "name": null,
+    "note": null,
+    "painted_on": null,
+    "layers": [
+      {
+        "id": 6,
+        "ord": 1,
+        "shade_id": 1,
+        "title": "Thirst Trap",
+        "coats": 2,
+        "label": "Base",
+        "tip": {
+          "id": 1,
+          "hex": "#d1b947",
+          "hex2": null,
+          "finishes": [
+            "flakie"
+          ],
+          "topper": false,
+          "clear": false,
+          "coats": 2,
+          "colours": [
+            "red"
+          ],
+          "revision": "91f22303ba"
+        }
+      },
+      {
+        "id": 7,
+        "ord": 2,
+        "shade_id": 14,
+        "title": "Flakie Holo Taco",
+        "coats": 1,
+        "label": "Top",
+        "tip": {
+          "id": 14,
+          "hex": "#d1478b",
+          "hex2": null,
+          "finishes": [
+            "flakie",
+            "holographic"
+          ],
+          "topper": true,
+          "clear": false,
+          "coats": 1,
+          "colours": [],
+          "revision": "b74a65e152"
+        }
+      }
+    ],
+    "summary": "Thirst Trap ×2 + Flakie Holo Taco",
+    "full": false,
+    "tip": [
+      {
+        "id": 1,
+        "hex": "#d1b947",
+        "hex2": null,
+        "finishes": [
+          "flakie"
+        ],
+        "topper": false,
+        "clear": false,
+        "coats": 2,
+        "colours": [
+          "red"
+        ],
+        "revision": "91f22303ba"
+      },
+      {
+        "id": 14,
+        "hex": "#d1478b",
+        "hex2": null,
+        "finishes": [
+          "flakie",
+          "holographic"
+        ],
+        "topper": true,
+        "clear": false,
+        "coats": 1,
+        "colours": [],
+        "revision": "b74a65e152"
+      }
+    ]
+  }
+}

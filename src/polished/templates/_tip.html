@@ -1,13 +1,18 @@
-{# A painted nail tip at one of four sizes: s 28x46 (inline, the bought sheet), m 40x66 (rows),
-   l 56x92 (the home shelf, the detail page), xl 72x118. `shade` is a row with the fields of
-   tips.TIP_FIELDS (and `shade_id` or `id`); a shade with no colour yet is drawn neutral. The
-   shape, the 1px mat and the gloss are CSS (.tip-s ... .tip-xl). Never a bottle photo. #}
+{# A lit nail tip at one of four sizes: s 28x46 (inline, the bought sheet), m 40x66 (rows),
+   l 72x118 (the shade page, the wheel list), xl 96x158 (the shade head, the builder head).
+   `shade` is a row with the fields of tips.TIP_FIELDS (and `shade_id` or `id`); a shade with no
+   colour yet is drawn neutral. .tip holds the contact shadow, .tip-face clips the painted SVG and
+   carries the edge and the light (docs/VISUAL.md section 5). Never a bottle photo. #}
 {% from "_tip_img.html" import shade_tip, stack_tip %}
 {% macro tip(shade, size="m", lazy=true) -%}
-{% set w, h = {"s": (28, 46), "m": (40, 66), "l": (56, 92), "xl": (72, 118)}[size] -%}
-<span class="tip-{{ size }}" aria-hidden="true">{{ shade_tip(shade, w, h, lazy) }}</span>
+{% set w, h = {"s": (28, 46), "m": (40, 66), "l": (72, 118), "xl": (96, 158)}[size] -%}
+<span class="tip tip-{{ size }}" aria-hidden="true"><span class="tip-face">{{ shade_tip(shade, w, h, lazy) }}</span></span>
 {%- endmacro %}
 {% macro stack(stack_id, layers, size="m", lazy=true) -%}
-{% set w, h = {"s": (28, 46), "m": (40, 66), "l": (56, 92), "xl": (72, 118)}[size] -%}
-<span class="tip-{{ size }}" aria-hidden="true">{{ stack_tip(stack_id, layers, w, h, lazy) }}</span>
+{% set w, h = {"s": (28, 46), "m": (40, 66), "l": (72, 118), "xl": (96, 158)}[size] -%}
+<span class="tip tip-{{ size }}" aria-hidden="true"><span class="tip-face">{{ stack_tip(stack_id, layers, w, h, lazy) }}</span></span>
+{%- endmacro %}
+{# The tip of nothing yet: a lit tip with no painting, for a state that has no shade to show. #}
+{% macro unpainted(size="l") -%}
+<span class="tip tip-{{ size }}" aria-hidden="true"><span class="tip-face"></span></span>
 {%- endmacro %}

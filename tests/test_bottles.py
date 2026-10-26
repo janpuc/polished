@@ -1,4 +1,5 @@
 import sqlite3
+from datetime import date
 
 import pytest
 from shade_data import made_from, seed, shade_id
@@ -111,6 +112,15 @@ def test_parse_input_reports_each_wrong_field():
     )
     assert not errors
     assert values == BottleInput("low", "P259", "2026-10-25", 1550, "2026-10-26", "a gift")
+
+
+def test_a_date_after_today_is_refused_and_today_is_not():
+    _, errors = bottles.parse_input(
+        bought_on="2026-10-27", opened_on="2026-10-26", today=date(2026, 10, 26)
+    )
+    assert set(errors) == {"bought_on"} and "in the future" in errors["bought_on"]
+    _, errors = bottles.parse_input(bought_on="2026-10-26", today=date(2026, 10, 26))
+    assert not errors
 
 
 def test_update_changes_every_field(catalog):

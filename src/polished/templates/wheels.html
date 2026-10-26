@@ -35,7 +35,7 @@
     <a class="wheel-row" href="/w/{{ card.slug }}">
       {{ mini_ring(card.tiles, card.slot_count, "mini") }}
       <span class="row-body">
-        <span class="row-title">{{ card.name }}</span>
+        <span class="row-title wheel-name">{{ card.name }}</span>
         <span class="row-sub"><span>{{ card.filled }} of {{ card.slot_count }}{% if card.drafts %}, {{ card.drafts }} draft{{ '' if card.drafts == 1 else 's' }}{% endif %}</span></span>
       </span>
       {{ icon("chevron-right") }}

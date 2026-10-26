@@ -88,7 +88,7 @@ def test_a_sheet_only_shade_page_has_the_tip_and_no_photos_price_or_shop_link(wo
     assert 'class="price"' not in html
     assert 'class="status status-sheet_only">Not in the shop</span>' in html
     assert "Released 15 Nov 2025, retired</p>" in html
-    assert 'class="tip-l"' in html
+    assert 'class="tip tip-xl"' in html
     assert "Mini Advent Calendar Collection" in html
     assert "Add bottle" in html and 'aria-label="Add to the wishlist"' in html
     assert "Not read yet" in html  # the tip colour waits for the household

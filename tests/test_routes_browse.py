@@ -197,7 +197,8 @@ def test_rows_show_tip_title_finish_chips_and_status(seeded):
     html = client.get("/shades", params={"q": "jam session"}).text
     row = re.search(r'<li class="shade-row">.*?</li>', html, re.S).group(0)
     assert re.search(
-        r'<span class="tip-m" aria-hidden="true"><img src="/tips/shade/\d+\.svg\?v=\w+"', row
+        r'<span class="tip tip-m" aria-hidden="true"><span class="tip-face"><img src="/tips/shade/\d+\.svg\?v=\w+"',
+        row,
     )
     assert 'width="40" height="66"' in row and 'loading="lazy"' in row
     assert (

@@ -1,7 +1,9 @@
 """Home and the typeahead behind its search field (DESIGN 13.2)."""
 
 import sqlite3
+from datetime import datetime
 from typing import Annotated, Literal
+from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
@@ -16,11 +18,27 @@ router = APIRouter()
 Conn = Annotated[sqlite3.Connection, Depends(get_conn)]
 
 
+def greeting(now: datetime) -> str:
+    """ "Good morning", "Good afternoon" or "Good evening" by the local hour."""
+    part = "morning" if now.hour < 12 else "afternoon" if now.hour < 18 else "evening"
+    return f"Good {part}"
+
+
+def first_name(user: dict | None) -> str:
+    """The first word of the signed-in name (the part before an @ when the name is an address)."""
+    words = (user or {}).get("name", "").split("@")[0].split()
+    return words[0] if words else ""
+
+
 @router.get("/")
 def home(request: Request, conn: Conn):
+    now = datetime.now(ZoneInfo(request.app.state.settings.timezone))
     total = conn.execute("select count(*) from shade").fetchone()[0]
     wheel = wheels.most_recent(conn)
     context = {
+        "greeting": greeting(now),
+        "first_name": first_name(getattr(request.state, "user", None)),
+        "date_line": f"{now:%A} {now.day} {now:%B}",
         "shade_count": total,
         "counts": bottles.counts(conn),
         "wishlist": wishlist.summary(wishlist.items(conn)),

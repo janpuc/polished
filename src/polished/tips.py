@@ -89,9 +89,14 @@ def _tag_set(value) -> frozenset[str]:
     return frozenset(value or ()) - {""}
 
 
+# Bump when render() draws differently: the image URLs are cached for good, so only a new
+# revision makes a browser fetch the new drawing.
+DRAWING_VERSION = 2
+
+
 def revision(shades: list[TipShade]) -> str:
     """Changes whenever anything that is drawn changes; goes in the image URL and the ETag."""
-    return hashlib.sha1(repr(shades).encode()).hexdigest()[:10]
+    return hashlib.sha1(f"{DRAWING_VERSION}{shades!r}".encode()).hexdigest()[:10]
 
 
 def shade_url(row) -> str:
@@ -370,8 +375,10 @@ def _paint(canvas: _Canvas, shade: TipShade) -> None:
 
 
 def _finish(canvas: _Canvas, matte: bool) -> None:
-    """Over everything: the curve of the nail, then the gloss unless the top coat is matte."""
-    canvas.rect(canvas.radial([(0.55, "#000000", 0), (1, "#000000", 0.24)], 0.5, 0.42, 0.78), 1)
+    """Over everything: the curve of the nail, then the gloss unless the top coat is matte. The
+    page's CSS adds the occlusion and the specular pool over this (DESIGN 9), so the dome's edge is
+    light and the small highlight sits under the pool's default place at the top left."""
+    canvas.rect(canvas.radial([(0.55, "#000000", 0), (1, "#000000", 0.18)], 0.5, 0.42, 0.78), 1)
     if matte:
         return
     canvas.add(
@@ -379,8 +386,8 @@ def _finish(canvas: _Canvas, matte: bool) -> None:
         f' fill="{canvas.gradient([(0, "#ffffff", 0.5), (1, "#ffffff", 0.03)])}"/>'
     )
     canvas.add(
-        '<ellipse cx="70" cy="34" rx="6" ry="15" fill="#ffffff" fill-opacity="0.1"'
-        ' transform="rotate(14 70 34)"/>'
+        '<ellipse cx="66" cy="30" rx="6" ry="15" fill="#ffffff" fill-opacity="0.1"'
+        ' transform="rotate(14 66 30)"/>'
     )
 
 

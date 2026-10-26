@@ -34,8 +34,8 @@ def test_the_spec_is_openapi_3_1_with_valid_schemas(spec):
 
 def test_every_api_operation_is_secured_except_the_sign_in_ones(spec):
     open_paths = {
-        "/api/v1/auth/exchange", "/auth/app/start", "/auth/app/finish", "/__test/reset",
-        "/.well-known/apple-app-site-association",
+        "/api/v1/auth/exchange", "/auth/app/start", "/auth/app/finish", "/auth/app/callback",
+        "/__test/reset", "/.well-known/apple-app-site-association",
     }  # fmt: skip
     for path, item in spec["paths"].items():
         for method, operation in item.items():
@@ -49,18 +49,37 @@ def test_every_api_operation_is_secured_except_the_sign_in_ones(spec):
     assert spec["security"] == [{"bearer": []}]
 
 
-def test_the_spec_lists_the_s1_endpoints(spec):
+def test_the_spec_lists_every_endpoint_of_the_contract(spec):
     wanted = {
-        ("get", "/api/v1/me"), ("get", "/api/v1/home"), ("get", "/api/v1/shades"),
-        ("get", "/api/v1/shades/facets"), ("get", "/api/v1/shades/{shade_id}"),
-        ("get", "/api/v1/bottles"), ("get", "/api/v1/bottles/history"), ("get", "/api/v1/wishlist"),
-        ("get", "/api/v1/wheels"), ("get", "/api/v1/wheels/{wheel_id}"), ("get", "/api/v1/w/{slug}"),
+        ("get", "/api/v1/me"), ("get", "/api/v1/home"), ("post", "/api/v1/wear/{shade_id}"),
+        ("get", "/api/v1/shades"), ("post", "/api/v1/shades"), ("get", "/api/v1/shades/facets"),
+        ("get", "/api/v1/shades/{shade_id}"), ("put", "/api/v1/shades/{shade_id}/tip-colour"),
+        ("get", "/api/v1/bottles"), ("get", "/api/v1/bottles/history"),
+        ("post", "/api/v1/shades/{shade_id}/bottles"), ("patch", "/api/v1/bottles/{bottle_id}"),
+        ("delete", "/api/v1/bottles/{bottle_id}"),
+        ("get", "/api/v1/wishlist"), ("put", "/api/v1/shades/{shade_id}/wishlist"),
+        ("patch", "/api/v1/wishlist/{item_id}"), ("delete", "/api/v1/wishlist/{item_id}"),
+        ("post", "/api/v1/wishlist/bought"),
+        ("get", "/api/v1/lookup"), ("get", "/api/v1/identifiers"), ("post", "/api/v1/identifiers"),
+        ("delete", "/api/v1/identifiers/{identifier_id}"),
+        ("get", "/api/v1/wheels"), ("post", "/api/v1/wheels"), ("get", "/api/v1/wheels/{wheel_id}"),
+        ("get", "/api/v1/w/{slug}"), ("patch", "/api/v1/wheels/{wheel_id}"),
+        ("delete", "/api/v1/wheels/{wheel_id}"),
+        ("post", "/api/v1/wheels/{wheel_id}/slug/regenerate"),
+        ("post", "/api/v1/wheels/{wheel_id}/slug/take"),
+        ("post", "/api/v1/wheels/{wheel_id}/slots/{position}/draft"),
+        ("delete", "/api/v1/wheels/{wheel_id}/slots/{position}"),
         ("get", "/api/v1/stacks/{stack_id}"), ("get", "/api/v1/stacks/copy-sources"),
-        ("get", "/api/v1/stacks/pick"), ("get", "/api/v1/lookup"), ("get", "/api/v1/identifiers"),
-        ("get", "/api/v1/sync"), ("post", "/api/v1/auth/exchange"), ("post", "/api/v1/auth/revoke"),
+        ("get", "/api/v1/stacks/pick"), ("post", "/api/v1/stacks/{stack_id}/layers"),
+        ("patch", "/api/v1/stacks/{stack_id}/layers/{layer_id}"),
+        ("delete", "/api/v1/stacks/{stack_id}/layers/{layer_id}"),
+        ("post", "/api/v1/stacks/{stack_id}/template"), ("post", "/api/v1/stacks/{stack_id}/save"),
+        ("post", "/api/v1/stacks/{stack_id}/cancel"),
+        ("get", "/api/v1/sync"), ("post", "/api/v1/sync/run"),
+        ("post", "/api/v1/auth/exchange"), ("post", "/api/v1/auth/revoke"),
         ("get", "/api/v1/auth/devices"), ("delete", "/api/v1/auth/devices/{device_id}"),
         ("get", "/.well-known/apple-app-site-association"), ("post", "/__test/reset"),
-        ("get", "/auth/app/start"), ("get", "/auth/app/finish"),
+        ("get", "/auth/app/start"), ("get", "/auth/app/finish"), ("get", "/auth/app/callback"),
     }  # fmt: skip
     have = {(m, p) for p, item in spec["paths"].items() for m in item}
     assert have == wanted
@@ -86,7 +105,7 @@ def operation_of(spec: dict, method: str, path: str) -> tuple[str, dict]:
 
 
 def test_there_are_fixtures():
-    assert len(FIXTURES) >= 25
+    assert len(FIXTURES) >= 70
 
 
 @pytest.mark.parametrize("fixture", FIXTURES, ids=lambda p: p.stem)
@@ -97,6 +116,9 @@ def test_fixture_validates_against_the_spec(spec, fixture):
     _, operation = operation_of(spec, request["method"], request["path"])
     response = operation["responses"].get(str(recorded["status"]))
     assert response is not None, f"{fixture.stem}: status {recorded['status']} is not documented"
+    if recorded["status"] == 204:
+        assert recorded["body"] is None and "content" not in response
+        return
     schema = response["content"]["application/json"]["schema"]
     validator = Draft202012Validator({"components": spec["components"], **schema})
     errors = sorted(validator.iter_errors(recorded["body"]), key=lambda e: list(e.path))
@@ -107,13 +129,35 @@ def test_every_api_operation_has_a_fixture(spec):
     recorded = set()
     for fixture in FIXTURES:
         request = json.loads(fixture.read_text())["request"]
-        recorded.add(operation_of(spec, request["method"], request["path"])[0])
-    for template in spec["paths"]:
-        # /auth/revoke answers 204 without a body; the rest of /api/v1 answers JSON.
-        if template.startswith("/api/v1/") and template not in ("/api/v1/auth/revoke",):
-            if template == "/api/v1/auth/devices/{device_id}":
-                continue  # DELETE: 204 without a body
-            assert template in recorded, f"no fixture for {template}"
+        template = operation_of(spec, request["method"], request["path"])[0]
+        recorded.add((request["method"].lower(), template))
+    for template, item in spec["paths"].items():
+        if not template.startswith("/api/v1/"):
+            continue
+        for method in item:
+            if (method, template) == ("post", "/api/v1/auth/revoke") or (
+                method,
+                template,
+            ) == ("delete", "/api/v1/auth/devices/{device_id}"):
+                continue  # signing a device out would end the recorded session
+            assert (method, template) in recorded, f"no fixture for {method.upper()} {template}"
+
+
+@pytest.mark.parametrize("fixture", FIXTURES, ids=lambda p: p.stem)
+def test_a_write_fixture_records_a_body_that_fits_the_spec(spec, fixture):
+    request = json.loads(fixture.read_text())["request"]
+    _, operation = operation_of(spec, request["method"], request["path"])
+    if "requestBody" not in operation:
+        assert "body" not in request
+        return
+    assert "body" in request, f"{fixture.stem} sent a body the fixture does not record"
+    schema = operation["requestBody"]["content"]["application/json"]["schema"]
+    validator = Draft202012Validator({"components": spec["components"], **schema})
+    errors = sorted(validator.iter_errors(request["body"]), key=lambda e: list(e.path))
+    wrong_on_purpose = fixture.stem.startswith("error_validation") or fixture.stem in (
+        "error_empty_stack",
+    )
+    assert wrong_on_purpose or not errors, f"{fixture.stem}: {errors[0].message}"
 
 
 def test_the_example_token_in_the_fixtures_is_not_a_real_one():

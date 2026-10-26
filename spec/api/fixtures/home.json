@@ -7,7 +7,60 @@
   "body": {
     "greeting_name": "Nikola",
     "date": "2026-10-26",
-    "wear": null,
+    "wear": {
+      "shade": {
+        "id": 12,
+        "title": "One-Coat Black",
+        "kind": "polish",
+        "source": "holotaco",
+        "is_topper": false,
+        "price_cents": 1550,
+        "compare_at_cents": 1550,
+        "status": {
+          "key": "available",
+          "label": "In stock",
+          "buyable": true
+        },
+        "finishes": [
+          "creme"
+        ],
+        "owned_count": 1,
+        "wishlisted": false,
+        "hero_image_url": "https://cdn.shopify.com/s/files/1/0050/3001/9162/files/0009_HT-Holoween-SoloBottleHero-ThirstTrap.jpg?v=1760456220",
+        "released_on": null,
+        "official_collection": null,
+        "marks": [],
+        "tip": {
+          "id": 12,
+          "hex": "#111111",
+          "hex2": null,
+          "finishes": [
+            "creme"
+          ],
+          "topper": false,
+          "clear": false,
+          "coats": 1,
+          "colours": [
+            "black"
+          ],
+          "revision": "a27c6f2038"
+        }
+      },
+      "bottle": {
+        "id": 2,
+        "shade_id": 12,
+        "state": "full",
+        "printed_code": null,
+        "bought_on": "2026-08-02",
+        "price_paid_cents": 1200,
+        "opened_on": null,
+        "notes": null,
+        "archived": false,
+        "created_at": "2026-08-02T18:40:00Z",
+        "updated_at": "2026-08-02T18:40:00Z"
+      },
+      "worn_today": false
+    },
     "recent": [
       {
         "bottle": {

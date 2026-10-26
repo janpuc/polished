@@ -79,6 +79,56 @@ def test_the_new_bottle_defaults_are_full_and_bought_today(seeded):
     assert (row["state"], row["printed_code"], row["bought_on"]) == ("full", None, None)
 
 
+def test_the_bottle_sheet_has_date_fields_with_words_presets_and_a_max_of_today(seeded):
+    client, conn = seeded
+    shade = sid(conn, "thirst-trap")
+    sheet = client.get(f"/shades/{shade}/bottles/new", headers=HX).text
+    today = datetime.now(ZoneInfo("Europe/Warsaw")).date().isoformat()
+    assert sheet.count("data-date-field") == 2  # Bought on, Opened on
+    assert f'max="{today}"' in sheet and 'name="opened_on" type="date"' in sheet
+    assert '<span class="date-main">Today</span>' in sheet  # Bought on defaults to today
+    assert '<span class="date-main">Not opened</span>' in sheet
+    assert "Today</button>" in sheet and "Yesterday</button>" in sheet
+    assert "Don’t know</button>" in sheet and "Not opened</button>" in sheet
+    # The order: Level, Bought on, then the details with the P code among them.
+    assert sheet.index("Level") < sheet.index("Bought on") < sheet.index("More details")
+    assert sheet.index("More details") < sheet.index('id="printed_code"')
+
+
+def test_a_date_in_the_future_is_refused_by_the_server(seeded):
+    client, conn = seeded
+    shade = sid(conn, "thirst-trap")
+    response = add_bottle(client, shade, bought_on="2999-01-01")
+    assert response.status_code == 422 and "That date is in the future" in response.text
+    assert conn.execute("select count(*) from bottle").fetchone()[0] == 0
+    add_bottle(client, shade, bought_on="2026-10-25")
+    bottle = conn.execute("select id from bottle").fetchone()["id"]
+    changed = client.post(
+        f"/bottles/{bottle}", data={"state": "half", "opened_on": "2999-01-01"}, headers=HX
+    )
+    assert changed.status_code == 422 and "That date is in the future" in changed.text
+
+
+def test_the_greeting_follows_the_hour_and_names_the_household_member(seeded):
+    from polished.routes.home import first_name, greeting
+
+    assert [greeting(datetime(2026, 10, 26, hour)) for hour in (5, 11, 12, 17, 18, 23)] == [
+        "Good morning",
+        "Good morning",
+        "Good afternoon",
+        "Good afternoon",
+        "Good evening",
+        "Good evening",
+    ]
+    assert first_name({"name": "Nikola Tesla"}) == "Nikola"
+    assert first_name({"name": "nikola@example.com"}) == "nikola"
+    assert first_name({"name": ""}) == "" and first_name(None) == ""
+    client, _ = seeded
+    html = client.get("/").text
+    assert re.search(r'<h1 class="greeting">Good (morning|afternoon|evening)', html)
+    assert 'class="greeting-date"' in html
+
+
 def test_a_wrong_field_returns_the_form_for_the_sheet_and_stores_nothing(seeded):
     client, conn = seeded
     shade = sid(conn, "thirst-trap")
@@ -116,8 +166,8 @@ def test_a_state_change_is_one_post_and_returns_the_card(seeded):
     response = client.post(f"/bottles/{bottle}/state", data={"state": "low"}, headers=HX)
     assert response.status_code == 200 and "<html" not in response.text
     assert f'id="bottle-{bottle}"' in response.text and "P259" in response.text
-    assert re.findall(r'class="bottle-level level-(\w+)"', response.text) == ["low"]
-    assert re.search(r"</svg><span>Low</span>", response.text)
+    assert re.findall(r'class="level level-(\w+)"', response.text) == ["low"]
+    assert '<i class="level-arc"></i>Low</span>' in response.text
     assert f'hx-get="/bottles/{bottle}/edit?ctx=shade"' in response.text
     assert conn.execute("select state from bottle").fetchone()[0] == "low"
 
@@ -225,7 +275,7 @@ def test_archiving_from_the_list_swaps_the_row_away_and_closes_the_sheet(seeded)
     assert f'id="bottle-{bottle}"' in client.get("/bottles").text
 
 
-def test_a_bottle_row_shows_its_code_purchase_and_a_level_drawn_in_the_shade_colour(seeded):
+def test_a_bottle_row_leads_with_the_purchase_and_ends_with_the_code_and_an_ink_level(seeded):
     client, conn = seeded
     shade = sid(conn, "thirst-trap")
     conn.execute("update shade set swatch_override_hex = '#c02060' where id = ?", (shade,))
@@ -235,21 +285,17 @@ def test_a_bottle_row_shows_its_code_purchase_and_a_level_drawn_in_the_shade_col
     )
     plain = make_bottle(client, conn, bought_on="2026-05-18")
     page = client.get("/bottles").text
-    assert 'class="bottle-title"><span translate="no">P188</span>' in page
-    assert "Bought 21 Jul 2026, $15.50" in page
-    assert 'class="bottle-title is-plain">No P code</span>' in page and "Bought 18 May 2026" in page
-    assert page.count('fill="#c02060"') == 2  # both bottles: the shade's colour
+    assert 'Bought 21 Jul 2026, $15.50<span class="code" translate="no">P188</span></span>' in page
+    assert "Bought 18 May 2026</span>" in page and "No P code" not in page
+    assert "#c02060" not in page  # the level is ink, never the shade's colour
     assert "Archive</" not in page and " style=" not in page  # Archive is in the edit sheet now
     assert f'hx-get="/bottles/{coded}/edit?ctx=list"' in page
     assert f'hx-get="/bottles/{plain}/edit?ctx=list"' in page
-    # Empty has no liquid to draw; the other levels fill to a different height.
-    heights = {}
+    # Each level is its own class, which the CSS draws as a quarter, half or full arc.
     for state in ("full", "half", "low", "empty"):
         client.post(f"/bottles/{plain}/state", data={"state": state, "ctx": "list"})
         row = re.search(rf'id="bottle-{plain}".*?</article>', client.get("/bottles").text, re.S)
-        glyph = re.search(r'<path d="M2 ([\d.]+)H14', row.group(0))
-        heights[state] = float(glyph.group(1)) if glyph else None
-    assert heights == {"full": 10.0, "half": 18.0, "low": 22.0, "empty": None}
+        assert f'<span class="level level-{state}"><i class="level-arc"></i>' in row.group(0)
 
 
 def test_delete_removes_the_card_closes_the_sheet_and_updates_the_action_bar(seeded):
@@ -640,7 +686,7 @@ def test_a_shade_with_only_past_bottles_lists_them_under_past_bottles(seeded):
     add_bottle(client, shade, bought_on="2026-10-03", price_paid="15.50")
     conn.execute("update bottle set state = 'empty'")
     page = client.get(f"/shades/{shade}").text
-    assert "Past bottles" in page and "No P code" in page
+    assert "Past bottles" in page
     assert "Bought 3 Oct 2026, $15.50" in page
     assert '<h2 class="section-title">Bottles</h2>' not in page
     add_bottle(client, shade)
@@ -769,6 +815,17 @@ def test_a_wrong_field_returns_the_sheet_with_a_message_and_changes_nothing(
     assert conn.execute("select count(*) from wishlist_item").fetchone()[0] == 2
 
 
+def test_a_bought_on_date_in_the_future_returns_the_sheet_and_changes_nothing(seeded):
+    client, conn = seeded
+    ids = wish_items(client, conn, ("thirst-trap", 1))
+    item = ids[sid(conn, "thirst-trap")]
+    response = client.post(
+        "/wishlist/bought", headers=HX, data={"item": [str(item)], "bought_on": "2999-01-01"}
+    )
+    assert response.status_code == 422 and "That date is in the future" in response.text
+    assert conn.execute("select count(*) from bottle").fetchone()[0] == 0
+
+
 def test_an_unknown_item_is_404_and_nothing_changes(seeded):
     client, conn = seeded
     ids = wish_items(client, conn, ("thirst-trap", 1))
@@ -816,10 +873,10 @@ def test_lists_of_shades_show_the_painted_tip_never_a_bottle_photo(seeded):
     for url in ("/", "/bottles", "/bottles/history", "/wishlist"):
         html = client.get(url).text
         assert re.search(
-            r'<span class="tip-(?:m|l)" aria-hidden="true"><img src="/tips/shade/\d+\.svg\?v=\w+"',
+            r'<span class="tip tip-(?:m|l)" aria-hidden="true"><span class="tip-face"><img src="/tips/shade/\d+\.svg\?v=\w+"',
             html,
         ), url
         assert 'class="thumb' not in html and "cdn.shopify.com" not in html, url
     sheet = client.get("/wishlist/bought", headers=HX).text
-    assert 'class="tip-s"' in sheet and 'class="thumb' not in sheet
-    assert 'class="tip-m"' in client.get("/search", params={"q": "thirst", "ctx": "home"}).text
+    assert 'class="tip tip-s"' in sheet and 'class="thumb' not in sheet
+    assert 'class="tip tip-m"' in client.get("/search", params={"q": "thirst", "ctx": "home"}).text

@@ -1,0 +1,141 @@
+{
+  "request": {
+    "method": "POST",
+    "path": "/api/v1/stacks/4/template",
+    "body": {
+      "kind": "over_black"
+    }
+  },
+  "status": 200,
+  "body": {
+    "stack_id": 4,
+    "wheel": {
+      "id": 3,
+      "slug": "7b2vdc",
+      "name": "Jelly wheel"
+    },
+    "position": 3,
+    "name": null,
+    "note": null,
+    "painted_on": null,
+    "layers": [
+      {
+        "id": 8,
+        "ord": 1,
+        "shade_id": 12,
+        "title": "One-Coat Black",
+        "coats": 1,
+        "label": "Base",
+        "tip": {
+          "id": 12,
+          "hex": "#111111",
+          "hex2": null,
+          "finishes": [
+            "creme"
+          ],
+          "topper": false,
+          "clear": false,
+          "coats": 1,
+          "colours": [
+            "black"
+          ],
+          "revision": "a27c6f2038"
+        }
+      },
+      {
+        "id": 7,
+        "ord": 2,
+        "shade_id": 14,
+        "title": "Flakie Holo Taco",
+        "coats": 1,
+        "label": "2nd",
+        "tip": {
+          "id": 14,
+          "hex": "#d1478b",
+          "hex2": null,
+          "finishes": [
+            "flakie",
+            "holographic"
+          ],
+          "topper": true,
+          "clear": false,
+          "coats": 1,
+          "colours": [],
+          "revision": "b74a65e152"
+        }
+      },
+      {
+        "id": 6,
+        "ord": 3,
+        "shade_id": 1,
+        "title": "Thirst Trap",
+        "coats": 3,
+        "label": "Top",
+        "tip": {
+          "id": 1,
+          "hex": "#d1b947",
+          "hex2": null,
+          "finishes": [
+            "flakie"
+          ],
+          "topper": false,
+          "clear": false,
+          "coats": 3,
+          "colours": [
+            "red"
+          ],
+          "revision": "8a6c8a990d"
+        }
+      }
+    ],
+    "summary": "One-Coat Black + Flakie Holo Taco + Thirst Trap ×3",
+    "full": false,
+    "tip": [
+      {
+        "id": 12,
+        "hex": "#111111",
+        "hex2": null,
+        "finishes": [
+          "creme"
+        ],
+        "topper": false,
+        "clear": false,
+        "coats": 1,
+        "colours": [
+          "black"
+        ],
+        "revision": "a27c6f2038"
+      },
+      {
+        "id": 14,
+        "hex": "#d1478b",
+        "hex2": null,
+        "finishes": [
+          "flakie",
+          "holographic"
+        ],
+        "topper": true,
+        "clear": false,
+        "coats": 1,
+        "colours": [],
+        "revision": "b74a65e152"
+      },
+      {
+        "id": 1,
+        "hex": "#d1b947",
+        "hex2": null,
+        "finishes": [
+          "flakie"
+        ],
+        "topper": false,
+        "clear": false,
+        "coats": 3,
+        "colours": [
+          "red"
+        ],
+        "revision": "8a6c8a990d"
+      }
+    ],
+    "result": "added"
+  }
+}

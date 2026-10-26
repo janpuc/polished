@@ -1,0 +1,26 @@
+{# A date field: the value in words (server-rendered, kept in step by static/js/date.js) over the
+   real <input type="date">, which covers the field with opacity 0, so a tap opens the native
+   picker (the wheel on iPhone and iPad, the popover on a Mac) and the keyboard and screen readers
+   meet a plain date input. `max` is today, so a future day cannot be picked. Preset buttons set
+   the value: Today, Yesterday and, on an optional field, `clear` (its label, for example "Don't
+   know"). Import with context: `today_iso` comes from the page context. #}
+{% from "_icons.html" import icon with context %}
+{% macro date_field(name, label, value, error=none, clear=none, id=none) -%}
+{% set id = id or name -%}
+{% set words = value|date_words(today_iso) -%}
+<div class="field date-field{% if not value %} is-empty{% endif %}" data-date-field>
+  <label for="{{ id }}">{{ label }}</label>
+  <div class="date-box">
+    {{ icon("calendar") }}
+    <span class="date-value" aria-hidden="true" data-empty="{{ clear or 'Not yet' }}"><span class="date-main">{{ words[0] or clear or 'Not yet' }}</span><span class="date-rest">{{ words[1] }}</span></span>
+    {{ icon("chevron-down", "icon-sm") }}
+    <input id="{{ id }}" name="{{ name }}" type="date" value="{{ value or '' }}" max="{{ today_iso }}">
+  </div>
+  <div class="date-presets">
+    <button type="button" class="chip" data-date-offset="0" aria-pressed="{{ 'true' if value == today_iso else 'false' }}">Today</button>
+    <button type="button" class="chip" data-date-offset="1" aria-pressed="{{ 'true' if words[0] == 'Yesterday' else 'false' }}">Yesterday</button>
+    {% if clear %}<button type="button" class="chip" data-date-clear aria-pressed="{{ 'false' if value else 'true' }}">{{ clear }}</button>{% endif %}
+  </div>
+  {% if error %}<p class="field-error" role="alert">{{ error }}</p>{% endif %}
+</div>
+{%- endmacro %}

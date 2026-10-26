@@ -4,7 +4,7 @@
 {% set filled = tile.filled %}
 {% set matched = hl and tile.position in hl_positions %}
 <div id="slot-{{ tile.position }}" class="slot slot-pos-{{ tile.position }} ring-n-{{ wheel.slot_count }}{% if filled %} is-filled{% endif %}{% if matched %} is-hl{% elif hl %} is-dim{% endif %}{% if saved %} is-saved{% endif %}"{% if oob %} hx-swap-oob="outerHTML"{% endif %}>
-  <span class="tip" aria-hidden="true">
+  <span class="slot-tip" aria-hidden="true">
     <span class="tip-art">
       {% if filled %}
       {{ stack_tip(tile.stack_id, tile.layers, 38, 62) }}

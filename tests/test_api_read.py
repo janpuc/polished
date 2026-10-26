@@ -144,7 +144,10 @@ def test_home(api):
     assert set(body) == {"greeting_name", "date", "wear", "recent", "wheel", "counts"}
     assert body["greeting_name"] == "Dev"
     date.fromisoformat(body["date"])
-    assert body["wear"] is None  # present, and null until the wear log exists
+    assert set(body["wear"]) == {"shade", "bottle", "worn_today"}
+    check_row(body["wear"]["shade"])
+    assert body["wear"]["bottle"]["shade_id"] == body["wear"]["shade"]["id"]
+    assert body["wear"]["worn_today"] is False
     assert len(body["recent"]) == 5
     assert set(body["recent"][0]) == {"bottle", "shade"}
     assert set(body["recent"][0]["bottle"]) == BOTTLE_KEYS
@@ -171,8 +174,12 @@ def test_home_of_an_empty_household(tmp_path):
     assert body["counts"] == {"bottles": 0, "shades": 0, "wished": 0, "wished_cents": 0}
 
 
-def test_home_another_is_accepted(api):
-    assert api.get("/api/v1/home?another=1").json()["wear"] is None
+def test_home_another_picks_another_owned_shade(api):
+    first = api.get("/api/v1/home").json()["wear"]["shade"]["id"]
+    for _ in range(10):
+        other = api.get("/api/v1/home?another=1").json()["wear"]
+        assert other["shade"]["id"] != first
+        assert other["shade"]["owned_count"] > 0
 
 
 def test_sync(api):

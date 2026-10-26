@@ -12,6 +12,7 @@ from test_api_support import DEV_TOKEN, LOOPBACK, make_api
 
 from polished import auth as web_auth
 from polished.api import auth as tokens
+from polished.db import connect
 from polished.server import create_app
 
 pytest_plugins = ["test_api_support"]
@@ -171,7 +172,12 @@ def test_app_sign_in_end_to_end_in_none_mode(tmp_path):
     assert finish.status_code == 302
     assert finish.headers["cache-control"] == "no-store"
     location = urlsplit(finish.headers["location"])
-    assert (location.scheme, location.netloc, location.path) == ("polished", "auth", "")
+    # An app-claimed https address, never a custom scheme another app could register.
+    assert (location.scheme, location.hostname, location.path) == (
+        "https",
+        "localhost",
+        "/auth/app/callback",
+    )
     code = parse_qs(location.query)["code"][0]
     # The code is used by the app, once.
     exchanged = client.post(
@@ -199,7 +205,76 @@ def test_app_login_survives_the_oidc_callback(tmp_path, monkeypatch):
     assert callback.status_code == 302
     finish = client.get("/auth/app/finish")
     assert finish.status_code == 302
-    assert finish.headers["location"].startswith("polished://auth?code=")
+    assert finish.headers["location"].startswith(
+        "https://polished.example.test/auth/app/callback?code="
+    )
+
+
+def test_app_start_replaces_the_pending_sign_in(tmp_path):
+    client = make_client(make_settings(tmp_path))
+    other = tokens.challenge_for("w" * 43)
+    client.get("/auth/app/start", params={"challenge": other, "device": "First"})
+    client.get("/auth/app/start", params={"challenge": CHALLENGE, "device": "Second"})
+    finish = client.get("/auth/app/finish")
+    code = parse_qs(urlsplit(finish.headers["location"]).query)["code"][0]
+    # Only the second start's verifier opens the code; the first one is gone.
+    wrong = client.post("/api/v1/auth/exchange", json={"code": code, "verifier": "w" * 43})
+    assert wrong.status_code == 400
+    assert client.get("/auth/app/finish").status_code == 400
+
+
+def test_a_pending_sign_in_expires_after_ten_minutes(tmp_path, monkeypatch):
+    import time as clock
+
+    client = make_client(make_settings(tmp_path))
+    client.get("/auth/app/start", params={"challenge": CHALLENGE})
+    real = clock.time
+    monkeypatch.setattr(web_auth.time, "time", lambda: real() + web_auth.APP_LOGIN_MAX_AGE_S + 5)
+    assert client.get("/auth/app/finish").status_code == 400
+    assert web_auth.APP_LOGIN_MAX_AGE_S == 600
+
+
+def test_the_callback_page_is_harmless_and_never_touches_codes(tmp_path):
+    settings = oidc_settings(tmp_path)
+    client = make_client(settings)
+    conn = connect(settings.db_path)
+    before = conn.execute("select count(*) from app_login_code").fetchone()[0]
+    code = tokens.mint_login_code(conn, "u1", "Rae", CHALLENGE, "Rae's iPhone")
+    # Nobody is signed in and the page still answers: it is public.
+    response = client.get("/auth/app/callback", params={"code": code})
+    assert response.status_code == 200
+    assert "Open Polished to finish signing in" in response.text
+    assert code not in response.text
+    assert response.headers["cache-control"] == "no-store"
+    assert response.headers["x-robots-tag"] == "noindex"
+    assert '<meta name="robots" content="noindex">' in response.text
+    assert '<meta name="referrer" content="no-referrer">' in response.text
+    assert "<script" not in response.text and "<a " not in response.text
+    assert response.cookies.get("polished_session") is None
+    # The code is still unused and still works: opening the page consumed nothing, minted nothing.
+    row = conn.execute("select used_at from app_login_code").fetchall()
+    assert len(row) == before + 1 and row[-1]["used_at"] is None
+    assert client.get("/auth/app/callback").text == response.text
+    exchanged = client.post(
+        "/api/v1/auth/exchange", json={"code": code, "verifier": VERIFIER, "platform": "ios"}
+    )
+    assert exchanged.status_code == 200
+    conn.close()
+
+
+def test_the_callback_page_takes_no_other_method(tmp_path):
+    client = make_client(make_settings(tmp_path))
+    assert client.post("/auth/app/callback").status_code in (403, 405)
+
+
+def test_no_custom_scheme_is_left_in_the_source():
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[1]
+    for folder in ("src", "spec"):
+        for path in (root / folder).rglob("*"):
+            if path.is_file() and path.suffix in (".py", ".yaml", ".json", ".html", ".js"):
+                assert "polished://" not in path.read_text(), path
 
 
 def test_app_finish_needs_a_session_in_oidc_mode(tmp_path):

@@ -38,6 +38,7 @@ def test_migrations_apply_once_and_a_second_run_applies_nothing(tmp_path):
         "006_swatch_colour.sql",
         "007_release_sheet.sql",
         "008_api_tokens.sql",
+        "009_wear.sql",
     ]
     assert migrate(db) == []
     conn = sqlite3.connect(db)
@@ -50,6 +51,7 @@ def test_migrations_apply_once_and_a_second_run_applies_nothing(tmp_path):
         (6, "006_swatch_colour.sql"),
         (7, "007_release_sheet.sql"),
         (8, "008_api_tokens.sql"),
+        (9, "009_wear.sql"),
     ]
     conn.close()
 
@@ -110,6 +112,7 @@ def test_package_ships_the_migrations():
         "006_swatch_colour.sql",
         "007_release_sheet.sql",
         "008_api_tokens.sql",
+        "009_wear.sql",
     ]
 
 
@@ -139,6 +142,7 @@ def test_002_inventory_applies_on_top_of_a_synced_001_database(tmp_path):
         "006_swatch_colour.sql",
         "007_release_sheet.sql",
         "008_api_tokens.sql",
+        "009_wear.sql",
     ]
     assert names(db, "table") >= {"bottle", "wishlist_item"}
     assert names(db, "index") >= {"bottle_shade", "bottle_printed_code"}
@@ -325,7 +329,11 @@ def test_007_rebuilds_shade_and_leaves_everything_that_points_at_it_alone(tmp_pa
     before = dump_tables(conn)
     before_status = [tuple(r) for r in conn.execute("select * from shade_status order by 1")]
 
-    assert migrate(db) == ["007_release_sheet.sql", "008_api_tokens.sql"]
+    assert migrate(db) == [
+        "007_release_sheet.sql",
+        "008_api_tokens.sql",
+        "009_wear.sql",
+    ]
 
     assert conn.execute("pragma foreign_key_check").fetchall() == []
     assert conn.execute("pragma integrity_check").fetchone()[0] == "ok"

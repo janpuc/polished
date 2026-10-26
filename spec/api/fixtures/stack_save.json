@@ -1,0 +1,50 @@
+{
+  "request": {
+    "method": "POST",
+    "path": "/api/v1/stacks/4/save",
+    "body": {
+      "name": "Black and flakes",
+      "note": "Dried fast",
+      "painted_on": "2026-10-25"
+    }
+  },
+  "status": 200,
+  "body": {
+    "wheel_id": 3,
+    "position": 3,
+    "tile": {
+      "position": 3,
+      "filled": true,
+      "has_draft": false,
+      "stack_id": 4,
+      "draft_stack_id": null,
+      "summary": "Flakie Holo Taco",
+      "layers": [
+        {
+          "id": 7,
+          "ord": 1,
+          "shade_id": 14,
+          "title": "Flakie Holo Taco",
+          "coats": 1,
+          "label": "",
+          "tip": {
+            "id": 14,
+            "hex": "#d1478b",
+            "hex2": null,
+            "finishes": [
+              "flakie",
+              "holographic"
+            ],
+            "topper": true,
+            "clear": false,
+            "coats": 1,
+            "colours": [],
+            "revision": "b74a65e152"
+          }
+        }
+      ],
+      "painted_on": "2026-10-25",
+      "note": "Dried fast"
+    }
+  }
+}

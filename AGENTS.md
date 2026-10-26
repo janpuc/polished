@@ -17,7 +17,8 @@ advisor's recommendation the design started from; DESIGN.md wins where they diff
   commit or push; the orchestrating session commits a stage after checking it and pushes.
 - Holo Taco is a small shop: sync is 3 `products.json` requests a day, at most 1 request per
   second, with an identifying User-Agent. Tests and local runs use `tests/fixtures/` or a local
-  snapshot (`polished sync --from-files`), never the live store. A 429 or 5xx means stop and
+  snapshot (`polished sync --from-files ... --no-colours`; without the flag the colour step downloads
+  photos from cdn.shopify.com), never the live store. A 429 or 5xx means stop and
   report, not retry in a loop. Never use `updated_at` as a change signal and never delete a shade.
 - This repo is public: no secrets, no `.env` files, no personal data, no real database, no
   `research/*.json` snapshot, no photos. Config comes from `POLISHED_*` environment variables;
@@ -37,7 +38,7 @@ uv run ruff check && uv run ruff format --check
 uv run pytest -q
 export POLISHED_DB_PATH=./data/polished.db POLISHED_AUTH_MODE=none POLISHED_PUBLIC_URL=http://localhost:8080
 uv run python -m polished migrate
-uv run python -m polished sync --from-files research/p1.json research/p2.json research/p3.json
+uv run python -m polished sync --from-files research/p1.json research/p2.json research/p3.json --no-colours
 uv run python -m polished serve          # http://localhost:8080
 uvx --from playwright --with python-barcode --with pillow python tests/e2e/run_flows.py   # browser flows
 ```

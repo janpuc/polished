@@ -1,0 +1,66 @@
+{
+  "request": {
+    "method": "POST",
+    "path": "/api/v1/stacks/4/layers",
+    "body": {
+      "shade_id": 1
+    }
+  },
+  "status": 200,
+  "body": {
+    "stack_id": 4,
+    "wheel": {
+      "id": 3,
+      "slug": "7b2vdc",
+      "name": "Jelly wheel"
+    },
+    "position": 3,
+    "name": null,
+    "note": null,
+    "painted_on": null,
+    "layers": [
+      {
+        "id": 6,
+        "ord": 1,
+        "shade_id": 1,
+        "title": "Thirst Trap",
+        "coats": 2,
+        "label": "",
+        "tip": {
+          "id": 1,
+          "hex": "#d1b947",
+          "hex2": null,
+          "finishes": [
+            "flakie"
+          ],
+          "topper": false,
+          "clear": false,
+          "coats": 2,
+          "colours": [
+            "red"
+          ],
+          "revision": "91f22303ba"
+        }
+      }
+    ],
+    "summary": "Thirst Trap ×2",
+    "full": false,
+    "tip": [
+      {
+        "id": 1,
+        "hex": "#d1b947",
+        "hex2": null,
+        "finishes": [
+          "flakie"
+        ],
+        "topper": false,
+        "clear": false,
+        "coats": 2,
+        "colours": [
+          "red"
+        ],
+        "revision": "91f22303ba"
+      }
+    ]
+  }
+}

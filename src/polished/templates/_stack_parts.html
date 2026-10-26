@@ -4,11 +4,11 @@
    (`tip_fresh`), static/js/sheet.js fades it in once it has loaded and drops the older ones. #}
 {% from "_tip_img.html" import stack_tip %}
 {% macro head_tip(s) -%}
-<span id="stack-tip" class="tip-xl" aria-hidden="true">{% if s.layers %}{{ stack_tip(s.stack_id, s.layers, 72, 118, false) }}{% endif %}</span>
+<span class="tip tip-xl" aria-hidden="true"><span id="stack-tip" class="tip-face">{% if s.layers %}{{ stack_tip(s.stack_id, s.layers, 96, 158, false) }}{% endif %}</span></span>
 {%- endmacro %}
 
 {% macro tip_fresh(s) -%}
-<div hx-swap-oob="beforeend:#stack-tip">{% if s.layers %}<img class="tip-fresh" src="{{ tip_stack_url(s.stack_id, s.layers) }}" width="72" height="118" alt="" decoding="async">{% else %}<span class="tip-fresh tip-blank"></span>{% endif %}</div>
+<div hx-swap-oob="beforeend:#stack-tip">{% if s.layers %}<img class="tip-fresh" src="{{ tip_stack_url(s.stack_id, s.layers) }}" width="96" height="158" alt="" decoding="async">{% else %}<span class="tip-fresh tip-blank"></span>{% endif %}</div>
 {%- endmacro %}
 
 {% macro summary_line(s, oob=False) -%}

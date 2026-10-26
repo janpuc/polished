@@ -22,3 +22,23 @@ zxing-wasm/ (reader build; MIT, see zxing-wasm/LICENSE)
   fetched: 2026-10-25 with scripts/vendor.sh
   note: the wasm is loaded from /static/vendor/zxing-wasm/ by a locateFile override in
         static/js/scanner.js; the package's default CDN location is never used.
+
+fraunces/ (display face for four roles; SIL OFL 1.1, see fraunces/OFL.txt)
+  version: 5.3.0 (@fontsource-variable/fraunces, published 2026-07-19; Fraunces by the Fraunces Project Authors)
+  source:  https://registry.npmjs.org/@fontsource-variable/fraunces/-/fraunces-5.3.0.tgz
+           (tarball sha256 c8bff30211fb6683f7c4c6fa0c298d1f1c7d4e811767de92d26a199c273235fb,
+           sha1 6c8a69a0dcac753643a04e068ed2ad5689e99229 as the registry reports it)
+           upstream: https://github.com/undercasetype/Fraunces, https://fontsource.org/fonts/fraunces
+  files, subset from the tarball's files/fraunces-latin-opsz-normal.woff2 and
+  files/fraunces-latin-ext-opsz-normal.woff2 (variable, axes wght and opsz; no SOFT or WONK):
+    fraunces-latin.woff2      sha256: 48f6d1a84b801876d0d610fc8913446587afaf2e052691e77250179c66f4e78c
+    fraunces-latin-ext.woff2  sha256: 5529b08745977471a9004cdaeeab564ac46cef0ed01521f15ea9383e5f021419
+    OFL.txt (the tarball's LICENSE)  sha256: cd3384cafac6f2bddc3955273958a2e029f97027c8037ac539ef5744a77b579e
+  made with fonttools (uvx --from fonttools --with brotli), per file:
+    fonttools varLib.instancer <in> wght=500:700 opsz=72:144 --no-recalc-bounds -o <mid>
+    pyftsubset <mid> --flavor=woff2 --layout-features='kern,liga,calt,tnum,lnum,ccmp,locl,mark,mkmk' --unicodes=...
+  unicodes: latin  U+0020-007E, U+00A0-00FF, U+2013, U+2014, U+2018, U+2019, U+201C, U+201D, U+2026, U+2212, U+00D7
+            ext    U+0100-017F, U+0218-021B, U+1E9E, U+20AC
+  use: weight 600 at opsz 144 only, in the four display roles (docs/VISUAL.md section 3). The latin file is
+       preloaded; the ext file is fetched by unicode-range only when a name needs it.
+  fetched: 2026-10-26

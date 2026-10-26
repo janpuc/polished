@@ -190,6 +190,8 @@ def save(
         )
     except stacks.EmptyStack:
         return _save_error("Add at least one layer before saving.")
+    except stacks.FutureDate:
+        return _save_error("Swatched on can't be in the future. Pick today or an earlier day.")
     except ValueError:
         return _save_error("Painted on needs a date like 2026-10-25.")
     except stacks.StackError as exc:

@@ -64,6 +64,10 @@ class EmptyStack(StackError):
     """Save needs at least one layer (422)."""
 
 
+class FutureDate(ValueError):
+    """A painted-on date after today."""
+
+
 @dataclass(frozen=True)
 class SlotRef:
     wheel_id: int
@@ -407,9 +411,13 @@ def save(
     """Commit the draft to its slot: it replaces the slot's previous saved stack (deleted, its
     layers with it), the draft pointer clears, and the name, note and painted-on date are stored.
     A blank `painted_on` means `today` (default: the machine's date; routes pass the household's).
-    Raises EmptyStack without layers and ValueError for a date that is not YYYY-MM-DD."""
+    Raises EmptyStack without layers, ValueError for a date that is not YYYY-MM-DD and FutureDate
+    for one after today."""
     typed = painted_on.strip()
-    day = date.fromisoformat(typed) if typed else today or date.today()
+    current = today or date.today()
+    day = date.fromisoformat(typed) if typed else current
+    if day > current:
+        raise FutureDate(typed)
     with atomic(conn):
         ref = _slot_of_draft(conn, stack_id)
         if _count(conn, stack_id) == 0:

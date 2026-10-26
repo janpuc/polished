@@ -4,6 +4,7 @@
    wheel page, the slot's tile comes along out of band (tile is in the context then). The head is the
    stack's composite tip beside the slot and wheel name, the live summary under them. #}
 {% from "_icons.html" import icon with context %}
+{% from "_date_field.html" import date_field with context %}
 {% from "_stack_parts.html" import head_tip, summary_line, save_button %}
 <div class="builder" data-builder>
   <div class="builder-head">
@@ -51,10 +52,7 @@
           <label for="stack-note">Note</label>
           <textarea id="stack-note" name="note" rows="2" maxlength="500">{{ s.note or '' }}</textarea>
         </div>
-        <div class="field">
-          <label for="painted-on">Swatched on</label>
-          <input id="painted-on" name="painted_on" type="date" value="{{ painted_on }}">
-        </div>
+        {{ date_field("painted_on", "Swatched on", painted_on, id="painted-on") }}
       </details>
     </form>
     {% if saved_slot %}

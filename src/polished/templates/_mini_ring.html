@@ -8,7 +8,7 @@
 {% set w, h = {"home": (20, 32), "mini": (9, 14)}[size] -%}
 <span class="ring ring-{{ size }}" aria-hidden="true">
   {%- for tile in tiles %}
-  <span class="slot slot-pos-{{ tile.position }} ring-n-{{ count }}{% if tile.filled %} is-filled{% endif %}"><span class="tip"><span class="tip-art">{% if tile.filled %}{{ stack_tip(tile.stack_id, tile.layers, w, h) }}{% endif %}</span></span></span>
+  <span class="slot slot-pos-{{ tile.position }} ring-n-{{ count }}{% if tile.filled %} is-filled{% endif %}"><span class="slot-tip"><span class="tip-art">{% if tile.filled %}{{ stack_tip(tile.stack_id, tile.layers, w, h) }}{% endif %}</span></span></span>
   {%- endfor %}
 </span>
 {%- endmacro %}

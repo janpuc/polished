@@ -4,11 +4,13 @@ connection and settings dependencies."""
 import hashlib
 import sqlite3
 from collections.abc import Callable
+from datetime import date
 from typing import Annotated
 
 from fastapi import Depends, Request, Response
 from fastapi.routing import APIRoute
 
+from .. import wear
 from ..config import Settings
 from ..db import get_conn
 
@@ -27,6 +29,12 @@ def get_settings(request: Request) -> Settings:
 
 
 AppSettings = Annotated[Settings, Depends(get_settings)]
+
+
+def household_today(settings: Settings) -> date:
+    """Today in the household's time zone, the day a bought-on, painted-on or worn-on date may not
+    pass."""
+    return wear.local_today(settings.timezone)
 
 
 def _etag_matches(header: str, etag: str) -> bool:

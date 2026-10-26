@@ -1,0 +1,25 @@
+{
+  "request": {
+    "method": "PATCH",
+    "path": "/api/v1/bottles/7",
+    "body": {
+      "state": "low",
+      "notes": null,
+      "archived": false
+    }
+  },
+  "status": 200,
+  "body": {
+    "id": 7,
+    "shade_id": 1,
+    "state": "low",
+    "printed_code": "P321",
+    "bought_on": "2026-10-20",
+    "price_paid_cents": 1550,
+    "opened_on": "2026-10-24",
+    "notes": null,
+    "archived": false,
+    "created_at": "2026-10-26T16:30:00Z",
+    "updated_at": "2026-10-26T16:30:00Z"
+  }
+}

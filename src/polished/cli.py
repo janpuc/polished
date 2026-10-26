@@ -1,5 +1,5 @@
-"""python -m polished migrate | serve | sync [--from-files PAGE.json ...] [--sheet SHEET.csv] |
-colours [--recompute]"""
+"""python -m polished migrate | serve |
+sync [--from-files PAGE.json ...] [--sheet SHEET.csv] [--no-colours] | colours [--recompute]"""
 
 import argparse
 import asyncio
@@ -28,12 +28,14 @@ def _load_settings() -> Settings | None:
         return None
 
 
-def _sync(settings: Settings, files: list[Path] | None, sheet: Path | None) -> int:
+def _sync(
+    settings: Settings, files: list[Path] | None, sheet: Path | None, colours: bool = True
+) -> int:
     from .catalog.sync import RunRefused, SyncRunner
 
     runner = SyncRunner(settings)
     try:
-        outcome = asyncio.run(runner.run("cli", files, sheet))
+        outcome = asyncio.run(runner.run("cli", files, sheet, colours))
     except RunRefused as exc:
         print(f"polished: {exc}", file=sys.stderr)
         return 1
@@ -105,6 +107,12 @@ def main(argv: list[str] | None = None) -> int:
         metavar="SHEET.csv",
         help="read the release sheet from this CSV file instead of fetching it",
     )
+    sync.add_argument(
+        "--no-colours",
+        action="store_true",
+        help="skip the colour step, which downloads shade photos from the Shopify image CDN "
+        "(with --from-files this makes the run fully offline)",
+    )
     colours = sub.add_parser("colours", help="read the polish colour of shades from their photos")
     colours.add_argument(
         "--recompute",
@@ -128,7 +136,7 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     if args.command == "sync":
-        return _sync(settings, args.from_files, args.sheet)
+        return _sync(settings, args.from_files, args.sheet, not args.no_colours)
 
     if args.command == "colours":
         only = [t for t in (args.only or "").split(",") if t.strip()] or None

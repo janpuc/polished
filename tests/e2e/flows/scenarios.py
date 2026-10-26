@@ -8,7 +8,7 @@ import re
 import tempfile
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path
 from urllib.parse import quote
 
@@ -17,6 +17,9 @@ from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 
 from .harness import Trace
 from .media import GTIN, make_images
+
+# Home's title is the greeting, which follows the hour.
+GREETING = re.compile(r"^Good (morning|afternoon|evening)")
 
 
 @dataclass(frozen=True)
@@ -130,7 +133,7 @@ def search(t: Trace) -> None:
 
     with t.step("open Home"):
         t.goto("/")
-        expect(page.get_by_role("heading", level=1, name="Polished")).to_be_visible()
+        expect(page.get_by_role("heading", level=1, name=GREETING)).to_be_visible()
         expect(box).to_be_visible()
 
     with t.step("Magnetic Taco before Holo Magnetic Taco, the difference marked"):
@@ -166,6 +169,7 @@ def search(t: Trace) -> None:
     with t.step("nothing matches"):
         ask("xyzzyplugh")
         expect(page.get_by_text("Nothing matches")).to_be_visible()
+        expect(page.get_by_text("Try fewer letters")).to_be_visible()
         expect(page.get_by_role("link", name="Add it by hand")).to_be_visible()
 
     with t.step("open a result"):
@@ -197,6 +201,32 @@ def add_bottle_flow(t: Trace) -> None:
         page.get_by_role("button", name="Add bottle").click()
         sheet = t.open_sheet()
         expect(sheet.get_by_role("heading", name=re.compile("Add bottle"))).to_be_visible()
+
+    with t.step("the date field says it in words and its presets set it"):
+        sheet = t.open_sheet()
+        field = sheet.locator("[data-date-field]").first
+        today, yesterday = date.today(), date.today() - timedelta(days=1)
+        expect(field.locator(".date-main")).to_have_text("Today")
+        sheet.get_by_role("button", name="Yesterday").click()
+        expect(field.locator(".date-main")).to_have_text("Yesterday")
+        expect(sheet.get_by_label("Bought on")).to_have_value(yesterday.isoformat())
+        expect(sheet.get_by_role("button", name="Yesterday")).to_have_attribute(
+            "aria-pressed", "true"
+        )
+        sheet.get_by_role("button", name=re.compile("Don.t know")).click()
+        expect(field.locator(".date-main")).to_have_text(re.compile("Don.t know"))
+        expect(sheet.get_by_label("Bought on")).to_have_value("")
+        sheet.get_by_role("button", name="Today").click()
+        expect(sheet.get_by_label("Bought on")).to_have_value(today.isoformat())
+        expect(sheet.get_by_label("Bought on")).to_have_attribute("max", today.isoformat())
+
+    with t.step("a day in the future is not accepted: the browser holds the form back"):
+        sheet = t.open_sheet()
+        box = sheet.get_by_label("Bought on")
+        box.fill((date.today() + timedelta(days=2)).isoformat())
+        sheet.get_by_role("button", name="Add bottle").click()
+        assert box.evaluate("input => input.validity.rangeOverflow"), "max did not stop the date"
+        t.open_sheet()  # still open: nothing was sent (the server's own check is in the unit tests)
 
     with t.step("fill in the date and price"):
         sheet = t.open_sheet()
@@ -382,6 +412,7 @@ def wheel_build(t: Trace) -> None:
     with t.step("the ring, the hub and the list show it"):
         expect(page.locator("#hub-name")).to_have_text("1")
         expect(page.locator("#hub-count")).to_have_text("of 20")
+        expect(page.get_by_role("group", name=re.compile("1 of 20 swatched"))).to_be_visible()
         slots = page.get_by_role("button", name=re.compile(r"^Slot 3, .*Magnetic Taco"))
         expect(slots).to_have_count(2)  # the tile on the ring and the row in the list
 
@@ -605,7 +636,7 @@ def tabs(t: Trace) -> None:
 
     with t.step("Home"):
         nav.get_by_role("link", name="Home").click()
-        expect(page.get_by_role("heading", level=1, name="Polished")).to_be_visible()
+        expect(page.get_by_role("heading", level=1, name=GREETING)).to_be_visible()
         expect(page.get_by_text("Recent bottles")).to_be_visible()
 
     for tab, heading in (

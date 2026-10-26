@@ -22,6 +22,7 @@ paths:
       description: |-
         The native app opens this in ASWebAuthenticationSession (docs/NATIVE.md 2.4): remember its
         PKCE challenge in the web session, then sign in as usual and come back to /auth/app/finish.
+        One sign-in is pending at a time: a second start replaces the first.
       operationId: app_start
       parameters:
       - name: challenge
@@ -54,9 +55,29 @@ paths:
       operationId: app_finish
       responses:
         '302':
-          description: Redirects to `polished://auth?code=<code>`, the app's callback.
+          description: Redirects to `https://<host of PUBLIC_URL>/auth/app/callback?code=<code>`, which
+            the app claims as its `ASWebAuthenticationSession` callback.
         '400':
           description: A page saying the sign-in cannot start or finish.
+      tags:
+      - auth
+      security: []
+  /auth/app/callback:
+    get:
+      summary: The app's https sign-in callback (a harmless page)
+      description: |-
+        The address the app claims as its https callback (ASWebAuthenticationSession never loads it).
+        Opened anywhere else it only says what to do: it does not read the code, mint one or
+        redeem one, and nothing on it reveals anything.
+      operationId: app_callback
+      responses:
+        '200':
+          description: 'A page that says to open Polished. It never reads the `code`. `Cache-Control:
+            no-store`, `X-Robots-Tag: noindex`, no referrer.'
+          content:
+            text/html:
+              schema:
+                type: string
       tags:
       - auth
       security: []
@@ -212,7 +233,7 @@ paths:
       summary: The home shelf
       description: |-
         Wear today, the six newest bottles, the wheel worked on last and the collection numbers.
-        `wear` is null until the wear log exists; `another` has no effect before then.
+        Today's pick is the same all day (or the shade already worn today); `another` replaces it.
       operationId: home
       parameters:
       - name: another
@@ -220,10 +241,12 @@ paths:
         required: false
         schema:
           type: boolean
-          description: Pick another shade to wear (needs the wear log).
+          description: Pick another owned shade to wear, weighted away from the last 30 days. Random on
+            every call, never the shade that would be shown without it.
           default: false
           title: Another
-        description: Pick another shade to wear (needs the wear log).
+        description: Pick another owned shade to wear, weighted away from the last 30 days. Random on
+          every call, never the shade that would be shown without it.
       responses:
         '200':
           description: Successful Response
@@ -359,6 +382,37 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '304':
           description: '`If-None-Match` matched the ETag.'
+    post:
+      tags:
+      - shades
+      summary: Add a shade by hand
+      description: 'For a gifted bottle that is not in the catalog: no product, no price, no availability.'
+      operationId: create_shade
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ManualShadeRequest'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShadeDetail'
+        '401':
+          description: Missing, unknown or revoked token (`unauthorized`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: '`validation`, with `field` set.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /api/v1/shades/facets:
     get:
       tags:
@@ -438,6 +492,53 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '304':
           description: '`If-None-Match` matched the ETag.'
+  /api/v1/shades/{shade_id}/tip-colour:
+    put:
+      tags:
+      - shades
+      summary: Set or reset the colour of a shade's nail tip
+      description: |-
+        The household's own colour (`#rrggbb`), or `null` to go back to the one read from the photos.
+        The sync never touches it.
+      operationId: set_tip_colour
+      parameters:
+      - name: shade_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Shade Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TipColourRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShadeDetail'
+        '404':
+          description: '`not_found`'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Missing, unknown or revoked token (`unauthorized`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: '`validation`, with `field` set.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /api/v1/bottles:
     get:
       tags:
@@ -523,6 +624,134 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '304':
           description: '`If-None-Match` matched the ETag.'
+  /api/v1/shades/{shade_id}/bottles:
+    post:
+      tags:
+      - bottles
+      summary: Add a bottle of a shade
+      description: |-
+        A P code on the bottle is learned (shade identifiers) in the same transaction. A code that
+        already meant another shade keeps that mapping; the bottle is saved all the same and
+        `learned.previous_shade` says which shade it was.
+      operationId: create_bottle
+      parameters:
+      - name: shade_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Shade Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BottleRequest'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BottleCreated'
+        '404':
+          description: '`not_found`: no such shade.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Missing, unknown or revoked token (`unauthorized`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: '`validation`, with `field` set.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/v1/bottles/{bottle_id}:
+    patch:
+      tags:
+      - bottles
+      summary: Change a bottle
+      description: |-
+        Any subset of the fields, `archived` included; fields left out keep their value and `null`
+        clears an optional one. A P code is not learned here (as on the web's edit sheet).
+      operationId: edit_bottle
+      parameters:
+      - name: bottle_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Bottle Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BottlePatch'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Bottle'
+        '404':
+          description: '`not_found`'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Missing, unknown or revoked token (`unauthorized`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: '`validation`, with `field` set.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      tags:
+      - bottles
+      summary: Delete a bottle entered by mistake
+      operationId: remove_bottle
+      parameters:
+      - name: bottle_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Bottle Id
+      responses:
+        '204':
+          description: Successful Response
+        '404':
+          description: '`not_found`'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Missing, unknown or revoked token (`unauthorized`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: '`validation`, with `field` set.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /api/v1/wishlist:
     get:
       tags:
@@ -572,6 +801,171 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '304':
           description: '`If-None-Match` matched the ETag.'
+  /api/v1/shades/{shade_id}/wishlist:
+    put:
+      tags:
+      - wishlist
+      summary: Put a shade on the wishlist
+      description: 'Idempotent: a shade already on the list keeps its row, priority and note.'
+      operationId: add_to_wishlist
+      parameters:
+      - name: shade_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Shade Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WishlistAdd'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WishlistItem'
+        '404':
+          description: '`not_found`: no such shade.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Missing, unknown or revoked token (`unauthorized`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: '`validation`, with `field` set.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/v1/wishlist/{item_id}:
+    patch:
+      tags:
+      - wishlist
+      summary: Change an item's priority or note
+      description: |-
+        Fields left out stay as they are; an empty or `null` note clears it. Answers the whole
+        wishlist, which is what changed.
+      operationId: edit_wishlist_item
+      parameters:
+      - name: item_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Item Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WishlistPatch'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Wishlist'
+        '404':
+          description: '`not_found`'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Missing, unknown or revoked token (`unauthorized`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: '`validation`, with `field` set.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      tags:
+      - wishlist
+      summary: Take an item off the wishlist
+      operationId: remove_wishlist_item
+      parameters:
+      - name: item_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Item Id
+      responses:
+        '204':
+          description: Successful Response
+        '404':
+          description: '`not_found`'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Missing, unknown or revoked token (`unauthorized`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: '`validation`, with `field` set.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/v1/wishlist/bought:
+    post:
+      tags:
+      - wishlist
+      summary: I bought these
+      description: |-
+        One full bottle per item, bought on one date, with the price paid (or none), and the items
+        leave the wishlist, all in one transaction: if anything is wrong nothing changes.
+      operationId: mark_bought
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BoughtRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Bought'
+        '404':
+          description: '`not_found`: an item is not on the wishlist. Nothing changed.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Missing, unknown or revoked token (`unauthorized`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: '`validation`, with `field` set.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /api/v1/wheels:
     get:
       tags:
@@ -617,6 +1011,36 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '304':
           description: '`If-None-Match` matched the ETag.'
+    post:
+      tags:
+      - wheels
+      summary: Make a wheel
+      operationId: create_wheel
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WheelRequest'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Wheel'
+        '401':
+          description: Missing, unknown or revoked token (`unauthorized`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: '`validation`, with `field` set.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /api/v1/wheels/{wheel_id}:
     get:
       tags:
@@ -666,6 +1090,90 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '304':
           description: '`If-None-Match` matched the ETag.'
+    patch:
+      tags:
+      - wheels
+      summary: Rename, archive or restore a wheel
+      description: '`name` and/or `archived`. The slug stays, so the tag keeps opening the wheel.'
+      operationId: edit_wheel
+      parameters:
+      - name: wheel_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Wheel Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WheelPatch'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Wheel'
+        '404':
+          description: '`not_found`'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Missing, unknown or revoked token (`unauthorized`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: '`validation`, with `field` set.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      tags:
+      - wheels
+      summary: Delete a wheel with its swatches and drafts
+      description: |-
+        For good, no undo: the app asks first (the web's confirmation sheet). Shades and bottles
+        are untouched; the tag then opens a 404.
+      operationId: delete_wheel
+      parameters:
+      - name: wheel_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Wheel Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WheelDeleted'
+        '404':
+          description: '`not_found`'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Missing, unknown or revoked token (`unauthorized`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: '`validation`, with `field` set.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /api/v1/w/{slug}:
     get:
       tags:
@@ -718,6 +1226,180 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '304':
           description: '`If-None-Match` matched the ETag.'
+  /api/v1/wheels/{wheel_id}/slug/regenerate:
+    post:
+      tags:
+      - wheels
+      summary: Give the wheel a new tag address
+      description: The old sticker then opens a 404.
+      operationId: regenerate_slug
+      parameters:
+      - name: wheel_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Wheel Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Wheel'
+        '404':
+          description: '`not_found`'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Missing, unknown or revoked token (`unauthorized`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: '`validation`, with `field` set.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/v1/wheels/{wheel_id}/slug/take:
+    post:
+      tags:
+      - wheels
+      summary: Take the tag of another wheel
+      description: |-
+        The two wheels swap slugs: the sticker on `from_wheel_id` now opens this wheel and the
+        other way round.
+      operationId: take_tag
+      parameters:
+      - name: wheel_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Wheel Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TakeTagRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Wheel'
+        '404':
+          description: '`not_found`: either wheel.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Missing, unknown or revoked token (`unauthorized`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: '`validation`, with `field` set.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/v1/wheels/{wheel_id}/slots/{position}/draft:
+    post:
+      tags:
+      - wheels
+      summary: Open the builder on a slot
+      description: |-
+        Resumes the slot's draft (`resumed` true), or starts one holding a copy of the saved
+        swatch's layers.
+      operationId: open_slot_draft
+      parameters:
+      - name: wheel_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Wheel Id
+      - name: position
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Position
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StackOpened'
+        '404':
+          description: '`not_found`: no such wheel, or a position outside the wheel.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Missing, unknown or revoked token (`unauthorized`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: '`validation`, with `field` set.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/v1/wheels/{wheel_id}/slots/{position}:
+    delete:
+      tags:
+      - wheels
+      summary: Clear a slot's swatch
+      description: The saved swatch and any draft go. Clearing an empty slot is fine.
+      operationId: clear_slot
+      parameters:
+      - name: wheel_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Wheel Id
+      - name: position
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Position
+      responses:
+        '204':
+          description: Successful Response
+        '404':
+          description: '`not_found`: no such wheel, or a position outside the wheel.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Missing, unknown or revoked token (`unauthorized`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: '`validation`, with `field` set.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /api/v1/stacks/copy-sources:
     get:
       tags:
@@ -872,6 +1554,303 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '304':
           description: '`If-None-Match` matched the ETag.'
+  /api/v1/stacks/{stack_id}/layers:
+    post:
+      tags:
+      - stacks
+      summary: Paint another layer on top
+      description: 'Appended with the shade''s default coats: 2 for polish, 1 for toppers and coats.'
+      operationId: layer_add
+      parameters:
+      - name: stack_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Stack Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LayerRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StackSheet'
+        '404':
+          description: '`not_found`: no such shade.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: '`not_a_draft`'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Missing, unknown or revoked token (`unauthorized`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: '`validation`, with `field` set.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/v1/stacks/{stack_id}/layers/{layer_id}:
+    patch:
+      tags:
+      - stacks
+      summary: Add or take off a coat, or move a layer
+      description: |-
+        Coats stay between 1 and 5 (a change past either end changes nothing). `up` is towards
+        the base, which the list shows first; at the end of the list nothing changes.
+      operationId: layer_edit
+      parameters:
+      - name: stack_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Stack Id
+      - name: layer_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Layer Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LayerPatch'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StackSheet'
+        '404':
+          description: '`not_found`: the layer is not in this swatch.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: '`not_a_draft`'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Missing, unknown or revoked token (`unauthorized`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: '`validation`, with `field` set.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      tags:
+      - stacks
+      summary: Take a layer off
+      operationId: layer_delete
+      parameters:
+      - name: stack_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Stack Id
+      - name: layer_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Layer Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StackSheet'
+        '404':
+          description: '`not_found`: the layer is not in this swatch.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: '`not_a_draft`'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Missing, unknown or revoked token (`unauthorized`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: '`validation`, with `field` set.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/v1/stacks/{stack_id}/template:
+    post:
+      tags:
+      - stacks
+      summary: Over black, Copy from…, Same as last
+      description: |-
+        `over_black` puts the black base first with one coat; `copy` replaces the layers with a
+        saved stack's (`source_stack_id`); `last` copies the stack saved most recently, or answers
+        `nothing_saved` and leaves the draft alone.
+      operationId: stack_template
+      parameters:
+      - name: stack_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Stack Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TemplateRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StackTemplated'
+        '404':
+          description: '`not_found`: `source_stack_id` is not a saved stack.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: '`not_a_draft`'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Missing, unknown or revoked token (`unauthorized`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: '`validation`, with `field` set.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/v1/stacks/{stack_id}/save:
+    post:
+      tags:
+      - stacks
+      summary: Save the draft as the slot's swatch
+      description: Replaces the slot's earlier swatch, in one transaction. `painted_on` defaults to today.
+      operationId: stack_save
+      parameters:
+      - name: stack_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Stack Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SaveRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SlotResult'
+        '409':
+          description: '`not_a_draft`'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Missing, unknown or revoked token (`unauthorized`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: '`validation`, with `field` set.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/v1/stacks/{stack_id}/cancel:
+    post:
+      tags:
+      - stacks
+      summary: Throw the draft away
+      description: The slot keeps its saved swatch, if it has one; `tile` is the slot as it is now.
+      operationId: stack_cancel
+      parameters:
+      - name: stack_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Stack Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SlotResult'
+        '409':
+          description: '`not_a_draft`'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Missing, unknown or revoked token (`unauthorized`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: '`validation`, with `field` set.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /api/v1/lookup:
     get:
       tags:
@@ -957,6 +1936,86 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '304':
           description: '`If-None-Match` matched the ETag.'
+    post:
+      tags:
+      - lookup
+      summary: Teach the app that a code is a shade
+      description: |-
+        A learned code is never overwritten: if `value` already points somewhere, that mapping
+        stays, 200 comes back and `identifier.shade_id` says where it points.
+      operationId: learn_identifier
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IdentifierRequest'
+        required: true
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IdentifierLearned'
+        '200':
+          description: The code was already known (`created` is false) and keeps its shade.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IdentifierLearned'
+        '404':
+          description: '`not_found`: no such shade.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Missing, unknown or revoked token (`unauthorized`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: '`validation`, with `field` set.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/v1/identifiers/{identifier_id}:
+    delete:
+      tags:
+      - lookup
+      summary: Forget a learned code
+      description: '"This isn''t it" on a match, or Delete in the list of learned codes.'
+      operationId: forget_identifier
+      parameters:
+      - name: identifier_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Identifier Id
+      responses:
+        '204':
+          description: Successful Response
+        '404':
+          description: '`not_found`'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Missing, unknown or revoked token (`unauthorized`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: '`validation`, with `field` set.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /api/v1/sync:
     get:
       tags:
@@ -987,6 +2046,82 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '304':
           description: '`If-None-Match` matched the ETag.'
+  /api/v1/sync/run:
+    post:
+      tags:
+      - sync
+      summary: Sync now
+      description: |-
+        Starts a manual run in the background and answers at once; poll `GET /sync` for the end.
+        The run fetches the shop's `products.json` (three requests, one a second) and waits out the
+        cooldown between manual runs.
+      operationId: sync_run
+      responses:
+        '202':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SyncStarted'
+        '409':
+          description: '`sync_running`: a run is already going.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: '`cooldown`: the last run started too recently; see `retry_after_s`.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Missing, unknown or revoked token (`unauthorized`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/v1/wear/{shade_id}:
+    post:
+      tags:
+      - home
+      summary: Record that a shade was worn today
+      description: |-
+        Today is the household's date. Recording the same shade twice in a day is one wearing, so
+        a repeated tap changes nothing.
+      operationId: wear_record
+      parameters:
+      - name: shade_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Shade Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Worn'
+        '404':
+          description: '`not_found`: no such shade.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Missing, unknown or revoked token (`unauthorized`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: '`validation`, with `field` set.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /.well-known/apple-app-site-association:
     get:
       tags:
@@ -995,6 +2130,8 @@ paths:
       description: |-
         Public, served as application/json with no redirect. Registered only when
         POLISHED_APPLE_TEAM_ID is set. `/shades/new` is excluded before `/shades/*` (first match wins).
+        `applinks` has no `/auth/*` component: a tapped link never opens the sign-in callback in the
+        app. The callback is claimed through `webcredentials` for ASWebAuthenticationSession alone.
       operationId: apple_app_site_association
       responses:
         '200':
@@ -1088,6 +2225,21 @@ components:
       - created_at
       - updated_at
       title: Bottle
+    BottleCreated:
+      properties:
+        bottle:
+          $ref: '#/components/schemas/Bottle'
+        learned:
+          anyOf:
+          - $ref: '#/components/schemas/LearnedCode'
+          - type: 'null'
+          description: Set when the P code on the bottle was new, or already meant another shade; null
+            without a code, a code that is not a P number, or one already known for this shade.
+      type: object
+      required:
+      - bottle
+      - learned
+      title: BottleCreated
     BottleGroup:
       properties:
         shade:
@@ -1113,6 +2265,140 @@ components:
       required:
       - groups
       title: BottleGroups
+    BottlePatch:
+      properties:
+        state:
+          anyOf:
+          - type: string
+          - type: 'null'
+          enum:
+          - full
+          - half
+          - low
+          - empty
+          - null
+          title: State
+        printed_code:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Printed Code
+        bought_on:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Bought On
+        price_paid_cents:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Price Paid Cents
+        opened_on:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Opened On
+        notes:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Notes
+        archived:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Archived
+      type: object
+      title: BottlePatch
+      description: Any subset of the bottle's fields; null clears the optional ones.
+    BottleRequest:
+      properties:
+        state:
+          type: string
+          enum:
+          - full
+          - half
+          - low
+          - empty
+          title: State
+          default: full
+        printed_code:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Printed Code
+          description: '"259" and "p259" are stored as "P259".'
+        bought_on:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Bought On
+          description: YYYY-MM-DD, not in the future.
+        price_paid_cents:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Price Paid Cents
+        opened_on:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Opened On
+          description: YYYY-MM-DD, not in the future.
+        notes:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Notes
+          description: Cut to 500 characters.
+      type: object
+      title: BottleRequest
+    Bought:
+      properties:
+        bottles:
+          items:
+            $ref: '#/components/schemas/Bottle'
+          type: array
+          title: Bottles
+          description: One new full bottle per item, in the order given.
+        wishlist:
+          $ref: '#/components/schemas/Wishlist'
+      type: object
+      required:
+      - bottles
+      - wishlist
+      title: Bought
+    BoughtItem:
+      properties:
+        id:
+          type: integer
+          title: Id
+        price_cents:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Price Cents
+      type: object
+      required:
+      - id
+      title: BoughtItem
+    BoughtRequest:
+      properties:
+        items:
+          items:
+            $ref: '#/components/schemas/BoughtItem'
+          type: array
+          title: Items
+        bought_on:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Bought On
+          description: YYYY-MM-DD, not in the future; default today.
+      type: object
+      required:
+      - items
+      title: BoughtRequest
     Cart:
       properties:
         url:
@@ -1414,7 +2700,8 @@ components:
           anyOf:
           - $ref: '#/components/schemas/Wear'
           - type: 'null'
-          description: null until the wear log exists, or nothing is owned.
+          description: Today's pick, the same all day; the shade worn today once one was. null when nothing
+            is owned.
         recent:
           items:
             $ref: '#/components/schemas/RecentBottle'
@@ -1493,6 +2780,68 @@ components:
       - created_at
       - last_used_at
       title: Identifier
+    IdentifierBrief:
+      properties:
+        id:
+          type: integer
+          title: Id
+        kind:
+          type: string
+          enum:
+          - gtin
+          - printed
+          title: Kind
+        value:
+          type: string
+          title: Value
+        shade_id:
+          type: integer
+          title: Shade Id
+      type: object
+      required:
+      - id
+      - kind
+      - value
+      - shade_id
+      title: IdentifierBrief
+    IdentifierLearned:
+      properties:
+        identifier:
+          $ref: '#/components/schemas/IdentifierBrief'
+        created:
+          type: boolean
+          title: Created
+          description: 'False when the code was already known: it keeps the shade it had, which `identifier.shade_id`
+            and `shade` show.'
+        shade:
+          $ref: '#/components/schemas/ShadeRow'
+      type: object
+      required:
+      - identifier
+      - created
+      - shade
+      title: IdentifierLearned
+    IdentifierRequest:
+      properties:
+        kind:
+          type: string
+          enum:
+          - gtin
+          - printed
+          title: Kind
+        value:
+          type: string
+          maxLength: 100
+          title: Value
+        shade_id:
+          type: integer
+          title: Shade Id
+      type: object
+      required:
+      - kind
+      - value
+      - shade_id
+      title: IdentifierRequest
     Identifiers:
       properties:
         items:
@@ -1538,6 +2887,54 @@ components:
       - label
       - tip
       title: Layer
+    LayerPatch:
+      properties:
+        coats_delta:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          enum:
+          - -1
+          - 1
+          - null
+          title: Coats Delta
+        move:
+          anyOf:
+          - type: string
+          - type: 'null'
+          enum:
+          - up
+          - down
+          - null
+          title: Move
+      type: object
+      title: LayerPatch
+      description: One of the two.
+    LayerRequest:
+      properties:
+        shade_id:
+          type: integer
+          title: Shade Id
+      type: object
+      required:
+      - shade_id
+      title: LayerRequest
+    LearnedCode:
+      properties:
+        code:
+          type: string
+          title: Code
+        previous_shade:
+          anyOf:
+          - $ref: '#/components/schemas/ShadeRow'
+          - type: 'null'
+          description: The shade the code already pointed at when that is not this one (the old match
+            stays); null when the code is new.
+      type: object
+      required:
+      - code
+      - previous_shade
+      title: LearnedCode
     Lookup:
       properties:
         outcome:
@@ -1705,6 +3102,25 @@ components:
       - tip
       - images
       title: LookupShade
+    ManualShadeRequest:
+      properties:
+        title:
+          type: string
+          maxLength: 500
+          title: Title
+          description: Cut to 100 characters.
+        kind:
+          type: string
+          enum:
+          - polish
+          - topper
+          - base
+          title: Kind
+      type: object
+      required:
+      - title
+      - kind
+      title: ManualShadeRequest
     Me:
       properties:
         user:
@@ -1748,6 +3164,28 @@ components:
       - bottle
       - shade
       title: RecentBottle
+    SaveRequest:
+      properties:
+        name:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Name
+          description: Cut to 80 characters.
+        note:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Note
+          description: Cut to 500 characters.
+        painted_on:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Painted On
+          description: YYYY-MM-DD, not in the future; default today.
+      type: object
+      title: SaveRequest
     ServerInfo:
       properties:
         version:
@@ -1990,6 +3428,82 @@ components:
       - color
       - collection
       title: ShadeTags
+    SlotResult:
+      properties:
+        wheel_id:
+          type: integer
+          title: Wheel Id
+        position:
+          type: integer
+          title: Position
+        tile:
+          $ref: '#/components/schemas/Tile'
+      type: object
+      required:
+      - wheel_id
+      - position
+      - tile
+      title: SlotResult
+    StackOpened:
+      properties:
+        stack_id:
+          type: integer
+          title: Stack Id
+        wheel:
+          $ref: '#/components/schemas/StackWheel'
+        position:
+          type: integer
+          title: Position
+        name:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Name
+        note:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Note
+        painted_on:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Painted On
+        layers:
+          items:
+            $ref: '#/components/schemas/Layer'
+          type: array
+          title: Layers
+        summary:
+          type: string
+          title: Summary
+        full:
+          type: boolean
+          title: Full
+        tip:
+          items:
+            $ref: '#/components/schemas/Tip'
+          type: array
+          title: Tip
+          description: 'The composite recipe: the layers'' tips in painting order.'
+        resumed:
+          type: boolean
+          title: Resumed
+          description: True when the slot already had a draft.
+      type: object
+      required:
+      - stack_id
+      - wheel
+      - position
+      - name
+      - note
+      - painted_on
+      - layers
+      - summary
+      - full
+      - tip
+      - resumed
+      title: StackOpened
     StackSheet:
       properties:
         stack_id:
@@ -2045,6 +3559,73 @@ components:
       - full
       - tip
       title: StackSheet
+    StackTemplated:
+      properties:
+        stack_id:
+          type: integer
+          title: Stack Id
+        wheel:
+          $ref: '#/components/schemas/StackWheel'
+        position:
+          type: integer
+          title: Position
+        name:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Name
+        note:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Note
+        painted_on:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Painted On
+        layers:
+          items:
+            $ref: '#/components/schemas/Layer'
+          type: array
+          title: Layers
+        summary:
+          type: string
+          title: Summary
+        full:
+          type: boolean
+          title: Full
+        tip:
+          items:
+            $ref: '#/components/schemas/Tip'
+          type: array
+          title: Tip
+          description: 'The composite recipe: the layers'' tips in painting order.'
+        result:
+          type: string
+          enum:
+          - added
+          - already
+          - unavailable
+          - copied
+          - nothing_saved
+          title: Result
+          description: '`over_black`: added, already (nothing changed) or unavailable (the catalog has
+            no black base). `copy`: copied. `last`: copied, or nothing_saved (the draft is untouched).'
+      type: object
+      required:
+      - stack_id
+      - wheel
+      - position
+      - name
+      - note
+      - painted_on
+      - layers
+      - summary
+      - full
+      - tip
+      - result
+      title: StackTemplated
     StackWheel:
       properties:
         id:
@@ -2209,6 +3790,43 @@ components:
       - unresolved_aliases
       - error
       title: SyncRun
+    SyncStarted:
+      properties:
+        run_id:
+          type: integer
+          title: Run Id
+      type: object
+      required:
+      - run_id
+      title: SyncStarted
+    TakeTagRequest:
+      properties:
+        from_wheel_id:
+          type: integer
+          title: From Wheel Id
+      type: object
+      required:
+      - from_wheel_id
+      title: TakeTagRequest
+    TemplateRequest:
+      properties:
+        kind:
+          type: string
+          enum:
+          - over_black
+          - copy
+          - last
+          title: Kind
+        source_stack_id:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Source Stack Id
+          description: 'For `copy`: a saved stack.'
+      type: object
+      required:
+      - kind
+      title: TemplateRequest
     Tile:
       properties:
         position:
@@ -2311,6 +3929,18 @@ components:
       description: |-
         The recipe of a painted nail tip; the app draws it (NATIVE.md 4). `revision` changes
         whenever the drawing would.
+    TipColourRequest:
+      properties:
+        hex:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Hex
+          description: '"#rrggbb", or null to go back to the sampled colour.'
+      type: object
+      required:
+      - hex
+      title: TipColourRequest
     User:
       properties:
         sub:
@@ -2347,6 +3977,7 @@ components:
           $ref: '#/components/schemas/ShadeRow'
         bottle:
           $ref: '#/components/schemas/Bottle'
+          description: The newest bottle of the shade that is not archived or empty.
         worn_today:
           type: boolean
           title: Worn Today
@@ -2356,6 +3987,56 @@ components:
       - bottle
       - worn_today
       title: Wear
+    Wheel:
+      properties:
+        id:
+          type: integer
+          title: Id
+        slug:
+          type: string
+          title: Slug
+        name:
+          type: string
+          title: Name
+        slot_count:
+          type: integer
+          title: Slot Count
+        archived:
+          type: boolean
+          title: Archived
+        filled:
+          type: integer
+          title: Filled
+        drafts:
+          type: integer
+          title: Drafts
+        tag_url:
+          type: string
+          title: Tag Url
+        created_at:
+          type: string
+          title: Created At
+      type: object
+      required:
+      - id
+      - slug
+      - name
+      - slot_count
+      - archived
+      - filled
+      - drafts
+      - tag_url
+      - created_at
+      title: Wheel
+    WheelDeleted:
+      properties:
+        deleted_swatches:
+          type: integer
+          title: Deleted Swatches
+      type: object
+      required:
+      - deleted_swatches
+      title: WheelDeleted
     WheelDetail:
       properties:
         id:
@@ -2414,6 +4095,20 @@ components:
       - filled_count
       - others
       title: WheelDetail
+    WheelPatch:
+      properties:
+        name:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Name
+        archived:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Archived
+      type: object
+      title: WheelPatch
     WheelRef:
       properties:
         id:
@@ -2431,6 +4126,22 @@ components:
       - name
       - slug
       title: WheelRef
+    WheelRequest:
+      properties:
+        name:
+          type: string
+          maxLength: 500
+          title: Name
+          description: Cut to 60 characters.
+        slot_count:
+          type: integer
+          title: Slot Count
+          description: 1 to 40.
+          default: 20
+      type: object
+      required:
+      - name
+      title: WheelRequest
     WheelWithTiles:
       properties:
         id:
@@ -2506,6 +4217,18 @@ components:
       - summary
       - cart
       title: Wishlist
+    WishlistAdd:
+      properties:
+        priority:
+          type: integer
+          enum:
+          - 1
+          - 2
+          - 3
+          title: Priority
+          default: 2
+      type: object
+      title: WishlistAdd
     WishlistEntry:
       properties:
         id:
@@ -2563,6 +4286,26 @@ components:
       - added_on
       - buyable
       title: WishlistItem
+    WishlistPatch:
+      properties:
+        priority:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          enum:
+          - 1
+          - 2
+          - 3
+          - null
+          title: Priority
+        note:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Note
+          description: Cut to 200 characters; null or empty clears it.
+      type: object
+      title: WishlistPatch
     WishlistSummary:
       properties:
         count:
@@ -2584,6 +4327,16 @@ components:
       - buyable_count
       - buyable_cents
       title: WishlistSummary
+    Worn:
+      properties:
+        worn_on:
+          type: string
+          title: Worn On
+          description: The household's date, YYYY-MM-DD.
+      type: object
+      required:
+      - worn_on
+      title: Worn
     ErrorBody:
       properties:
         code:
@@ -2601,6 +4354,15 @@ components:
           default: null
           description: The input at fault, for a validation error.
           title: Field
+        fields:
+          anyOf:
+          - additionalProperties:
+              type: string
+            type: object
+          - type: 'null'
+          default: null
+          description: Every wrong input and its message, when more than one is wrong.
+          title: Fields
         retry_after_s:
           anyOf:
           - type: integer

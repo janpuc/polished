@@ -1,0 +1,10 @@
+{
+  "request": {
+    "method": "POST",
+    "path": "/api/v1/sync/run"
+  },
+  "status": 202,
+  "body": {
+    "run_id": 2
+  }
+}

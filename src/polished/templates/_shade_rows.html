@@ -1,5 +1,6 @@
 {# Rows plus Load more: the body of #shade-list, and the whole fragment HTMX swaps in. #}
 {% from "_icons.html" import icon with context %}
+{% from "_tip.html" import unpainted %}
 {% if is_partial %}
 <span id="result-count" hx-swap-oob="true">{{ result.total }} shade{{ '' if result.total == 1 else 's' }}</span>
 <span id="filter-count" hx-swap-oob="true">{% if query.filter_count() %}{{ query.filter_count() }}{% endif %}</span>
@@ -8,9 +9,9 @@
 {% for shade in result.rows %}{% include "_shade_row.html" %}
 {% else %}
 <li class="empty-state">
-  <div class="nail-glyph" aria-hidden="true"></div>
+  {{ unpainted("l") }}
   <h2>No shades match</h2>
-  <p>Clear a filter, or add this one yourself.</p>
+  <p>{% if query.q %}Nothing matches “{{ query.q }}”. Try fewer letters, or clear a filter.{% else %}Clear a filter, or add this one yourself.{% endif %}</p>
   <a class="btn btn-secondary" href="/shades/new{% if query.q %}?title={{ query.q|urlencode }}{% endif %}">{{ icon("plus") }}Add by hand</a>
 </li>
 {% endfor %}

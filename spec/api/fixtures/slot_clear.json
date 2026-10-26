@@ -1,0 +1,8 @@
+{
+  "request": {
+    "method": "DELETE",
+    "path": "/api/v1/wheels/3/slots/3"
+  },
+  "status": 204,
+  "body": null
+}

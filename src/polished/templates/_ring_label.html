@@ -1,0 +1,4 @@
+{# What a screen reader says for the ring: the wheel's name and how many slots hold a swatch. It is
+   its own element (the ring's aria-labelledby) so a save, a clear or a rename can swap it out of
+   band like the hub count. Context: wheel, filled_count, oob. #}
+<span id="ring-label" class="visually-hidden"{% if oob %} hx-swap-oob="outerHTML"{% endif %}>{{ wheel.name }}, {{ filled_count }} of {{ wheel.slot_count }} swatched</span>

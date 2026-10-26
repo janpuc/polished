@@ -1,0 +1,214 @@
+{
+  "request": {
+    "method": "PATCH",
+    "path": "/api/v1/wishlist/4",
+    "body": {
+      "priority": 1,
+      "note": "Birthday"
+    }
+  },
+  "status": 200,
+  "body": {
+    "items": [
+      {
+        "id": 1,
+        "shade": {
+          "id": 15,
+          "title": "Mermaid Jelly",
+          "kind": "polish",
+          "source": "holotaco",
+          "is_topper": false,
+          "price_cents": 1550,
+          "compare_at_cents": 1550,
+          "status": {
+            "key": "available",
+            "label": "In stock",
+            "buyable": true
+          },
+          "finishes": [
+            "jelly"
+          ],
+          "owned_count": 0,
+          "wishlisted": true,
+          "hero_image_url": "https://cdn.shopify.com/s/files/1/0050/3001/9162/files/0009_HT-Holoween-SoloBottleHero-ThirstTrap.jpg?v=1760456220",
+          "released_on": null,
+          "official_collection": null,
+          "marks": [],
+          "tip": {
+            "id": 15,
+            "hex": "#d17547",
+            "hex2": null,
+            "finishes": [
+              "jelly"
+            ],
+            "topper": false,
+            "clear": false,
+            "coats": 1,
+            "colours": [
+              "blue",
+              "green"
+            ],
+            "revision": "7cc09474f1"
+          }
+        },
+        "priority": 1,
+        "note": "For the blue week",
+        "added_on": "2026-10-26",
+        "buyable": true
+      },
+      {
+        "id": 4,
+        "shade": {
+          "id": 1,
+          "title": "Thirst Trap",
+          "kind": "polish",
+          "source": "holotaco",
+          "is_topper": false,
+          "price_cents": 1550,
+          "compare_at_cents": 1550,
+          "status": {
+            "key": "available",
+            "label": "In stock",
+            "buyable": true
+          },
+          "finishes": [
+            "flakie"
+          ],
+          "owned_count": 2,
+          "wishlisted": true,
+          "hero_image_url": "https://cdn.shopify.com/s/files/1/0050/3001/9162/files/0009_HT-Holoween-SoloBottleHero-ThirstTrap.jpg?v=1760456220",
+          "released_on": "2025-10-04",
+          "official_collection": "Holoween Collection",
+          "marks": [],
+          "tip": {
+            "id": 1,
+            "hex": "#d1b947",
+            "hex2": null,
+            "finishes": [
+              "flakie"
+            ],
+            "topper": false,
+            "clear": false,
+            "coats": 1,
+            "colours": [
+              "red"
+            ],
+            "revision": "2a0c3309f5"
+          }
+        },
+        "priority": 1,
+        "note": "Birthday",
+        "added_on": "2026-10-26",
+        "buyable": true
+      },
+      {
+        "id": 2,
+        "shade": {
+          "id": 16,
+          "title": "Crème Brûlée",
+          "kind": "polish",
+          "source": "holotaco",
+          "is_topper": false,
+          "price_cents": 1350,
+          "compare_at_cents": 1650,
+          "status": {
+            "key": "available",
+            "label": "In stock",
+            "buyable": true
+          },
+          "finishes": [
+            "creme"
+          ],
+          "owned_count": 0,
+          "wishlisted": true,
+          "hero_image_url": "https://cdn.shopify.com/s/files/1/0050/3001/9162/files/HT-Bottle-RestInPeach-Black_c65fffad-6651-4dbb-bfc8-6d85b10b7b51.jpg?v=1770734984",
+          "released_on": null,
+          "official_collection": null,
+          "marks": [],
+          "tip": {
+            "id": 16,
+            "hex": "#bcd147",
+            "hex2": null,
+            "finishes": [
+              "creme"
+            ],
+            "topper": false,
+            "clear": false,
+            "coats": 1,
+            "colours": [
+              "orange"
+            ],
+            "revision": "415fa9d497"
+          }
+        },
+        "priority": 2,
+        "note": null,
+        "added_on": "2026-10-26",
+        "buyable": true
+      },
+      {
+        "id": 3,
+        "shade": {
+          "id": 17,
+          "title": "Silver Flake Taco",
+          "kind": "polish",
+          "source": "holotaco",
+          "is_topper": false,
+          "price_cents": 1550,
+          "compare_at_cents": 1550,
+          "status": {
+            "key": "available",
+            "label": "In stock",
+            "buyable": true
+          },
+          "finishes": [
+            "flakie"
+          ],
+          "owned_count": 0,
+          "wishlisted": true,
+          "hero_image_url": "https://cdn.shopify.com/s/files/1/0050/3001/9162/files/0009_HT-Holoween-SoloBottleHero-ThirstTrap.jpg?v=1760456220",
+          "released_on": "2022-12-06",
+          "official_collection": "12 Days of Cristmas Release",
+          "marks": [],
+          "tip": {
+            "id": 17,
+            "hex": "#4bd147",
+            "hex2": null,
+            "finishes": [
+              "flakie"
+            ],
+            "topper": false,
+            "clear": false,
+            "coats": 1,
+            "colours": [
+              "silver"
+            ],
+            "revision": "7a1c3d4267"
+          }
+        },
+        "priority": 3,
+        "note": null,
+        "added_on": "2026-10-26",
+        "buyable": true
+      }
+    ],
+    "summary": {
+      "count": 4,
+      "total_cents": 6000,
+      "buyable_count": 4,
+      "buyable_cents": 6000
+    },
+    "cart": {
+      "url": "https://holotaco.com/cart/6100000006:1,42093180747866:1,6100000007:1,6100000008:1",
+      "total_cents": 6000,
+      "count": 4,
+      "skipped": 0,
+      "names": [
+        "Mermaid Jelly",
+        "Thirst Trap",
+        "Crème Brûlée",
+        "Silver Flake Taco"
+      ]
+    }
+  }
+}

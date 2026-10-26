@@ -127,6 +127,7 @@ def test_wheel_page_has_a_tile_per_slot(client, conn):
     ids = re.findall(r'id="slot-(\d+)"', page)
     assert ids == [str(n) for n in range(1, 21)]
     assert "0 of 20 swatched" in page
+    assert 'aria-labelledby="ring-label"' in page and 'id="ring-label"' in page
     assert 'hx-post="/wheels/1/slots/7/draft"' in page and 'hx-target="#sheet-body"' in page
 
 
@@ -210,6 +211,7 @@ def test_rename_keeps_the_slug_and_answers_htmx_with_out_of_band_names(client, c
         f"/wheels/{wheel_id}", data={"name": "Foils"}, headers={"HX-Request": "true"}
     )
     assert 'id="wheel-name"' in fragment.text and "Foils" in fragment.text
+    assert 'id="ring-label"' in fragment.text and ">Foils, 0 of 20 swatched<" in fragment.text
     assert wheels.get(conn, wheel_id)["slug"] == slug
     bad = client.post(f"/wheels/{wheel_id}", data={"name": " "}, headers={"HX-Request": "true"})
     assert bad.status_code == 422 and bad.headers["HX-Retarget"] == "#rename-status"
@@ -310,7 +312,7 @@ def test_a_filled_tip_is_the_stack_drawing_and_never_a_photo(client, catalog):
     assert "cdn.shopify.com" not in tile and "is-bottle" not in page and "tip-bands" not in page
     slot_list = re.search(r'id="slot-list".*', page, re.S).group(0)
     assert f'src="/tips/stack/{stack_id}.svg?v=' in slot_list  # the composite tip, one per row
-    assert '<span class="tip-m"' in slot_list and "cdn.shopify.com" not in slot_list
+    assert '<span class="tip tip-m"' in slot_list and "cdn.shopify.com" not in slot_list
     assert ">1<" in page and "of 20 swatched" in page  # the hub shows the count, not the name twice
 
 
@@ -346,7 +348,10 @@ def test_swatched_on_rows_lead_with_the_stack_tip(catalog, client):
     row = re.search(
         r'<a class="group-link group-link-tip" href="/w/[^"]+">.*?</a>', page, re.S
     ).group(0)
-    assert f'<span class="tip-s" aria-hidden="true"><img src="/tips/stack/{stack_id}.svg' in row
+    assert (
+        f'<span class="tip tip-s" aria-hidden="true"><span class="tip-face"><img src="/tips/stack/{stack_id}.svg'
+        in row
+    )
     assert row.index("tip-s") < row.index("Holos, slot 12")
 
 

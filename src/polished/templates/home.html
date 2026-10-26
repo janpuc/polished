@@ -5,8 +5,10 @@
 {% set tab = "home" %}
 {% block title %}Polished{% endblock %}
 {% block content %}
-<header class="page-head">
-  <h1 class="title title-brand"><img src="/static/icons/favicon.svg" width="36" height="36" alt="">Polished</h1>
+<header class="greeting-head">
+  <h1 class="greeting">{{ greeting }}{% if first_name %}, {{ first_name }}{% endif %}</h1>
+  <p class="greeting-date">{{ date_line }}</p>
+  <a class="greeting-mark" href="/more" aria-label="More"><img src="/static/icons/favicon.svg" width="36" height="36" alt=""></a>
 </header>
 <div class="sentinel" aria-hidden="true"></div>
 <form class="search-bar" action="/shades" method="get" role="search">

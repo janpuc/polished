@@ -11,6 +11,8 @@ only: nothing here comes from the live database.
 
 import json
 import os
+import random
+import re
 import sys
 import tempfile
 from datetime import UTC, datetime
@@ -19,11 +21,33 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 FIXTURES = ROOT / "spec" / "api" / "fixtures"
 EXAMPLE_TOKEN = "example-token-0123456789abcdefghijklmnopqrstuvwxyz"
+EXAMPLE_CODE = "example-code-0123456789abcdefghijklmnopqrstuvwxyz"
 NOW = datetime(2026, 10, 26, 16, 30, tzinfo=UTC)
 SLUG = "k3m9xq"
 USER = ("u-nikola", "Nikola Example")
 # The first nail-tip recipe of a shade hashes a frozenset's repr, which varies with the hash seed.
 HASH_SEED = "0"
+STAMP = re.compile(r"\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ")
+# The slugs the wheels made by the write fixtures get, in order (the real ones are random).
+SLUGS = ["j7g2hm", "t4n8qb", "w9d3fj"]
+
+
+def pinned(node):
+    """A write response with the database's own clock readings (created_at, updated_at, added_on,
+    set by SQLite's `now`) replaced by the fixtures' fixed day."""
+    if isinstance(node, dict):
+        return {key: _pin(key, value) for key, value in node.items()}
+    if isinstance(node, list):
+        return [pinned(item) for item in node]
+    return node
+
+
+def _pin(key, value):
+    if key in ("created_at", "updated_at") and isinstance(value, str) and STAMP.fullmatch(value):
+        return NOW.strftime("%Y-%m-%dT%H:%M:%SZ")
+    if key == "added_on" and isinstance(value, str):
+        return NOW.date().isoformat()
+    return pinned(value)
 
 
 def add_household(conn) -> dict[str, int]:
@@ -123,13 +147,203 @@ def add_household(conn) -> dict[str, int]:
     }
 
 
+def record_writes(app, client, db, token, ids, record) -> None:
+    """Every write endpoint once, in an order where each step has what it needs. The household
+    changes as it goes (the reads were recorded before), so this runs last."""
+    import httpx
+
+    from polished import wheels
+    from polished.catalog.sync import SyncRunner
+    from polished.db import connect
+
+    slugs = iter(SLUGS)
+    wheels.new_slug = lambda: next(slugs)
+
+    def query(sql: str, *args):
+        conn = connect(db)
+        try:
+            return conn.execute(sql, args).fetchone()[0]
+        finally:
+            conn.close()
+
+    def shade(title: str) -> int:
+        return query("select id from shade where title = ?", title)
+
+    def write(name: str, method: str, path: str, **kwargs) -> dict | None:
+        return record(name, method, path, token, **kwargs)
+
+    # shades
+    write(
+        "shade_create",
+        "POST",
+        "/api/v1/shades",
+        json={"title": "Birthday Glitter", "kind": "topper"},
+    )
+    write(
+        "shade_tip_colour",
+        "PUT",
+        f"/api/v1/shades/{ids['spirit']}/tip-colour",
+        json={"hex": "#7a3fd1"},
+    )
+    write(
+        "shade_tip_colour_reset",
+        "PUT",
+        f"/api/v1/shades/{ids['spirit']}/tip-colour",
+        json={"hex": None},
+    )
+
+    # bottles
+    thirst = shade("Thirst Trap")
+    created = write(
+        "bottle_create",
+        "POST",
+        f"/api/v1/shades/{thirst}/bottles",
+        json={
+            "state": "half",
+            "printed_code": "321",
+            "bought_on": "2026-10-20",
+            "price_paid_cents": 1550,
+            "opened_on": "2026-10-24",
+            "notes": "From the pop-up",
+        },
+    )
+    write(
+        "bottle_create_known_code",
+        "POST",
+        f"/api/v1/shades/{thirst}/bottles",
+        json={"state": "full", "printed_code": "P259"},
+    )
+    write(
+        "bottle_update",
+        "PATCH",
+        f"/api/v1/bottles/{created['bottle']['id']}",
+        json={"state": "low", "notes": None, "archived": False},
+    )
+    write("bottle_delete", "DELETE", f"/api/v1/bottles/{created['bottle']['id']}")
+    write(
+        "error_validation_bottle",
+        "POST",
+        f"/api/v1/shades/{thirst}/bottles",
+        json={"state": "nearly", "bought_on": "2099-01-01", "price_paid_cents": -5},
+    )
+
+    # wishlist
+    write("wishlist_add", "PUT", f"/api/v1/shades/{thirst}/wishlist", json={"priority": 2})
+    item = query("select id from wishlist_item where shade_id = ?", thirst)
+    write(
+        "wishlist_update",
+        "PATCH",
+        f"/api/v1/wishlist/{item}",
+        json={"priority": 1, "note": "Birthday"},
+    )
+    write("wishlist_remove", "DELETE", f"/api/v1/wishlist/{item}")
+    first, second = (
+        query("select id from wishlist_item where shade_id = ?", shade(t))
+        for t in ("Mermaid Jelly", "Crème Brûlée")
+    )
+    write(
+        "wishlist_bought",
+        "POST",
+        "/api/v1/wishlist/bought",
+        json={
+            "items": [{"id": first, "price_cents": 1550}, {"id": second, "price_cents": None}],
+            "bought_on": "2026-10-25",
+        },
+    )
+
+    # learned codes
+    learned = write(
+        "identifier_learn",
+        "POST",
+        "/api/v1/identifiers",
+        json={"kind": "gtin", "value": "5901234123457", "shade_id": thirst},
+    )
+    write("identifier_forget", "DELETE", f"/api/v1/identifiers/{learned['identifier']['id']}")
+
+    # wheels
+    wheel = write(
+        "wheel_create", "POST", "/api/v1/wheels", json={"name": "Jellies", "slot_count": 12}
+    )
+    wid = wheel["id"]
+    write("wheel_update", "PATCH", f"/api/v1/wheels/{wid}", json={"name": "Jelly wheel"})
+    write("wheel_slug_regenerate", "POST", f"/api/v1/wheels/{wid}/slug/regenerate")
+    toppers = query("select id from wheel where name = 'Toppers'")
+    write(
+        "wheel_slug_take",
+        "POST",
+        f"/api/v1/wheels/{wid}/slug/take",
+        json={"from_wheel_id": toppers},
+    )
+    write(
+        "error_same_wheel", "POST", f"/api/v1/wheels/{wid}/slug/take", json={"from_wheel_id": wid}
+    )
+
+    # the builder: a draft on an empty slot, layers, templates, save; a resumed draft, cancel
+    opened = write("slot_draft", "POST", f"/api/v1/wheels/{wid}/slots/3/draft")
+    stack = opened["stack_id"]
+    write("slot_draft_resumed", "POST", f"/api/v1/wheels/{wid}/slots/3/draft")
+    write("layer_add", "POST", f"/api/v1/stacks/{stack}/layers", json={"shade_id": thirst})
+    flakie = shade("Flakie Holo Taco")
+    sheet = write(
+        "layer_add_second", "POST", f"/api/v1/stacks/{stack}/layers", json={"shade_id": flakie}
+    )
+    layer = sheet["layers"][0]["id"]
+    write("layer_coats", "PATCH", f"/api/v1/stacks/{stack}/layers/{layer}", json={"coats_delta": 1})
+    write("layer_move", "PATCH", f"/api/v1/stacks/{stack}/layers/{layer}", json={"move": "down"})
+    write(
+        "stack_template_over_black",
+        "POST",
+        f"/api/v1/stacks/{stack}/template",
+        json={"kind": "over_black"},
+    )
+    last = write(
+        "stack_template_last", "POST", f"/api/v1/stacks/{stack}/template", json={"kind": "last"}
+    )
+    write(
+        "stack_template_copy",
+        "POST",
+        f"/api/v1/stacks/{stack}/template",
+        json={"kind": "copy", "source_stack_id": ids["saved_stack"]},
+    )
+    write("layer_delete", "DELETE", f"/api/v1/stacks/{stack}/layers/{last['layers'][0]['id']}")
+    write(
+        "stack_save",
+        "POST",
+        f"/api/v1/stacks/{stack}/save",
+        json={"name": "Black and flakes", "note": "Dried fast", "painted_on": "2026-10-25"},
+    )
+    other = write("slot_draft_new", "POST", f"/api/v1/wheels/{wid}/slots/4/draft")["stack_id"]
+    write("error_empty_stack", "POST", f"/api/v1/stacks/{other}/save", json={})
+    for _ in range(8):
+        record("tmp", "POST", f"/api/v1/stacks/{other}/layers", token, json={"shade_id": flakie})
+    write("error_stack_full", "POST", f"/api/v1/stacks/{other}/layers", json={"shade_id": flakie})
+    write("stack_cancel", "POST", f"/api/v1/stacks/{other}/cancel")
+    (FIXTURES / "tmp.json").unlink()
+    write("slot_clear", "DELETE", f"/api/v1/wheels/{wid}/slots/3")
+    write("wheel_delete", "DELETE", f"/api/v1/wheels/{wid}")
+
+    # wear
+    write("wear_record", "POST", f"/api/v1/wear/{ids['spirit']}")
+
+    # sync: a mock shop (nothing leaves this machine), then the cooldown
+    def shop(request):
+        from conftest import load_feed
+
+        return httpx.Response(200, json={"products": load_feed()})
+
+    runner = SyncRunner(app.state.settings, transport=httpx.MockTransport(shop), now=lambda: NOW)
+    app.state.sync_runner = runner
+    write("sync_run", "POST", "/api/v1/sync/run")
+    write("error_cooldown", "POST", "/api/v1/sync/run")
+
+
 def main() -> None:
     sys.path[:0] = [str(ROOT / "src"), str(ROOT / "tests")]
     from e2e.flows.seed import build
     from starlette.testclient import TestClient
 
+    from polished import wear
     from polished.api import auth as tokens
-    from polished.api import home as api_home
     from polished.config import Settings
     from polished.db import connect
     from polished.server import create_app
@@ -140,7 +354,7 @@ def main() -> None:
             return NOW.astimezone(tz) if tz else NOW
 
     tokens.now = lambda: NOW
-    api_home.datetime = FixedDatetime
+    wear.datetime = FixedDatetime
     FIXTURES.mkdir(parents=True, exist_ok=True)
     for old in FIXTURES.glob("*.json"):
         old.unlink()
@@ -171,11 +385,16 @@ def main() -> None:
         def record(name: str, method: str, path: str, token: str | None = None, **kwargs) -> dict:
             headers = {"Authorization": f"Bearer {token}"} if token else {}
             response = client.request(method, path, headers=headers, **kwargs)
-            body = response.json()
+            body = response.json() if response.content else None
+            if method != "GET":
+                body = pinned(body)
+            request = {"method": method, "path": path}
+            if "json" in kwargs:
+                request["body"] = kwargs["json"]
             (FIXTURES / f"{name}.json").write_text(
                 json.dumps(
                     {
-                        "request": {"method": method, "path": path},
+                        "request": request,
                         "status": response.status_code,
                         "body": body,
                     },
@@ -200,7 +419,9 @@ def main() -> None:
         )
         token = exchange["token"]
         fixture = FIXTURES / "auth_exchange.json"
-        fixture.write_text(fixture.read_text().replace(token, EXAMPLE_TOKEN))
+        fixture.write_text(
+            fixture.read_text().replace(token, EXAMPLE_TOKEN).replace(code, EXAMPLE_CODE)
+        )
         # Later requests use the real token; the file shows the example.
         get = lambda name, path: record(name, "GET", path, token)  # noqa: E731
 
@@ -244,6 +465,9 @@ def main() -> None:
         get("error_not_found", "/api/v1/shades/999999")
         get("error_not_a_draft", f"/api/v1/stacks/{ids['saved_stack']}")
         get("error_validation", "/api/v1/shades?page=x")
+        random.seed(0)
+        get("home_another", "/api/v1/home?another=1")
+        record_writes(app, client, db, token, ids, record)
     print(f"wrote {len(list(FIXTURES.glob('*.json')))} fixtures to {FIXTURES}")
 
 

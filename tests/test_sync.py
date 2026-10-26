@@ -353,6 +353,27 @@ def test_the_sync_command_applies_local_pages_and_a_second_run_changes_nothing(
     conn.close()
 
 
+def test_the_colour_step_reads_photos_unless_no_colours_is_given(
+    tmp_path, monkeypatch, capsys, feed
+):
+    """`sync --from-files` is offline only with --no-colours: the colour step downloads photos."""
+    page = tmp_path / "page.json"
+    page.write_text(json.dumps({"products": feed}), encoding="utf-8")
+    monkeypatch.setenv("POLISHED_DB_PATH", str(tmp_path / "cli.db"))
+    monkeypatch.setenv("POLISHED_PUBLIC_URL", "http://localhost:8080")
+    monkeypatch.setenv("POLISHED_AUTH_MODE", "none")
+    calls = []
+    monkeypatch.setattr(
+        "polished.catalog.sync.fill_colours", lambda conn, **options: calls.append(options) or 0
+    )
+    assert main(["migrate"]) == 0
+    assert main(["sync", "--from-files", str(page), "--no-colours"]) == 0
+    assert calls == []
+    assert main(["sync", "--from-files", str(page)]) == 0
+    assert len(calls) == 1
+    assert "sync ok" in capsys.readouterr().out
+
+
 def test_the_sync_command_fails_on_an_unmigrated_database(tmp_path, monkeypatch, capsys):
     monkeypatch.setenv("POLISHED_DB_PATH", str(tmp_path / "none.db"))
     monkeypatch.setenv("POLISHED_PUBLIC_URL", "http://localhost:8080")

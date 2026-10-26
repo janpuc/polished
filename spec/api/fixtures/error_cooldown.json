@@ -1,0 +1,14 @@
+{
+  "request": {
+    "method": "POST",
+    "path": "/api/v1/sync/run"
+  },
+  "status": 429,
+  "body": {
+    "error": {
+      "code": "cooldown",
+      "message": "The last sync started recently; try again in 61 min.",
+      "retry_after_s": 3600
+    }
+  }
+}

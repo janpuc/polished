@@ -1,0 +1,114 @@
+{
+  "request": {
+    "method": "POST",
+    "path": "/api/v1/wishlist/bought",
+    "body": {
+      "items": [
+        {
+          "id": 1,
+          "price_cents": 1550
+        },
+        {
+          "id": 2,
+          "price_cents": null
+        }
+      ],
+      "bought_on": "2026-10-25"
+    }
+  },
+  "status": 200,
+  "body": {
+    "bottles": [
+      {
+        "id": 9,
+        "shade_id": 15,
+        "state": "full",
+        "printed_code": null,
+        "bought_on": "2026-10-25",
+        "price_paid_cents": 1550,
+        "opened_on": null,
+        "notes": null,
+        "archived": false,
+        "created_at": "2026-10-26T16:30:00Z",
+        "updated_at": "2026-10-26T16:30:00Z"
+      },
+      {
+        "id": 10,
+        "shade_id": 16,
+        "state": "full",
+        "printed_code": null,
+        "bought_on": "2026-10-25",
+        "price_paid_cents": null,
+        "opened_on": null,
+        "notes": null,
+        "archived": false,
+        "created_at": "2026-10-26T16:30:00Z",
+        "updated_at": "2026-10-26T16:30:00Z"
+      }
+    ],
+    "wishlist": {
+      "items": [
+        {
+          "id": 3,
+          "shade": {
+            "id": 17,
+            "title": "Silver Flake Taco",
+            "kind": "polish",
+            "source": "holotaco",
+            "is_topper": false,
+            "price_cents": 1550,
+            "compare_at_cents": 1550,
+            "status": {
+              "key": "available",
+              "label": "In stock",
+              "buyable": true
+            },
+            "finishes": [
+              "flakie"
+            ],
+            "owned_count": 0,
+            "wishlisted": true,
+            "hero_image_url": "https://cdn.shopify.com/s/files/1/0050/3001/9162/files/0009_HT-Holoween-SoloBottleHero-ThirstTrap.jpg?v=1760456220",
+            "released_on": "2022-12-06",
+            "official_collection": "12 Days of Cristmas Release",
+            "marks": [],
+            "tip": {
+              "id": 17,
+              "hex": "#4bd147",
+              "hex2": null,
+              "finishes": [
+                "flakie"
+              ],
+              "topper": false,
+              "clear": false,
+              "coats": 1,
+              "colours": [
+                "silver"
+              ],
+              "revision": "7a1c3d4267"
+            }
+          },
+          "priority": 3,
+          "note": null,
+          "added_on": "2026-10-26",
+          "buyable": true
+        }
+      ],
+      "summary": {
+        "count": 1,
+        "total_cents": 1550,
+        "buyable_count": 1,
+        "buyable_cents": 1550
+      },
+      "cart": {
+        "url": "https://holotaco.com/cart/6100000008:1",
+        "total_cents": 1550,
+        "count": 1,
+        "skipped": 0,
+        "names": [
+          "Silver Flake Taco"
+        ]
+      }
+    }
+  }
+}
