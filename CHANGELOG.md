@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.3.0](https://github.com/janpuc/polished/compare/v0.2.0...v0.3.0) (2026-10-26)
+
+
+### Features
+
+* Holo Taco's official release list (release dates, collections, retired flags, shades the shop no longer lists) ([3ff35c5](https://github.com/janpuc/polished/commit/3ff35c5ebee02962d9ad159697a23d57e7ffb858))
+
+
+### Bug Fixes
+
+* keep the sign-in callback's code and state out of the access log ([f3bd1aa](https://github.com/janpuc/polished/commit/f3bd1aace8b12d8f2ac00afe15f3905a9137da1e))
+
 ## [0.2.0](https://github.com/janpuc/polished/compare/v0.1.0...v0.2.0) (2026-10-25)
 
 
