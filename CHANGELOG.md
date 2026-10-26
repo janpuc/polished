@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.4.0](https://github.com/janpuc/polished/compare/v0.3.0...v0.4.0) (2026-10-26)
+
+
+### Features
+
+* fuzzy search with ranked tiers and highlighted matches, delete a wheel with confirmation, observable e2e flows on iPhone, iPad and Mac ([eba80f2](https://github.com/janpuc/polished/commit/eba80f26d398e300410749bf886125d8173a11cb))
+
+
+### Documentation
+
+* design reference research ([1c63d44](https://github.com/janpuc/polished/commit/1c63d44f5ad89e235344a510cd1f07e1b9ba5333))
+* NFC writing, Holo Taco wishlist and iOS date input research ([8cd0718](https://github.com/janpuc/polished/commit/8cd071840790bf54a668571ce37bdd0a91d4150a))
+* roadmap (phases 1-3) and the v3 web design spec ([b486225](https://github.com/janpuc/polished/commit/b486225244c0896350b61d3d1e1a40c60bdcc57f))
+
 ## [0.3.0](https://github.com/janpuc/polished/compare/v0.2.0...v0.3.0) (2026-10-26)
 
 
