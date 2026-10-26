@@ -365,6 +365,6 @@ def test_learn_rows_show_one_shade_per_line(seeded):
     html = client.get(
         "/search", params={"q": "s", "ctx": "learn", "kind": "gtin", "value": UPC}
     ).text
-    titles = re.findall(r'class="row-title">([^<]+)<', html)
+    titles = re.findall(r'class="row-title">', html)
     assert html.count('class="shade-row') == len(titles) >= 2
     assert shade_id(conn, "spirit-fingers")

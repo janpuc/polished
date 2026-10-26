@@ -422,6 +422,11 @@ button {
   color: var(--bad);
 }
 
+.btn-danger.btn-block {
+  background: var(--bad);
+  color: var(--bg);
+}
+
 .btn-block {
   display: flex;
   width: 100%;

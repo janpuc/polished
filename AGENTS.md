@@ -39,7 +39,16 @@ export POLISHED_DB_PATH=./data/polished.db POLISHED_AUTH_MODE=none POLISHED_PUBL
 uv run python -m polished migrate
 uv run python -m polished sync --from-files research/p1.json research/p2.json research/p3.json
 uv run python -m polished serve          # http://localhost:8080
+uvx --from playwright --with python-barcode --with pillow python tests/e2e/run_flows.py   # browser flows
 ```
+
+`tests/e2e/run_flows.py` is the observable end-to-end suite (not part of `pytest -q`; needs
+Chromium, see the README's Testing section): named flows with screenshots on an iPhone, an iPad and
+a Mac in light and dark, on a fresh seeded database per flow, a report in
+`~/.cache/polished/flows/<timestamp>/index.html` and exit 1 on any failure. Run it after changing
+templates, routes or htmx behaviour, and add a flow to `tests/e2e/flows/scenarios.py` for a new
+screen. Selectors are roles, labels and text, so a restyle should not break it; `--flows` and
+`--devices` narrow a run. Never point it at the live app (`--base` takes a throwaway server only).
 
 Commit messages are Conventional Commits (release-please reads them): `feat:`, `fix:`,
 `docs:`, `build:`, `ci:`, `test:`, `chore:`. Dependency PRs from Renovate use `chore(deps):`.

@@ -3,7 +3,7 @@ import sqlite3
 import pytest
 from shade_data import seed, shade_id
 
-from polished import wheels
+from polished import stacks, wheels
 
 
 def put_stack(conn, wheel_id, position, shade_ids, status="saved") -> int:
@@ -259,6 +259,64 @@ def test_deleting_a_wheel_row_cascades_to_its_slots(catalog):
     put_stack(catalog, wheel_id, 1, [shade_id(catalog, "thirst-trap")])
     catalog.execute("delete from wheel where id = ?", (wheel_id,))
     assert catalog.execute("select count(*) from wheel_slot").fetchone()[0] == 0
+
+
+def counts(conn) -> dict[str, int]:
+    return {
+        table: conn.execute(f"select count(*) from {table}").fetchone()[0]
+        for table in ("wheel", "wheel_slot", "stack", "stack_layer", "shade", "bottle")
+    }
+
+
+def test_delete_removes_the_wheel_its_slots_stacks_drafts_and_layers(catalog):
+    gone = wheels.create(catalog, "Test")
+    kept = wheels.create(catalog, "Holos")
+    thirst, jam = shade_id(catalog, "thirst-trap"), shade_id(catalog, "jam-session")
+    put_stack(catalog, gone, 1, [thirst, jam])
+    put_stack(catalog, gone, 1, [jam], status="draft")  # a slot with a swatch and a draft
+    put_stack(catalog, gone, 2, [thirst])
+    put_stack(catalog, gone, 3, [jam], status="draft")  # a draft only
+    kept_stack = put_stack(catalog, kept, 1, [thirst, jam])
+    put_stack(catalog, kept, 2, [jam], status="draft")
+    catalog.execute("insert into bottle (shade_id, state) values (?, 'full')", (thirst,))
+    before = counts(catalog)
+    assert before["wheel_slot"] == 5 and before["stack"] == 6 and before["stack_layer"] == 8
+
+    assert wheels.delete(catalog, gone) == 2  # saved swatches only; the draft is not counted
+
+    after = counts(catalog)
+    assert after["wheel"] == 1 and after["wheel_slot"] == 2
+    assert after["stack"] == 2 and after["stack_layer"] == 3
+    assert after["shade"] == before["shade"] and after["bottle"] == before["bottle"]
+    assert wheels.get(catalog, gone) is None and wheels.get(catalog, kept) is not None
+    assert [layer["shade_id"] for layer in stacks.layers(catalog, kept_stack)] == [thirst, jam]
+    assert catalog.execute("pragma foreign_key_check").fetchall() == []
+
+
+def test_delete_of_an_archived_or_empty_wheel_works(catalog):
+    wheel_id = wheels.create(catalog, "Test")
+    wheels.set_archived(catalog, wheel_id, True)
+    assert wheels.delete(catalog, wheel_id) == 0
+    assert counts(catalog)["wheel"] == 0
+
+
+def test_delete_of_an_unknown_wheel_raises_and_changes_nothing(catalog):
+    wheel_id = wheels.create(catalog, "Holos")
+    put_stack(catalog, wheel_id, 1, [shade_id(catalog, "thirst-trap")])
+    before = counts(catalog)
+    with pytest.raises(wheels.WheelNotFound):
+        wheels.delete(catalog, wheel_id + 99)
+    assert counts(catalog) == before
+
+
+def test_delete_joins_the_callers_transaction_and_rolls_back_with_it(catalog):
+    wheel_id = wheels.create(catalog, "Holos")
+    put_stack(catalog, wheel_id, 1, [shade_id(catalog, "thirst-trap")])
+    before = counts(catalog)
+    catalog.execute("begin immediate")
+    wheels.delete(catalog, wheel_id)
+    catalog.execute("rollback")
+    assert counts(catalog) == before
 
 
 def test_most_recent_is_the_wheel_touched_last_else_the_newest(catalog):

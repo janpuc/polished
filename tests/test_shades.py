@@ -55,13 +55,14 @@ def test_search_ranks_titles_that_start_with_the_query_first(conn):
             made_from("thirst-trap", 4, "Beta Pink"),
         ],
     )
-    # Aurora Unicorn Skin also matches, through its color:pink tag, and sorts among the rest.
+    # Whole-word matches follow, shorter titles first. Aurora Unicorn Skin matches only through its
+    # color:pink tag, which is a later tier.
     assert titles(find(conn, q="pink")) == [
         "Pink Zebra",
         "Pinkie Pie",
+        "Beta Pink",
         "Alpha Pink",
         "Aurora Unicorn Skin™",
-        "Beta Pink",
     ]
 
 

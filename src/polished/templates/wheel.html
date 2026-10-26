@@ -16,6 +16,7 @@
     <button type="submit" class="btn btn-secondary btn-block">Restore</button>
   </form>
   {% include "_take_tag.html" %}
+  <button type="button" class="btn btn-text btn-danger" hx-get="/wheels/{{ wheel.id }}/delete" hx-target="#sheet-body" hx-swap="innerHTML">Delete wheel</button>
 </section>
 {% endif %}
 <header class="page-head">
@@ -46,5 +47,6 @@
     <button type="submit" class="btn btn-text" hx-post="/wheels/{{ wheel.id }}/archive" hx-include="closest form" hx-confirm="Archive this wheel? Its tag keeps working and you can restore it.">Archive</button>
   </form>
   {% endif %}
+  <button type="button" class="btn btn-text btn-danger" hx-get="/wheels/{{ wheel.id }}/delete" hx-target="#sheet-body" hx-swap="innerHTML">Delete wheel</button>
 </nav>
 {% endblock %}

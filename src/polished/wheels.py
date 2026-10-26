@@ -115,6 +115,26 @@ def set_archived(conn: sqlite3.Connection, wheel_id: int, archived: bool) -> Non
     conn.execute("update wheel set archived = ? where id = ?", (int(archived), wheel_id))
 
 
+def delete(conn: sqlite3.Connection, wheel_id: int) -> int:
+    """Remove the wheel for good: its slots, their saved and draft stacks and the layers of
+    those. Returns how many saved swatches went. The tag then opens a 404. Shades and bottles are
+    not touched. Raises WheelNotFound.
+
+    A slot row goes with the wheel (on delete cascade) but the stacks it points at do not, since
+    the foreign key runs from the slot to the stack, so they are deleted here; their layers
+    follow by cascade."""
+    with atomic(conn):
+        if conn.execute("select 1 from wheel where id = ?", (wheel_id,)).fetchone() is None:
+            raise WheelNotFound(wheel_id)
+        slots = conn.execute(
+            "select stack_id, draft_stack_id from wheel_slot where wheel_id = ?", (wheel_id,)
+        ).fetchall()
+        conn.execute("delete from wheel where id = ?", (wheel_id,))
+        stack_ids = [i for slot in slots for i in (slot["stack_id"], slot["draft_stack_id"]) if i]
+        conn.executemany("delete from stack where id = ?", [(i,) for i in stack_ids])
+        return sum(slot["stack_id"] is not None for slot in slots)
+
+
 def regenerate_slug(conn: sqlite3.Connection, wheel_id: int) -> str:
     """Give the wheel a new slug (its old tag then 404s). Raises WheelNotFound."""
 

@@ -27,42 +27,11 @@ import sys
 import tempfile
 from pathlib import Path
 
-from barcode import UPCA
-from barcode.writer import ImageWriter
-from PIL import Image
+from flows.media import GTIN, PIXEL, UPC, make_images
 from playwright.sync_api import sync_playwright
 
 BASE = (sys.argv[1] if len(sys.argv) > 1 else "http://localhost:8080").rstrip("/")
-UPC = "810170284120"
-GTIN = "0810170284120"
 SHADE_QUERY = "thirst"
-
-
-def make_images(directory: Path) -> tuple[Path, Path]:
-    """The barcode as a PNG (for the photo input) and as a few-frame MJPEG file (a fake camera)."""
-    code = directory / "upca"
-    UPCA(UPC[:-1], writer=ImageWriter()).save(str(code), {"quiet_zone": 6.5, "module_height": 18})
-    barcode = Image.open(f"{code}.png").convert("RGB")
-    photo = directory / "barcode.png"
-    barcode.save(photo)
-
-    frame = Image.new("RGB", (1280, 720), "white")
-    scale = 560 / barcode.width
-    resized = barcode.resize((560, round(barcode.height * scale)))
-    frame.paste(resized, ((1280 - resized.width) // 2, (720 - resized.height) // 2))
-    jpeg = directory / "frame.jpg"
-    frame.save(jpeg, quality=92)
-    mjpeg = directory / "camera.mjpeg"
-    mjpeg.write_bytes(jpeg.read_bytes() * 30)
-    return photo, mjpeg
-
-
-# A 1x1 transparent PNG: product thumbnails are hotlinked from Shopify's CDN, which a smoke test
-# should not hit.
-PIXEL = bytes.fromhex(
-    "89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c489"
-    "0000000d49444154789c6360000002000001e221bc330000000049454e44ae426082"
-)
 
 
 def check(condition: bool, message: str) -> None:

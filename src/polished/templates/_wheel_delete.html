@@ -1,0 +1,18 @@
+{# The delete confirmation sheet, swapped into #sheet-body. Only this form sends confirm=yes; the
+   server answers with HX-Redirect to /wheels. Context: wheel, swatches (saved swatches on it). #}
+<form class="sheet-form" method="post" action="/wheels/{{ wheel.id }}/delete" hx-post="/wheels/{{ wheel.id }}/delete" hx-swap="none">
+  <div class="grabber" aria-hidden="true"></div>
+  <header class="sheet-head">
+    <h2 tabindex="-1" autofocus>Delete {{ wheel.name }}?</h2>
+    <button type="button" class="btn btn-text" data-sheet-close>Cancel</button>
+  </header>
+  <input type="hidden" name="confirm" value="yes">
+  {% if swatches %}
+  <p>Its {{ swatches }} {{ "swatch goes" if swatches == 1 else "swatches go" }} too. Its tag and QR code stop working. This can’t be undone.</p>
+  {% else %}
+  <p>It has no swatches. This can’t be undone.</p>
+  {% endif %}
+  <div class="sheet-actions">
+    <button type="submit" class="btn btn-block btn-danger">Delete wheel</button>
+  </div>
+</form>

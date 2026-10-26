@@ -209,17 +209,18 @@ def test_the_home_search_ranks_owned_then_wishlisted_then_the_rest(conn):
         conn,
         [
             made_from("thirst-trap", 1, "Pink Alpha"),
-            made_from("thirst-trap", 2, "Pink Beta"),
+            made_from("thirst-trap", 2, "Pink Delta"),
             made_from("thirst-trap", 3, "Pink Gamma"),
         ],
     )
     gamma = shade_id(conn, "pink-gamma")
-    conn.execute("insert into wishlist_item (shade_id) values (?)", (shade_id(conn, "pink-beta"),))
+    conn.execute("insert into wishlist_item (shade_id) values (?)", (shade_id(conn, "pink-delta"),))
     bottles.add(conn, gamma, BottleInput())
-    assert titles(shades.search(conn, "pink"))[:3] == ["Pink Gamma", "Pink Beta", "Pink Alpha"]
+    # Equal tier and title length: ownership decides, then the title.
+    assert titles(shades.search(conn, "pink"))[:3] == ["Pink Gamma", "Pink Delta", "Pink Alpha"]
     # The browse list keeps its plain order.
     query = shades.ShadeQuery.from_params(q="pink")
-    assert titles(shades.list_shades(conn, query))[:3] == ["Pink Alpha", "Pink Beta", "Pink Gamma"]
+    assert titles(shades.list_shades(conn, query))[:3] == ["Pink Alpha", "Pink Delta", "Pink Gamma"]
 
 
 # Manual shades

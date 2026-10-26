@@ -40,7 +40,7 @@ def test_shades_is_a_full_page_for_a_normal_request_and_a_fragment_for_htmx(seed
     assert "<html" in full.text and 'id="shade-filters"' in full.text
     part = client.get("/shades", params={"q": "thirst"}, headers=HX)
     assert "<html" not in part.text
-    assert "Thirst Trap" in part.text and 'id="shade-filters"' not in part.text
+    assert "<mark>Thirst</mark> Trap" in part.text and 'id="shade-filters"' not in part.text
 
 
 def test_a_history_restore_gets_the_full_page(seeded):
@@ -203,7 +203,7 @@ def test_rows_show_tip_title_finish_chips_and_status(seeded):
     assert (
         "cdn.shopify.com" not in row
     )  # a bottle photo is for the shade page and the lookup result
-    assert "Jam Session" in html and ">Holographic<" in html
+    assert "<mark>Jam</mark> <mark>Session</mark>" in html and ">Holographic<" in html
     assert 'class="status status-sold_out">Sold out, retiring<' in html
     assert "$15.50" in html
 
@@ -217,7 +217,10 @@ def test_a_row_puts_the_heart_after_the_name_and_the_owned_count_under_the_price
     html = client.get("/shades", params={"q": "jam session"}).text
     row = re.search(r'<li class="shade-row">.*?</li>', html, re.S).group(0)
     title = re.search(r'<span class="row-title">(.*?)</span></span>', row, re.S).group(1)
-    assert title.startswith("Jam Session") and 'aria-label="On the wishlist"' in title
+    assert (
+        title.startswith("<mark>Jam</mark> <mark>Session</mark>")
+        and 'aria-label="On the wishlist"' in title
+    )
     assert row.index('class="row-end price"') < row.index('class="row-sub"')
     assert re.search(
         r'class="row-end footnote"><span aria-label="Owned ×2" role="img">×2</span>', row

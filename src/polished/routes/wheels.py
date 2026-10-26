@@ -166,6 +166,32 @@ def archive_wheel(
     return _redirect(request, "/wheels" if archived else f"/w/{wheel['slug']}")
 
 
+@router.get("/wheels/{wheel_id}/delete")
+def delete_sheet(request: Request, conn: Conn, wheel_id: int):
+    """The confirmation sheet for deleting a wheel, opened from the wheel page."""
+    wheel = _wheel(conn, wheel_id)
+    swatches = next(
+        w["filled"]
+        for w in wheels.list_wheels(conn, bool(wheel["archived"]))
+        if w["id"] == wheel_id
+    )
+    return render(request, "_wheel_delete.html", {"wheel": wheel, "swatches": swatches})
+
+
+@router.post("/wheels/{wheel_id}/delete")
+def delete_wheel(request: Request, conn: Conn, wheel_id: int, confirm: Annotated[str, Form()] = ""):
+    """Deletes the wheel with its swatches and drafts for good. Only the confirmation sheet sends
+    `confirm=yes`; without it nothing is deleted (400)."""
+    _wheel(conn, wheel_id)
+    if confirm != "yes":
+        raise HTTPException(400, "Confirm the deletion")
+    try:
+        wheels.delete(conn, wheel_id)
+    except wheels.WheelNotFound:
+        raise HTTPException(404, "No such wheel") from None
+    return _redirect(request, "/wheels")
+
+
 @router.get("/wheels/{wheel_id}/tag")
 def tag_page(request: Request, conn: Conn, wheel_id: int):
     wheel, missing = _wheel_or_page(request, conn, wheel_id)

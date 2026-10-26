@@ -106,7 +106,7 @@ migrate.py           numbered-SQL runner (serendip's, schema_version table); for
                      migration may not leave more violations than it found
 migrations/          001_catalog.sql … 007_release_sheet.sql
 server.py            create_app(): middleware order, routers, templates, static, lifespan
-web.py               Jinja environment, render(): full page vs partial, filters (money, thumb, dates)
+web.py               Jinja environment, render(): full page vs partial, filters (money, thumb, dates, marked)
 security.py          Origin check for unsafe methods, security headers and CSP, cache headers
 auth.py              OIDC client, /auth/* routes, session helpers, deny-by-default gate
 catalog/
@@ -120,13 +120,14 @@ catalog/
                      merge_sheet_shade(), refresh_retired() (5.6)
   colour.py          extract_colours(): the polish colour from a photo; fill_colours(): the sync step
   scheduler.py       next_run_at(), catchup_due(), close_stale_runs(), Scheduler loop
-shades.py            list/filter/search queries, status derivation, detail, manual shades
+shades.py            list/filter queries, status derivation, detail, manual shades
+search.py            ranked, typo-tolerant name search and the <mark> spans of result rows (6)
 bottles.py           bottle CRUD, owned rules
 wishlist.py          wishlist CRUD, totals, cart permalink
 gtin.py              normalise_gtin(), check digit
 identifiers.py       resolve(), learn(), learn_printed(), printed-code normalisation, learned-code list
 stacks.py            draft/commit, layers, templates, summary(), default_coats()
-wheels.py            wheel CRUD, slug generation, slot grid, tag URL, QR
+wheels.py            wheel CRUD and delete, slug generation, slot grid, tag URL, QR
 tips.py              nail tips as SVG: render(layers), TIP_FIELDS, revision() for URLs and ETags (9)
 routes/              home.py shades.py bottles.py wishlist.py lookup.py wheels.py stacks.py
                      tips.py sync.py pwa.py health.py   (thin: parse, call domain function, render)
@@ -627,14 +628,35 @@ in stock") still reads `published_at`; `released_on` is only for the sort and th
 
 ## 6. Searching and browsing
 
-- `search_text` is lowercase, accent-folded (`NFKD`, marks stripped), punctuation to spaces.
-  A query is tokenised the same way (`shades.tokens`: folded, split on anything that is not a
-  letter or digit); every token must match as `LIKE '%token%'`. 372 rows: no FTS5.
-- Ranking in the picker and the home search: owned first (`owned_count > 0`), then wishlisted,
-  then the rest; within a group, titles starting with the query first, then alphabetical. Limit
-  30. Stage 4 does this for the home search (`shades.search`); the pickers arrive with stages 5
-  and 7. `/shades?q=` keeps the plain order (a title starting with the query, then alphabetical)
-  when sorted by name.
+- **Name search is ranked and forgiving (`search.py`).** A query is tokenised like the stored text
+  (`search.tokens`: lowercase, accent-folded, split on anything that is not a letter or digit, so
+  "™", hyphens and accents do not matter). Python scores every shade's title and `search_text`
+  (title, handle, tag and collection values) on each query: 372 rows take about 1 ms warm and 2 ms
+  cold, so there is no index and no cache to go stale (the folded titles are memoised by string, which
+  needs no invalidation). A shade matches in the first of these tiers that fits:
+  0 the title is the query; 1 the title starts with it; 2 every query word is a whole word of the
+  title; 3 every query word starts a title word ("holo magn"); 4 every word occurs in `search_text`
+  (the old `LIKE '%word%'` rule, so tags and collections still find shades); 5 **fuzzy**: every word
+  either occurs in `search_text` or is within a few edits of a title word, or the query without its
+  spaces is part of the title without its spaces ("onecoat" finds "One-Coat Black"). Edits are
+  Damerau-Levenshtein distance with adjacent swaps counting once ("magentic" is one edit from
+  "magnetic"), per query word: none under 4 letters, one for 4 to 7, two from 8. (No trigram index:
+  at this size the edit distance is exact, explainable and fast enough; its pair results are memoised.)
+  Within a tier: fewer edits (only tier 5 has any), then the shorter title, then, for the home search
+  and the pickers only, owned before wishlisted before the rest, then the title. So "magnetic taco"
+  lists Magnetic Taco, then Holo Magnetic Taco, then shades that only have the words in tags.
+  Ownership is a tie-break, not a tier: it no longer lifts a longer title above a better match.
+- A search with words ranks the result by this order whenever the sort is "Name" (the default);
+  with another sort the matches keep that sort's order. Words that are only punctuation are no
+  search at all (the list is whole). The same ranking serves the home search (`shades.search`, 30
+  rows and the total), `/shades?q=`, the builder picker (`shades.pick`, narrowed by Owned,
+  Toppers or All) and the learn picker. An empty query in the builder lists the scope, owned first.
+- **Near-duplicates stay tellable apart.** Result rows carry `marks`, the character spans of the
+  title the query matched (`search.marks`: a whole word for an exact or near match, the typed part of
+  a word the query only starts; nothing for a tag or missing-space match). The `marked` filter
+  (`web.py`) escapes the title and wraps those spans in `<mark>`, so "Holo <mark>Magnetic</mark>
+  <mark>Taco</mark>" shows what differs from "<mark>Magnetic</mark> <mark>Taco</mark>". Minimal markup;
+  the browser's default `mark` look stands until the stylesheet gives it one.
 - Filters on `/shades`, one GET form (so the URL is the state and works without JavaScript):
   `finish` and `color` (multi-select, any-of within a namespace, AND between filters),
   `collection` (one: an official collection name from the release sheet, or one of the shop's collection tags; the
@@ -842,7 +864,7 @@ auth gate → routes.
   slot count, a 1.5px hairline circle runs through the stems of the tips like the plastic ring of a real
   wheel, an empty slot is a `--fill` tip with its number and no foil (foil is for `?hl` and the save
   sweep only), a slot with an open draft shows a "draft" dot; below it a plain list of the filled
-  slots (the composite tip, name and date) reads each stack without squinting. Tapping a tip or a list row opens the stack builder (section 10). The page ends in one quiet row of three text actions, "Tag and QR code", "Rename" and "Archive" (confirmed); Rename opens a small sheet (`GET /wheels/{id}/rename`, saved with `POST /wheels/{id}`, which answers `sheetClose` and swaps the title out of band). `?hl=<shade_id>` highlights every slot whose stack contains that shade
+  slots (the composite tip, name and date) reads each stack without squinting. Tapping a tip or a list row opens the stack builder (section 10). The page ends in one quiet row of four text actions, "Tag and QR code", "Rename", "Archive" (confirmed) and "Delete wheel" (red text); Rename opens a small sheet (`GET /wheels/{id}/rename`, saved with `POST /wheels/{id}`, which answers `sheetClose` and swaps the title out of band). `?hl=<shade_id>` highlights every slot whose stack contains that shade
   and scrolls to the first (`#slot-12`), which is what "Swatched on" links on the shade page use.
 - **Nail tips are drawn, never photographed (`tips.py`, `routes/tips.py`).** A tip, a mini tip, a
   builder layer tip and the preview on the shade page are an `<img>` of a 102×168 SVG that CSS
@@ -888,8 +910,19 @@ auth gate → routes.
   the iOS camera opens it natively.
 - **Moving a tag:** "New tag URL" regenerates the slug (the old tag then 404s once logged in);
   "Take the tag of…" on wheel B swaps slugs with wheel A, so a tag stuck on a discarded wheel can
-  point at its replacement without rewriting it. Wheels are archived, never deleted; an archived
-  wheel's page shows a banner with Restore and the take-tag action.
+  point at its replacement without rewriting it. An archived wheel's page shows a banner with Restore,
+  the take-tag action and "Delete wheel".
+- **Deleting a wheel** (Jan: a test wheel was "just stuck there") is for good and asks first. "Delete
+  wheel" (the foot row, and the archived banner) opens a small sheet (`GET /wheels/{id}/delete`): "Delete
+  Test?", "Its 3 swatches go too. Its tag and QR code stop working. This can't be undone." (with no
+  swatches: "It has no swatches. This can't be undone."), a red "Delete wheel" button and Cancel.
+  The button posts `confirm=yes` to `POST /wheels/{id}/delete` (HX-Redirect to `/wheels`; a plain form gets
+  a 302); without that field the answer is 400 and nothing is deleted, an unknown wheel is 404, and the
+  Origin check applies like any POST. `wheels.delete` runs in one transaction: it removes the wheel (its slot
+  rows go by `on delete cascade`), then every saved and draft stack those slots pointed at (the foreign key
+  runs from slot to stack, so the stacks do not cascade; their layers do). Shades, bottles and other wheels
+  are untouched, and the wheel's `/w/<slug>` then answers the 404 page (after sign-in, like any unknown
+  slug). Archive stays the way to put a wheel away without losing it.
 - **Tapping a tag while logged out** (Safari has no session): `GET /w/k3m9xq` →
   `302 /auth/login?next=%2Fw%2Fk3m9xq` → Pocket ID (passkey / Face ID, one step with
   remember-me) → `/auth/callback` → `302 /w/k3m9xq`. A logged-in Safari goes straight to the
@@ -1062,7 +1095,7 @@ builds it.
 |---|---|---|---|---|
 | GET | `/` | Home: large title with the icon, search, the most recently touched wheel as a 200px ring, recent bottles as tips, one line of counts as links, a short grouped list (Browse all shades, Toppers, New and in stock, More) | full page | 3 |
 | GET | `/more` | Add a shade by hand, Catalog sync, Learned codes, and Sign out under "Signed in as …" | full page | 2b |
-| GET | `/search` | Typeahead rows. Params `q`, `ctx` (`home`, `stack`, `learn`), `filter` (`owned/toppers/all`), `stack_id`, `kind`+`value` for `learn` (422 without a valid code). Row action depends on `ctx`; `home` in stage 3, `learn` in 5, `stack` in 7. Always rows only (the page that asked is on screen), nothing for an empty query. `home` adds a "Look up “259” as a code" link when `q` is all digits or a P code | partial | 3 |
+| GET | `/search` | Typeahead rows. Params `q`, `ctx` (`home`, `stack`, `learn`), `filter` (`owned/toppers/all`), `stack_id`, `kind`+`value` for `learn` (422 without a valid code). Row action depends on `ctx`; `home` in stage 3, `learn` in 5, `stack` in 7. Always rows only (the page that asked is on screen), nothing for an empty query. `home` adds a "Look up “259” as a code" link when `q` is all digits or a P code. Ranked and typo-tolerant (section 6); rows mark the matched words with `<mark>` | partial | 3 |
 | GET | `/shades` | Browse list with filters (section 6) | full page; P = rows + Load more | 3 |
 | GET | `/shades/{id}` | Detail: images, tags, price/status, product link; stage 4 adds bottles and wishlist, stage 6 "Swatched on" | full page | 3 |
 | GET | `/shades/new` | Manual shade form (gifted non-catalog bottle) | full page / P | 4 |
@@ -1143,6 +1176,8 @@ carry the shade page's action bar as an out-of-band copy when `ctx=shade`, becau
 | GET | `/wheels/{id}/rename` | The rename sheet (404 for no such wheel) | P sheet | 2b |
 | POST | `/wheels/{id}` | Rename | P header | 6 |
 | POST | `/wheels/{id}/archive` | `archived=0/1` | 302 | 6 |
+| GET | `/wheels/{id}/delete` | The delete confirmation sheet (404 for no such wheel) | P sheet | 84 |
+| POST | `/wheels/{id}/delete` | Delete the wheel, its slots, stacks and layers; needs `confirm=yes` (400 without), 404 unknown | 302 `/wheels` (HX-Redirect for htmx) | 84 |
 | GET | `/wheels/{id}/tag` | URL, Copy, QR, NFC Tools steps | full page | 6 |
 | GET | `/wheels/{id}/qr.svg` | QR code | `image/svg+xml` | 6 |
 | POST | `/wheels/{id}/slug/regenerate` | New slug | 302 tag page | 6 |
@@ -1619,6 +1654,52 @@ carry the shade page's action bar as an out-of-band copy when `ctx=shade`, becau
       sync, a later one, and a duplicate made by hand.
     - Shop and sheet are not one transaction: between a shop run that adds a shade and the sheet step that
       merges it the shade exists twice, for seconds, or until the next run when the sheet is down.
+
+84. **Fuzzy search, deleting a wheel, and observable browser flows** (Jan, 2026-10-26: "I got mixed up with
+    `Holo Magnetic Taco` and `Magnetic Taco`"; "I want to Delete one fully ... of course it should ask for
+    confirmation"; "add/create some test flows that you can observe and validate"). Sections 6 and 9 have the
+    design; where this goes beyond what was asked, or departs from it:
+    - **Search ranking is in Python (`search.py`), not SQL.** `list_shades` asks `search.rank` for the matching ids
+      in order when the query has words, applies the other filters in SQL and keeps the intersection; without
+      words nothing changed. The tiers, the edit budget (1 for 4 to 7 letters, 2 from 8, a swap is one edit) and
+      the missing-space rule are in section 6. Trigram similarity was not used: edit distance over words is exact
+      and explainable at 372 shades.
+    - **Ownership no longer outranks relevance.** The home search and the picker used to put owned, then wishlisted,
+      shades first; with a typed query that would have put an owned "Holo Magnetic Taco" above "Magnetic Taco" for
+      the query "magnetic taco", which is the confusion this fixes. It is now a tie-break after tier, edits and
+      title length (an empty picker query still lists owned first). Three tests changed with the new order
+      ("Beta Pink" before "Alpha Pink": shorter first) and with the `<mark>` split of titles in the HTML.
+    - **Speed** on the full local snapshot (372 shades, 526 products): 0.8 to 1.1 ms per `shades.search` call
+      warm, 1.1 to 2.3 ms with cold caches, for the cases below and for one-letter queries (361 matches).
+    - **Deleting a wheel is a new route pair, not a changed archive.** Archive is unchanged and stays the quiet
+      way to put a wheel away. The confirmation is a sheet that posts `confirm=yes`; typing the wheel's name was
+      considered and not done (the sheet already names the wheel and counts its swatches). The sheet mentions the
+      tag only when the wheel has swatches.
+    - **No migration.** The foreign keys already cascade slots with the wheel and layers with their stack; the
+      stacks themselves are deleted in code, in one transaction.
+    - **Flows (`tests/e2e/run_flows.py`, `tests/e2e/flows/`)** are not part of `pytest -q`. One entry point
+      starts the app on a fresh copy of a database seeded by `flows/seed.py` (the trimmed fixture feed, the trimmed
+      release sheet, eight more shades the flows search for, a painted tip colour per shade; no network) for every
+      flow, device and scheme, so no run sees another's data. Devices are Chromium with Playwright's "iPhone 15" and
+      "iPad Pro 11" profiles (touch) and a 1440×900 desktop (mouse), each in light and dark (WebKit is not
+      installed). Every flow is a list of named steps (`harness.Trace.step`); a step ends with a screenshot and
+      these audits: console errors and warnings, failed requests (a request the page cancelled itself is
+      ignored), 4xx and 5xx (a flow that provokes a 404 says so with `allow_status`), horizontal overflow, and on
+      touch devices interactive elements under 44 by 44 points (a stretched link or padded hit area is measured by
+      hit-testing, and inline links in a sentence are exempt). A failing step stops its flow and the report
+      (`index.html`, one row per flow × device × scheme with the step screenshots and the failure text, plus
+      `summary.json`) shows where; the exit status is 1 when any step failed. Flows: search (the ranking and typo
+      cases), add-bottle, bottle-level, wishlist (priority, "I bought these"), wheel-build (a three-layer swatch on
+      the ring and in "Swatched on"), wheel-delete, scan-photo, browse-filters, history, and a tour of every tab.
+      Selectors are roles, labels and text; the only ids used are the ones htmx targets. The two older smoke tests
+      are unchanged apart from sharing `flows/media.py`.
+    - **Screenshots are taken through the DevTools protocol.** Playwright's own `page.screenshot()` hides the text
+      caret by setting `style` on inputs and leaves empty `style` attributes behind; htmx then copies them during a
+      swap and the browser logs a CSP violation (`style-src-attr`) that no real user has. The flows capture with
+      `Page.captureScreenshot` instead.
+    - **Found while writing the flows, not changed:** after a swatch is saved or removed the ring's `aria-label`
+      ("Holos, 0 of 20 swatched") is not refreshed, only the hub's count is, so a screen reader hears the old
+      number until the page is reloaded.
 
 ## 15. Home-ops manifests
 

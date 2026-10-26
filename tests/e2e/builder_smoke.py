@@ -27,16 +27,10 @@ What it checks, on an iPhone-sized viewport, with no console errors and no 4xx/5
 import re
 import sys
 
+from flows.media import PIXEL
 from playwright.sync_api import expect, sync_playwright
 
 BASE = (sys.argv[1] if len(sys.argv) > 1 else "http://localhost:8080").rstrip("/")
-
-# A 1x1 transparent PNG: product thumbnails are hotlinked from Shopify's CDN, which a smoke test
-# should not hit.
-PIXEL = bytes.fromhex(
-    "89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c489"
-    "0000000d49444154789c6360000002000001e221bc330000000049454e44ae426082"
-)
 
 
 def check(condition: bool, message: str) -> None:

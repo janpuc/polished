@@ -139,8 +139,11 @@ def test_a_sheet_only_row_says_not_in_the_shop_instead_of_a_price(world):
 
 def test_the_search_finds_a_sheet_only_shade_like_any_other(world):
     client, _ = world
-    assert "Silent Night" in client.get("/search", params={"q": "silent"}, headers=HX).text
-    assert "Play Rosé" in client.get("/shades", params={"q": "rose"}).text
+    assert (
+        "<mark>Silent</mark> Night"
+        in client.get("/search", params={"q": "silent"}, headers=HX).text
+    )
+    assert "Play <mark>Rosé</mark>" in client.get("/shades", params={"q": "rose"}).text
 
 
 def test_the_collection_filter_offers_official_names_and_keeps_the_shop_tags(world):

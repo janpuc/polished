@@ -8,7 +8,7 @@
   <button type="button" class="pick-add" hx-post="/stacks/{{ picker.stack_id }}/layers" hx-vals='{{ {"shade_id": shade.id}|tojson }}' aria-label="Add {{ shade.title }}">
     {{ tip(shade, "s") }}
     <span class="row-body">
-      <span class="row-title">{{ shade.title }}</span>
+      <span class="row-title">{{ shade.title|marked(shade.marks) }}</span>
       <span class="row-sub"><span>{{ ((["topper"] if shade.is_topper else []) + shade.finishes[:3])|words }}</span>{% if shade.owned_count and picker.scope != 'owned' %}<span class="pill">Owned ×{{ shade.owned_count }}</span>{% endif %}{% if shade.wishlisted %}<span class="heart" role="img" aria-label="On the wishlist">{{ icon("heart", "icon-sm") }}</span>{% endif %}</span>
     </span>
     <span class="pick-plus" aria-hidden="true">{{ icon("plus") }}</span>

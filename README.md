@@ -52,6 +52,42 @@ curl -fsS localhost:8080/sync         # the run just made
 kill $(cat /tmp/polished.pid)
 ```
 
+## Testing
+
+```sh
+uv run ruff check && uv run ruff format --check
+uv run pytest -q          # unit and route tests; no network, no browser
+```
+
+**Browser flows** (not part of `pytest -q`) walk through the app like a person: search with typos,
+add a bottle and change its level, the wishlist and "I bought these", build a swatch on a wheel,
+delete a wheel, scan a bottle from a photo, browse with filters, the history page, and a tour of
+every tab. Each flow is a list of named steps that assert something and save a screenshot, and
+runs on an iPhone, an iPad and a Mac (Chromium with Playwright's device profiles) in light and dark.
+After every step it also checks for console errors, failed requests, 4xx/5xx answers, horizontal
+overflow and, on the touch devices, tap targets under 44 points.
+
+```sh
+uvx --from playwright playwright install chromium     # once; kept in ~/Library/Caches/ms-playwright
+uvx --from playwright --with python-barcode --with pillow python tests/e2e/run_flows.py
+uvx --from playwright --with python-barcode --with pillow python tests/e2e/run_flows.py \
+    --devices iphone --schemes dark --flows search,wheel-delete     # a part of it
+```
+
+The runner starts the app itself for every flow on a fresh copy of a database seeded from
+`tests/fixtures/` (sign-in off, no network, nothing from holotaco.com), so flows never see each
+other's data; the full run is 60 runs and takes about five minutes. It prints one line per run and
+writes `~/.cache/polished/flows/<timestamp>/` (outside the repo; `--out DIR` changes it) with
+`index.html` (one row per flow, device and scheme: the step screenshots, PASS or FAIL, and the failure
+text under the step that failed) and `summary.json`. The exit status is 1 if any step failed.
+`--list` shows the flows, `--tap-warnings` turns the tap-target audit into notes, and `--base URL`
+runs against a server you started yourself, which must be a throwaway on a database made with
+`uv run python tests/e2e/flows/seed.py DB` and whose `POLISHED_PUBLIC_URL` is that address.
+
+The flows live in `tests/e2e/flows/` (`scenarios.py` has them, `harness.py` the steps and audits).
+`tests/e2e/builder_smoke.py` and `scanner_smoke.py` are the older single-purpose smoke tests and
+still run on their own.
+
 ## Scanning
 
 `/lookup` reads a bottle's barcode with the phone camera (zxing-wasm, in the page, no cloud) or

@@ -5,6 +5,7 @@ from pathlib import Path
 
 from fastapi import Request
 from fastapi.templating import Jinja2Templates
+from markupsafe import Markup, escape
 from starlette.responses import Response
 
 from . import tips
@@ -60,8 +61,24 @@ def day(value: str | None) -> str:
     return f"{parsed.day} {parsed:%b %Y}"
 
 
+def marked(text: str, spans: list[tuple[int, int]] | None) -> str | Markup:
+    """`text` with the character spans from search.marks() wrapped in <mark>. Everything outside
+    the tags is escaped; with no spans the plain text is returned for the template to escape."""
+    if not spans:
+        return text
+    out = Markup("")
+    position = 0
+    for start, end in spans:
+        out += escape(text[position:start])
+        out += Markup("<mark>{}</mark>").format(text[start:end])
+        position = end
+    return out + escape(text[position:])
+
+
 templates = Jinja2Templates(directory=PACKAGE_DIR / "templates", context_processors=[_context])
-templates.env.filters.update(money=money, thumb=thumb, label=label, words=words, day=day)
+templates.env.filters.update(
+    money=money, thumb=thumb, label=label, words=words, day=day, marked=marked
+)
 templates.env.globals.update(
     tip_shade_url=tips.shade_url, tip_stack_url=tips.stack_url, tip_hex=tips.effective_hex
 )

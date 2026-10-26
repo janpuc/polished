@@ -229,7 +229,7 @@ def test_the_rename_sheet_has_the_name_and_a_saved_rename_closes_it(client, conn
     assert wheels.get(conn, wheel_id)["name"] == "Foils"
 
 
-def test_the_wheel_page_ends_in_a_quiet_row_of_three_actions(client, conn):
+def test_the_wheel_page_ends_in_a_quiet_row_of_actions(client, conn):
     wheel_id = make_wheel(client)
     slug = wheels.get(conn, wheel_id)["slug"]
     page = client.get(f"/w/{slug}").text
@@ -237,6 +237,7 @@ def test_the_wheel_page_ends_in_a_quiet_row_of_three_actions(client, conn):
     assert f'href="/wheels/{wheel_id}/tag"' in foot
     assert f'hx-get="/wheels/{wheel_id}/rename"' in foot
     assert f'hx-post="/wheels/{wheel_id}/archive"' in foot and "hx-confirm" in foot
+    assert f'hx-get="/wheels/{wheel_id}/delete"' in foot and "Delete wheel" in foot
     assert "This wheel</h2>" not in page and 'id="rename"' not in page
 
 
@@ -347,3 +348,95 @@ def test_swatched_on_rows_lead_with_the_stack_tip(catalog, client):
     ).group(0)
     assert f'<span class="tip-s" aria-hidden="true"><img src="/tips/stack/{stack_id}.svg' in row
     assert row.index("tip-s") < row.index("Holos, slot 12")
+
+
+# --- delete -------------------------------------------------------------------------------
+
+
+def test_delete_sheet_names_the_wheel_and_counts_its_swatches(client, catalog):
+    wheel_id = make_wheel(client, "Test")
+    empty = client.get(f"/wheels/{wheel_id}/delete", headers={"HX-Request": "true"})
+    assert empty.status_code == 200 and "<html" not in empty.text
+    assert "Delete Test?" in empty.text and "no swatches" in empty.text
+    assert "tag and QR code stop" not in empty.text
+    swatch(catalog, wheel_id, 1, "one-coat-black")
+    swatch(catalog, wheel_id, 2, "one-coat-black", "flakie-holo-taco")
+    sheet = client.get(f"/wheels/{wheel_id}/delete").text
+    assert "Delete Test?" in sheet and "Its 2 swatches go too." in sheet
+    assert "tag and QR code stop working" in sheet and "This can’t be undone." in sheet
+    assert 'name="confirm" value="yes"' in sheet and ">Delete wheel<" in sheet
+    assert f'hx-post="/wheels/{wheel_id}/delete"' in sheet and "data-sheet-close" in sheet
+
+
+def test_delete_sheet_says_one_swatch_goes(client, catalog):
+    wheel_id = make_wheel(client, "Test")
+    swatch(catalog, wheel_id, 1, "one-coat-black")
+    assert "Its 1 swatch goes too." in client.get(f"/wheels/{wheel_id}/delete").text
+
+
+def test_the_archived_banner_offers_delete_as_well(client, conn):
+    wheel_id = make_wheel(client)
+    client.post(f"/wheels/{wheel_id}/archive", data={"archived": "1"})
+    page = client.get(f"/w/{wheels.get(conn, wheel_id)['slug']}").text
+    banner = re.search(r'<section class="notice banner".*?</section>', page, re.S).group(0)
+    assert f'hx-get="/wheels/{wheel_id}/delete"' in banner
+
+
+def test_delete_removes_the_wheel_and_leaves_the_others(client, catalog):
+    gone = make_wheel(client, "Test")
+    kept = make_wheel(client, "Holos")
+    swatch(catalog, gone, 1, "one-coat-black", "flakie-holo-taco")
+    stacks.open_draft(catalog, gone, 4)
+    swatch(catalog, kept, 1, "one-coat-black")
+    slug = wheels.get(catalog, gone)["slug"]
+    shades_before = catalog.execute("select count(*) from shade").fetchone()[0]
+
+    response = client.post(f"/wheels/{gone}/delete", data={"confirm": "yes"})
+    assert response.status_code == 302 and response.headers["location"] == "/wheels"
+
+    assert wheels.get(catalog, gone) is None
+    assert client.get(f"/w/{slug}").status_code == 404
+    assert client.get(f"/wheels/{gone}/tag").status_code == 404
+    assert [w["name"] for w in wheels.list_wheels(catalog)] == ["Holos"]
+    assert catalog.execute("select count(*) from stack").fetchone()[0] == 1
+    assert catalog.execute("select count(*) from shade").fetchone()[0] == shades_before
+    assert "Test" not in client.get("/wheels").text
+
+
+def test_delete_from_the_sheet_answers_an_htmx_redirect(client):
+    wheel_id = make_wheel(client)
+    response = client.post(
+        f"/wheels/{wheel_id}/delete", data={"confirm": "yes"}, headers={"HX-Request": "true"}
+    )
+    assert response.status_code == 200 and response.headers["HX-Redirect"] == "/wheels"
+
+
+@pytest.mark.parametrize("data", [{}, {"confirm": ""}, {"confirm": "no"}, {"confirm": "YES"}])
+def test_delete_without_the_confirmation_does_nothing(client, conn, data):
+    wheel_id = make_wheel(client)
+    response = client.post(f"/wheels/{wheel_id}/delete", data=data)
+    assert response.status_code == 400
+    assert wheels.get(conn, wheel_id) is not None
+
+
+def test_delete_checks_the_origin(client, conn):
+    wheel_id = make_wheel(client)
+    for origin in ("", "https://evil.example"):
+        response = client.post(
+            f"/wheels/{wheel_id}/delete", data={"confirm": "yes"}, headers={"Origin": origin}
+        )
+        assert response.status_code == 403
+    assert wheels.get(conn, wheel_id) is not None
+
+
+def test_delete_is_post_only_and_an_unknown_wheel_is_404(client):
+    wheel_id = make_wheel(client)
+    assert client.delete(f"/wheels/{wheel_id}/delete").status_code == 405
+    assert client.post("/wheels/999/delete", data={"confirm": "yes"}).status_code == 404
+    assert client.post("/wheels/999/delete").status_code == 404
+    assert client.get("/wheels/999/delete").status_code == 404
+
+
+def test_delete_needs_a_signed_in_user_when_auth_is_on(oidc_client):
+    response = oidc_client.post("/wheels/1/delete", data={"confirm": "yes"})
+    assert response.status_code == 401

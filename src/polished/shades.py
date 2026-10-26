@@ -6,7 +6,9 @@ import re
 import sqlite3
 from dataclasses import dataclass, field
 
+from . import search as name_search
 from .catalog.parse import fold
+from .search import tokens
 
 PAGE_SIZE = 40
 SEARCH_LIMIT = 30
@@ -41,7 +43,6 @@ ORDER_SQL = {
     "released": "s.released_on is null, s.released_on desc, s.title collate nocase, s.id",
     "price": "s.price_cents is null, s.price_cents, s.title collate nocase, s.id",
 }
-_NOT_WORD = re.compile(r"[\W_]+")
 
 FROM = (
     "from shade s left join product p on p.id = s.product_id"
@@ -83,11 +84,6 @@ def on_sale(shade) -> bool:
         and shade["compare_at_cents"] is not None
         and shade["price_cents"] < shade["compare_at_cents"]
     )
-
-
-def tokens(text: str) -> list[str]:
-    """Folded words of a query; the same folding the stored search_text went through."""
-    return [t for t in _NOT_WORD.split(fold(text)) if t]
 
 
 def _pick(value: str | None, allowed: tuple[str, ...], default: str = "") -> str:
@@ -176,9 +172,6 @@ def _tag_clause(ns: str, values: tuple[str, ...], where: list[str], args: list) 
 def _where(query: ShadeQuery) -> tuple[str, list]:
     where: list[str] = []
     args: list = []
-    for token in tokens(query.q):
-        where.append("s.search_text like ?")
-        args.append(f"%{token}%")
     if query.finish:
         _tag_clause("finish", query.finish, where, args)
     if query.color:
@@ -199,18 +192,11 @@ def _where(query: ShadeQuery) -> tuple[str, list]:
     return (" where " + " and ".join(where)) if where else "", args
 
 
-def _order(query: ShadeQuery, owned_first: bool = False) -> tuple[str, list]:
-    """A search by name puts titles that start with the query first (search_text starts with the
-    folded title), then alphabetical. The home search ranks shades the household has first,
-    then wishlisted ones (`owned_first`, DESIGN 6)."""
-    words = tokens(query.q)
+def _order(query: ShadeQuery, owned_first: bool = False) -> str:
+    """The home search and the pickers rank shades the household has first, then wishlisted ones
+    (`owned_first`, DESIGN 6). A query with words is ranked by search.rank instead."""
     ranks = "(ss.owned_count > 0) desc, ss.wishlisted desc, " if owned_first else ""
-    if words and query.sort == "name":
-        return (
-            ranks + "(s.search_text like ?) desc, " + ORDER_SQL["name"],
-            [" ".join(words) + "%"],
-        )
-    return ranks + ORDER_SQL[query.sort], []
+    return ranks + ORDER_SQL[query.sort]
 
 
 def _with_finishes(conn: sqlite3.Connection, rows: list[sqlite3.Row]) -> list[dict]:
@@ -229,6 +215,14 @@ def _with_finishes(conn: sqlite3.Connection, rows: list[sqlite3.Row]) -> list[di
     ]
 
 
+_COLUMNS = (
+    "s.id, s.title, s.kind, s.source, s.hero_image_url, s.price_cents,"
+    " s.compare_at_cents, s.available, s.retired, s.retiring, s.is_topper,"
+    " s.swatch_hex, s.swatch_hex2, s.swatch_override_hex,"
+    " p.missing_since, ss.owned_count, ss.wishlisted"
+)
+
+
 def list_shades(
     conn: sqlite3.Connection,
     query: ShadeQuery,
@@ -236,25 +230,50 @@ def list_shades(
     size: int = PAGE_SIZE,
     owned_first: bool = False,
 ) -> ShadePage:
-    """One page of shades: rows with a Status, their finish values and the owned count and
-    wishlist flag, and the total."""
+    """One page of shades: rows with a Status, their finish values, the owned count and
+    wishlist flag, and (for a query with words) `marks`, the spans of the title the words
+    matched; and the total. A query with words ranks by relevance when sorted by name
+    (search.rank); `owned_first` breaks ties there (same tier and title length) and orders a list
+    without words."""
     page = max(page, 1)
     where, args = _where(query)
-    order, order_args = _order(query, owned_first)
-    total = conn.execute(f"select count(*) {FROM}{where}", args).fetchone()[0]
-    rows = conn.execute(
-        "select s.id, s.title, s.kind, s.source, s.hero_image_url, s.price_cents,"
-        " s.compare_at_cents, s.available, s.retired, s.retiring, s.is_topper,"
-        " s.swatch_hex, s.swatch_hex2, s.swatch_override_hex,"
-        f" p.missing_since, ss.owned_count, ss.wishlisted {FROM}{where} order by {order} limit ? offset ?",
-        [*args, *order_args, size, (page - 1) * size],
-    ).fetchall()
-    return ShadePage(
-        rows=_with_finishes(conn, rows),
-        total=total,
-        page=page,
-        has_more=page * size < total,
-    )
+    offset = (page - 1) * size
+    if tokens(query.q):
+        ranked = name_search.rank(conn, query.q, owned_first)
+        if query.sort == "name":
+            allowed = {r[0] for r in conn.execute(f"select s.id {FROM}{where}", args)}
+            ids = [i for i in ranked if i in allowed]
+        else:
+            matched = set(ranked)
+            ids = [
+                r[0]
+                for r in conn.execute(
+                    f"select s.id {FROM}{where} order by {ORDER_SQL[query.sort]}", args
+                )
+                if r[0] in matched
+            ]
+        total = len(ids)
+        page_ids = ids[offset : offset + size]
+        marks = ", ".join("?" * len(page_ids))
+        by_id = {
+            r["id"]: r
+            for r in conn.execute(
+                f"select {_COLUMNS} {FROM} where s.id in ({marks})", page_ids
+            ).fetchall()
+        }
+        rows = [by_id[i] for i in page_ids]
+    else:
+        total = conn.execute(f"select count(*) {FROM}{where}", args).fetchone()[0]
+        rows = conn.execute(
+            f"select {_COLUMNS} {FROM}{where} order by {_order(query, owned_first)}"
+            " limit ? offset ?",
+            [*args, size, offset],
+        ).fetchall()
+    result = _with_finishes(conn, rows)
+    if tokens(query.q):
+        for row in result:
+            row["marks"] = name_search.marks(row["title"], query.q)
+    return ShadePage(rows=result, total=total, page=page, has_more=page * size < total)
 
 
 def search(conn: sqlite3.Connection, text: str, limit: int = SEARCH_LIMIT) -> ShadePage:
