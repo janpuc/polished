@@ -20,7 +20,7 @@ cd "$ROOT/app"
 
 DEVICES="iphone,ipad,duo"
 SCHEMES="light,dark"
-FLOWS="SearchFlow,TabsFlow,HistoryFlow,DeepLinkFlow,ShadeDetailFlow,WheelFlow,WishlistFlow,SignInFlow"
+FLOWS="SearchFlow,TabsFlow,HistoryFlow,DeepLinkFlow,ShadeDetailFlow,WheelFlow,WishlistFlow,SignInFlow,AddBottleFlow,BottleLevelFlow,WishlistWritesFlow,WheelDeleteFlow,WheelTagFlow,WearFlow,TipColourFlow"
 while [ $# -gt 0 ]; do
   case "$1" in
     --devices) DEVICES="$2"; shift 2 ;;
@@ -80,4 +80,13 @@ for device in $(echo "$DEVICES" | tr ',' ' '); do
 done
 
 echo "== report"
-python3 Scripts/report.py "$OUT" --flows "$FLOWS"
+status=0
+python3 Scripts/report.py "$OUT" --flows "$FLOWS" || status=$?
+
+# Disk is short: the report keeps its screenshots, the result bundles (hundreds of MB) go, and
+# only the newest report stays.
+rm -rf "$OUT"/runs/*.xcresult
+for old in "$HOME"/.cache/polished/native-flows/*/; do
+  [ "${old%/}" = "$OUT" ] || rm -rf "$old"
+done
+exit "$status"

@@ -21,6 +21,8 @@ public struct CachedResponse: Sendable, Equatable {
 public protocol ResponseCache: Sendable {
     func entry(for key: String) async -> CachedResponse?
     func save(_ entry: CachedResponse) async
+    /// Forgets the answers whose key starts with any of `prefixes` (a write changed them).
+    func invalidate(prefixes: [String]) async
     /// Forgets everything (sign out).
     func clear() async
 }

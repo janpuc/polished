@@ -19,6 +19,7 @@ struct RootView: View {
     var body: some View {
         content
             .tint(Color.ink)
+            .statusLine()
             // Universal links reach a SwiftUI app here (docs/NATIVE.md 2.3).
             .onOpenURL { app.router.handle($0, signedIn: app.session.isSignedIn) }
             .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) { activity in
@@ -78,5 +79,6 @@ struct AppTabs: View {
         }
         .tabViewStyle(.sidebarAdaptable)
         .tabBarMinimizeBehavior(.onScrollDown)
+        .task { await app.loadHouseholdZone() }
     }
 }

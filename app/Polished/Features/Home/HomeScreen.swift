@@ -12,8 +12,10 @@ struct HomeScreen: View {
     @State private var home = Resource<Home>()
     @State private var me = Resource<Me>()
     /// "Another": the shade the server picked instead of today's.
-    @State private var another: Wear?
+    @State private var another = Resource<Wear>()
     @State private var asking = false
+    @State private var anotherCount = 0
+    @State private var woreCount = 0
     @State private var showsSettings = false
     @Namespace private var tips
 
@@ -57,6 +59,11 @@ struct HomeScreen: View {
             .routeDestinations()
             .revalidating(home, .home())
             .task { await me.load(.me(), api: app.api) }
+            // Once the server's own pick is the one she wore, "Another" has done its job.
+            .onChange(of: home.value?.wear) { _, wear in
+                if let wear, wear.wornToday, wear.shade.id == another.value?.shade.id { another.clear() }
+            }
+            .sensoryFeedback(.success, trigger: woreCount)
         }
         .environment(\.tipNamespace, tips)
         .sheet(isPresented: $showsSettings) {
@@ -152,13 +159,14 @@ struct HomeScreen: View {
 
     @ViewBuilder
     private func wearSection(_ home: Home) -> some View {
-        let wear = another ?? home.wear
+        let wear = another.value ?? home.wear
         VStack(alignment: .leading, spacing: 12) {
             SectionHeading(title: "Wear today")
             if let wear {
-                WearTodayHero(wear: wear, isAsking: asking) {
-                    Task { await askForAnother() }
-                }
+                WearTodayHero(
+                    wear: wear, isAsking: asking, sweepTrigger: anotherCount,
+                    wore: { Task { await wore(wear) } },
+                    another: { Task { await askForAnother() } })
             } else {
                 EmptyState(line: "Nothing to wear yet. Add a bottle and it shows up here.")
                     .groupCard()
@@ -169,7 +177,27 @@ struct HomeScreen: View {
     private func askForAnother() async {
         asking = true
         defer { asking = false }
-        if let fresh = try? await app.api.home(another: true).wear { another = fresh }
+        if let fresh = try? await app.api.home(another: true).wear {
+            another.set(fresh)
+            anotherCount += 1
+        }
+    }
+
+    /// "I wore this" is optimistic: it reads "Worn today" at once, and goes back with a status
+    /// line when the server refuses.
+    private func wore(_ wear: Wear) async {
+        let home = home
+        let another = another
+        let shadeID = wear.shade.id
+        func mark(_ worn: Bool) {
+            home.update { if $0.wear?.shade.id == shadeID { $0.wear?.wornToday = worn } }
+            another.update { if $0.shade.id == shadeID { $0.wornToday = worn } }
+        }
+        let response = await app.writes.toggle(
+            lane: "wear-\(shadeID)", .wear(shadeID: shadeID), affecting: .wear,
+            failure: "Couldn\u{2019}t save. Not marked as worn.",
+            apply: { mark(true) }, revert: { mark(false) })
+        if response != nil { woreCount += 1 }
     }
 
     @ViewBuilder
@@ -280,6 +308,9 @@ struct HomeScreen: View {
 struct WearTodayHero: View {
     let wear: Wear
     var isAsking = false
+    /// Changes when "Another" brought a new shade: one band of light crosses its tip.
+    var sweepTrigger = 0
+    let wore: () -> Void
     let another: () -> Void
     @Environment(\.colorScheme) private var colorScheme
 
@@ -287,6 +318,7 @@ struct WearTodayHero: View {
         HStack(alignment: .center, spacing: 20) {
             NavigationLink(value: Route.shade(wear.shade.id)) {
                 TipView(wear.shade.recipe, size: .xl, painting: .direct)
+                    .sweep(trigger: sweepTrigger)
                     .tipSource(wear.shade.id)
                     .padding(.vertical, 14)
                     .padding(.leading, 4)
@@ -323,8 +355,12 @@ struct WearTodayHero: View {
                         Label("Worn today", systemImage: "checkmark")
                             .font(.subheadline.weight(.semibold))
                             .foregroundStyle(Color.ok)
+                            .accessibilityIdentifier("worn-today")
+                    } else {
+                        Button("I wore this", action: wore)
+                            .buttonStyle(CompactPrimaryButtonStyle())
+                            .accessibilityIdentifier("wore-button")
                     }
-                    // "I wore this" is a write and arrives with run 3, as the one filled action.
                     Button(action: another) {
                         Label("Another", systemImage: "arrow.triangle.2.circlepath")
                     }

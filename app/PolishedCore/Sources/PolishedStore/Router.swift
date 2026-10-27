@@ -59,6 +59,31 @@ public final class Router {
         open(link)
     }
 
+    /// A wheel's tag changed: every stack that shows it follows the new address.
+    public func replaceWheelSlug(_ old: String, with new: String) {
+        for tab in paths.keys {
+            paths[tab] = paths[tab]?.map { $0 == .wheel(slug: old) ? .wheel(slug: new) : $0 }
+        }
+    }
+
+    /// Two wheels traded tags: each stack that shows one follows its address to the other.
+    public func swapWheelSlugs(_ first: String, _ second: String) {
+        for tab in paths.keys {
+            paths[tab] = paths[tab]?.map { route in
+                if route == .wheel(slug: first) { return .wheel(slug: second) }
+                if route == .wheel(slug: second) { return .wheel(slug: first) }
+                return route
+            }
+        }
+    }
+
+    /// A wheel is gone: it leaves every stack.
+    public func closeWheel(slug: String) {
+        for tab in paths.keys {
+            paths[tab]?.removeAll { $0 == .wheel(slug: slug) }
+        }
+    }
+
     public func showShades(_ query: ShadeQuery, focusSearch: Bool = false) {
         shadesPreset = query
         self.focusSearch = focusSearch

@@ -76,6 +76,7 @@ struct ShadeListScreen: View {
     @State private var text = ""
     @State private var showsFilters = false
     @State private var searching = false
+    @State private var showsManualShade = false
     @FocusState private var searchFocused: Bool
 
     var body: some View {
@@ -102,6 +103,9 @@ struct ShadeListScreen: View {
             .onChange(of: model.endpoint.key, initial: true) { model.syncExtra() }
             .onAppear { applyPreset() }
             .onChange(of: app.router.shadesPreset) { applyPreset() }
+            .sheet(isPresented: $showsManualShade) {
+                ManualShadeSheet(title: model.query.q) { id in app.router.open(.shade(id: id)) }
+            }
             .popover(isPresented: $showsFilters) {
                 ShadeFiltersSheet(query: Binding(get: { model.query }, set: { model.query = $0 }))
                     .presentationDetents([.medium, .large])
@@ -172,6 +176,8 @@ struct ShadeListScreen: View {
                     }
                     .rowSurface(.shade(shade.id), selection: selection)
                     .accessibilityIdentifier("shade-row-\(shade.id)")
+                    .swipeActions(edge: .leading, allowsFullSwipe: false) { heartButton(shade).tint(Color.heart) }
+                    .contextMenu { heartButton(shade) }
                 }
                 if model.hasMore {
                     loadMore
@@ -182,6 +188,44 @@ struct ShadeListScreen: View {
             if model.items.isEmpty {
                 noResults
             }
+        }
+    }
+
+    // MARK: The heart
+
+    /// Add to the wishlist, or take off it; the row flips at once.
+    private func heartButton(_ shade: ShadeRow) -> some View {
+        Button {
+            Task { await toggleWish(shade) }
+        } label: {
+            Label(
+                shade.wishlisted ? "Remove from wishlist" : "Add to wishlist",
+                systemImage: shade.wishlisted ? "heart.slash" : "heart")
+        }
+        .accessibilityIdentifier("row-heart-\(shade.id)")
+    }
+
+    private func toggleWish(_ shade: ShadeRow) async {
+        let model = model
+        let id = shade.id
+        if shade.wishlisted {
+            // A row does not know its wishlist item: the write looks it up, then deletes it.
+            await app.writes.toggle(
+                lane: "wish-\(id)", affecting: .wishlistChange,
+                failure: "Couldn\u{2019}t save. Still on your wishlist.",
+                apply: { model.update(shadeID: id) { $0.wishlisted = false } },
+                revert: { model.update(shadeID: id) { $0.wishlisted = true } },
+                send: { api in
+                    let list = try await api.wishlist()
+                    guard let item = list.items.first(where: { $0.shade.id == id }) else { return NoContent() }
+                    return try await api.send(.removeWish(id: item.id))
+                })
+        } else {
+            await app.writes.toggle(
+                lane: "wish-\(id)", .wish(shadeID: id), affecting: .wishlistChange,
+                failure: "Couldn\u{2019}t save. Not on your wishlist.",
+                apply: { model.update(shadeID: id) { $0.wishlisted = true } },
+                revert: { model.update(shadeID: id) { $0.wishlisted = false } })
         }
     }
 
@@ -236,6 +280,11 @@ struct ShadeListScreen: View {
                 .font(.body)
                 .foregroundStyle(Color.ink2)
                 .multilineTextAlignment(.center)
+            if model.query.hasWords {
+                Button("Add it by hand") { showsManualShade = true }
+                    .buttonStyle(SecondaryButtonStyle())
+                    .accessibilityIdentifier("add-by-hand")
+            }
             if model.query.filterCount > 0 {
                 Button("Clear filters") {
                     let q = model.query.q

@@ -57,12 +57,22 @@ struct WheelsListScreen: View {
     @State private var wheels = Resource<Wheels>()
     @State private var archived = Resource<Wheels>()
     @State private var showsArchived = false
+    @State private var showsNewWheel = false
 
     var body: some View {
         content
             .scrollContentBackground(.hidden)
             .background(Color.board)
             .navigationTitle("Wheels")
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("New wheel", systemImage: "plus") { showsNewWheel = true }
+                        .accessibilityIdentifier("new-wheel")
+                }
+            }
+            .sheet(isPresented: $showsNewWheel) {
+                NewWheelSheet { wheel in app.router.open(.wheel(slug: wheel.slug)) }
+            }
             .revalidating(wheels, .wheels())
             .task(id: showsArchived) {
                 if showsArchived { await archived.load(.wheels(archived: true), api: app.api) }
@@ -83,7 +93,9 @@ struct WheelsListScreen: View {
         if let value = wheels.value {
             if wheels.isOffline { OfflineLine().listRowBackground(Color.clear) }
             if value.items.isEmpty {
-                EmptyState(line: "No wheels yet. Make a wheel for the nail tips you swatch.")
+                EmptyState(line: "No wheels yet. Make a wheel for the nail tips you swatch.", action: "Make one") {
+                    showsNewWheel = true
+                }
                     .listRowBackground(Color.clear)
                     .listRowSeparator(.hidden)
             } else {

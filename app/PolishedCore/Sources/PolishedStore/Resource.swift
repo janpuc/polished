@@ -54,6 +54,18 @@ public final class Resource<Value: Decodable & Sendable> {
         }
     }
 
+    /// Changes the value in place: an optimistic toggle, before the server has answered.
+    public func update(_ change: (inout Value) -> Void) {
+        guard var current = value else { return }
+        change(&current)
+        value = current
+    }
+
+    /// Forgets the value (a choice that has been overtaken by the server's own).
+    public func clear() {
+        value = nil
+    }
+
     /// The server's answer is the new value without a snapshot detour (a second page, "Another").
     public func set(_ newValue: Value) {
         value = newValue

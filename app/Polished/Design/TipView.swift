@@ -23,6 +23,19 @@ enum TipPainting {
     case direct
 }
 
+private struct TipSweepKey: EnvironmentKey {
+    static let defaultValue: CGFloat? = nil
+}
+
+extension EnvironmentValues {
+    /// Where the one specular sweep is across the tips below, from about -0.1 (not yet on the
+    /// nail) to 1.45 (gone); nil draws none. The arrival of a new bottle sets it (docs/NATIVE.md 5.7).
+    var tipSweep: CGFloat? {
+        get { self[TipSweepKey.self] }
+        set { self[TipSweepKey.self] = newValue }
+    }
+}
+
 /// A tip under one light: the painted nail of `TipCanvas` inside the v3 treatment of
 /// `app.css` `.tip` (docs/advice/fable-v3-web-2026-10-26.md 2.4): a contact shadow, a die-cut
 /// edge, and on the face the mat, the rim, the occlusion, a specular pool and the 115 degree
@@ -39,6 +52,7 @@ struct TipView: View {
 
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.tipSweep) private var sweep
 
     init(
         _ recipe: TipRecipe?, size: TipSize, dimensions: CGSize? = nil, light: TipLight = .static,
@@ -85,6 +99,15 @@ struct TipView: View {
             TipSurfaceLight(light: light, poolAlpha: Self.softPool, bandAlpha: Self.softBand, chrome: true)
                 .blendMode(.softLight)
             TipSurfaceLight(light: light, poolAlpha: Self.liftPool, bandAlpha: Self.liftBand, chrome: false)
+            if let sweep {
+                // One band of light crossing the nail on the 115 degree diagonal.
+                Rectangle()
+                    .fill(
+                        LinearGradient(
+                            colors: [.white.opacity(0), .white.opacity(0.55), .white.opacity(0)],
+                            startPoint: UnitPoint(x: sweep - 0.3, y: 0.1), endPoint: UnitPoint(x: sweep + 0.1, y: 0.9)))
+                    .allowsHitTesting(false)
+            }
         }
         .compositingGroup()
         .clipShape(TipShape())

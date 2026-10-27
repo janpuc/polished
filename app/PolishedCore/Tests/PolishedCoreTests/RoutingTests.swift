@@ -141,4 +141,33 @@ struct RouterTests {
         #expect(router.focusSearch)
         #expect(router.path(.shades).isEmpty)
     }
+
+    @Test func aNewTagAddressReplacesTheOldOneInEveryStack() {
+        let router = Router()
+        router.paths[.wheels] = [.wheel(slug: "k3m9xq")]
+        router.paths[.shades] = [.shade(3), .wheel(slug: "k3m9xq")]
+        router.paths[.home] = [.wheel(slug: "other1")]
+        router.replaceWheelSlug("k3m9xq", with: "t4n8qb")
+        #expect(router.path(.wheels) == [.wheel(slug: "t4n8qb")])
+        #expect(router.path(.shades) == [.shade(3), .wheel(slug: "t4n8qb")])
+        #expect(router.path(.home) == [.wheel(slug: "other1")])
+    }
+
+    @Test func aDeletedWheelLeavesEveryStack() {
+        let router = Router()
+        router.paths[.wheels] = [.wheel(slug: "k3m9xq")]
+        router.paths[.shades] = [.shade(3), .wheel(slug: "k3m9xq")]
+        router.closeWheel(slug: "k3m9xq")
+        #expect(router.path(.wheels).isEmpty)
+        #expect(router.path(.shades) == [.shade(3)])
+    }
+
+    @Test func twoWheelsSwapTheirAddresses() {
+        let router = Router()
+        router.paths[.wheels] = [.wheel(slug: "aaaaaa")]
+        router.paths[.shades] = [.wheel(slug: "bbbbbb")]
+        router.swapWheelSlugs("aaaaaa", "bbbbbb")
+        #expect(router.path(.wheels) == [.wheel(slug: "bbbbbb")])
+        #expect(router.path(.shades) == [.wheel(slug: "aaaaaa")])
+    }
 }

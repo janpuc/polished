@@ -4,6 +4,8 @@ import PolishedModels
 /// Answers from recorded responses (`spec/api/fixtures/*.json`, each `{request, status, body}`):
 /// for SwiftUI previews and tests. A GET is matched by its path and query; a fixture recorded
 /// without a query also answers the same path with one (`/shades?q=…` falls back to `/shades`).
+/// A write is answered by the first success recorded for its method and path (by file name); the
+/// error recordings are for the tests of `APIError`.
 public final class FixtureAPI: PolishedAPI {
     private struct Recording: Decodable {
         struct Request: Decodable {
@@ -17,16 +19,28 @@ public final class FixtureAPI: PolishedAPI {
     }
 
     private let bodies: [String: Data]
+    /// Every write by `"METHOD path"`, with the status it was recorded with.
+    private let writes: [String: (status: Int, body: Data)]
 
     public init(directory: URL) throws {
         var bodies: [String: Data] = [:]
+        var writes: [String: (status: Int, body: Data)] = [:]
         let files = try FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil)
-        for file in files where file.pathExtension == "json" {
+        for file in files.sorted(by: { $0.lastPathComponent < $1.lastPathComponent }) where file.pathExtension == "json" {
             let recording = try JSONDecoder().decode(Recording.self, from: Data(contentsOf: file))
-            guard recording.request.method == "GET", recording.status == 200 else { continue }
-            bodies[recording.request.path] = try JSONEncoder().encode(recording.body)
+            let body = try JSONEncoder().encode(recording.body)
+            if recording.request.method != "GET" {
+                let key = "\(recording.request.method) \(recording.request.path)"
+                // The first success wins; a failure only fills a gap.
+                let isSuccess = (200..<300).contains(recording.status)
+                let keepsEarlier = writes[key].map { (200..<300).contains($0.status) || !isSuccess } ?? false
+                if !keepsEarlier { writes[key] = (recording.status, body) }
+            } else if recording.status == 200 {
+                bodies[recording.request.path] = body
+            }
         }
         self.bodies = bodies
+        self.writes = writes
     }
 
     public func get<Value: Decodable & Sendable>(_ endpoint: Endpoint<Value>) async throws -> Value {
@@ -40,6 +54,18 @@ public final class FixtureAPI: PolishedAPI {
 
     public func cached<Value: Decodable & Sendable>(_ endpoint: Endpoint<Value>) async -> Value? {
         try? await get(endpoint)
+    }
+
+    /// A write is answered by the recording of the same method and path, whatever its body.
+    public func send<Response: Decodable & Sendable>(_ request: Request<Response>) async throws -> Response {
+        guard let recorded = writes["\(request.method) \(request.path)"] else { throw APIError.notFound }
+        guard (200..<300).contains(recorded.status) else { throw APIError.from(status: recorded.status, body: recorded.body) }
+        if recorded.status == 204, let none = NoContent() as? Response { return none }
+        do {
+            return try APICoding.makeDecoder().decode(Response.self, from: recorded.body)
+        } catch {
+            throw APIError.malformed(String(describing: error))
+        }
     }
 
     public func exchange(_ request: ExchangeRequest) async throws -> ExchangeResponse {

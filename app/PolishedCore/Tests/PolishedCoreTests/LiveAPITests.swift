@@ -111,6 +111,74 @@ struct LiveAPITests {
         #expect(json["app_version"] == "1.0.0")
         #expect(json["platform"] == "ios")
     }
+
+    @Test func sendsAWriteWithItsBodyAndDecodesTheAnswer() async throws {
+        let seen = Mutex<URLRequest?>(nil)
+        let body = Mutex<Data?>(nil)
+        let answer = try Fixtures.data("api/fixtures/wishlist_add.json").extractingBody()
+        StubProtocol.handler = { request in
+            seen.withLock { $0 = request }
+            body.withLock { $0 = request.bodyStreamData() }
+            return (200, [:], answer)
+        }
+        let item = try await makeAPI().send(.wish(shadeID: 1, priority: 2))
+        #expect(item.id == 4)
+        let request = try #require(seen.withLock { $0 })
+        #expect(request.httpMethod == "PUT")
+        #expect(request.url?.path == "/api/v1/shades/1/wishlist")
+        #expect(request.value(forHTTPHeaderField: "Authorization") == "Bearer dev")
+        #expect(request.value(forHTTPHeaderField: "Content-Type") == "application/json")
+        #expect(body.withLock { $0 } == Data(#"{"priority":2}"#.utf8))
+    }
+
+    @Test func aNoContentAnswerIsNoContent() async throws {
+        StubProtocol.handler = { _ in (204, [:], Data()) }
+        let none = try await makeAPI().send(.deleteBottle(id: 7))
+        #expect(none == NoContent())
+    }
+
+    @Test func aWriteRefusedWithFieldsThrowsThem() async throws {
+        let answer = try Fixtures.data("api/fixtures/error_validation_bottle.json").extractingBody()
+        StubProtocol.handler = { _ in (422, [:], answer) }
+        do {
+            _ = try await makeAPI().send(.addBottle(shadeID: 1, BottleRequest()))
+            Issue.record("expected a validation error")
+        } catch APIError.validation(let field, _, let fields) {
+            #expect(field == "state")
+            #expect(fields.count == 3)
+        }
+    }
+
+    @Test func aCooldownCarriesItsWait() async throws {
+        let answer = try Fixtures.data("api/fixtures/error_cooldown.json").extractingBody()
+        StubProtocol.handler = { _ in (429, ["Retry-After": "3600"], answer) }
+        do {
+            _ = try await makeAPI().send(.runSync())
+            Issue.record("expected a cooldown")
+        } catch APIError.cooldown(let seconds, _) {
+            #expect(seconds == 3600)
+        }
+    }
+
+    @Test func aSyncAlreadyRunningIsAConflict() async throws {
+        StubProtocol.handler = { _ in
+            (409, [:], Data(#"{"error":{"code":"sync_running","message":"A sync is already running."}}"#.utf8))
+        }
+        do {
+            _ = try await makeAPI().send(.runSync())
+            Issue.record("expected a conflict")
+        } catch APIError.conflict(let code, _) {
+            #expect(code == "sync_running")
+        }
+    }
+
+    @Test func aWriteWithoutATokenSignsOutOn401() async throws {
+        let signedOut = Mutex(false)
+        StubProtocol.handler = { _ in (401, [:], Data(#"{"error":{"code":"unauthorized","message":"x"}}"#.utf8)) }
+        let api = makeAPI(token: nil, onUnauthorized: { signedOut.withLock { $0 = true } })
+        await #expect(throws: APIError.unauthorized) { try await api.send(.wear(shadeID: 1)) }
+        #expect(signedOut.withLock { $0 })
+    }
 }
 
 @Suite("FixtureAPI")

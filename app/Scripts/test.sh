@@ -41,6 +41,11 @@ xcrun xcresulttool get test-results summary --path "$OUT/result.xcresult" --comp
 mkdir -p "$OUT/shots"
 xcrun xcresulttool export attachments --path "$OUT/result.xcresult" --output-path "$OUT/shots" >/dev/null
 python3 Scripts/rename_attachments.py "$OUT/shots"
+# Disk is short: the screenshots stay, the result bundle goes, and only the newest run is kept.
+rm -rf "$OUT/result.xcresult"
+for old in "$HOME"/.cache/polished/native/2*/; do
+  [ "${old%/}" = "$OUT" ] || rm -rf "$old"
+done
 echo "screenshots: $OUT/shots"
 echo "$OUT" > build/last-test-run.txt
 exit "$status"

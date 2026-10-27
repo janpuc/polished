@@ -31,6 +31,14 @@ public final class ShadeListModel {
         return .shades(page1)
     }
 
+    /// Changes one shade wherever the list holds it (an optimistic heart).
+    public func update(shadeID: Int, _ change: (inout ShadeRow) -> Void) {
+        first.update { page in
+            if let index = page.items.firstIndex(where: { $0.id == shadeID }) { change(&page.items[index]) }
+        }
+        if let index = extra.firstIndex(where: { $0.id == shadeID }) { change(&extra[index]) }
+    }
+
     /// Forgets the extra pages when the query changed under them.
     public func syncExtra() {
         guard extraKey != endpoint.key else { return }

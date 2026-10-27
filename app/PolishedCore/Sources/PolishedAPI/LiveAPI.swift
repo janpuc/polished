@@ -69,6 +69,20 @@ public final class LiveAPI: PolishedAPI {
         return try? decode(Value.self, from: stored.body)
     }
 
+    // MARK: Writes
+
+    public func send<Response: Decodable & Sendable>(_ request: Request<Response>) async throws -> Response {
+        var http = makeRequest(request.method, request.path)
+        if let body = request.body {
+            http.httpBody = body
+            http.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        }
+        let (data, response) = try await perform(http)
+        guard (200..<300).contains(response.statusCode) else { throw failure(response.statusCode, data) }
+        if data.isEmpty, let none = NoContent() as? Response { return none }
+        return try decode(Response.self, from: data)
+    }
+
     // MARK: Auth
 
     public func exchange(_ exchange: ExchangeRequest) async throws -> ExchangeResponse {
@@ -108,6 +122,8 @@ public final class LiveAPI: PolishedAPI {
             return (data, http)
         } catch let error as URLError where error.code == .cancelled {
             throw CancellationError()
+        } catch let error as URLError where error.code == .timedOut {
+            throw APIError.timeout
         } catch is URLError {
             throw APIError.offline
         }

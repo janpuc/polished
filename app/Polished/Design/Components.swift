@@ -16,6 +16,22 @@ struct PrimaryButtonStyle: ButtonStyle {
     }
 }
 
+/// The one filled action of a screen that cannot be undone (Delete wheel): Bad fill, white text.
+struct DestructiveButtonStyle: ButtonStyle {
+    @Environment(\.isEnabled) private var isEnabled
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.headline)
+            .foregroundStyle(Color.white)
+            .frame(maxWidth: .infinity, minHeight: 50)
+            .background(Color.bad, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .opacity(isEnabled ? 1 : 0.4)
+            .pressScale(configuration.isPressed, reduceMotion: reduceMotion)
+    }
+}
+
 /// Everything else that is a button: Fill with ink text, same size.
 struct SecondaryButtonStyle: ButtonStyle {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -42,6 +58,23 @@ struct CompactButtonStyle: ButtonStyle {
             .padding(.horizontal, 14)
             .frame(minHeight: 40)
             .background(Color.fill, in: Capsule())
+            .frame(minHeight: 44)
+            .contentShape(Rectangle())
+            .pressScale(configuration.isPressed, reduceMotion: reduceMotion)
+    }
+}
+
+/// The filled action inside a hero card: Primary capsule, 44 pt tall to tap.
+struct CompactPrimaryButtonStyle: ButtonStyle {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(Color.primaryOn)
+            .padding(.horizontal, 16)
+            .frame(minHeight: 40)
+            .background(Color.primaryFill, in: Capsule())
             .frame(minHeight: 44)
             .contentShape(Rectangle())
             .pressScale(configuration.isPressed, reduceMotion: reduceMotion)
@@ -98,6 +131,7 @@ struct SectionHeading: View {
 struct EmptyState: View {
     let line: String
     var action: String?
+    var perform: () -> Void = {}
 
     var body: some View {
         VStack(spacing: 20) {
@@ -108,7 +142,7 @@ struct EmptyState: View {
                 .foregroundStyle(Color.ink2)
                 .multilineTextAlignment(.center)
             if let action {
-                Button(action) {}
+                Button(action, action: perform)
                     .buttonStyle(PrimaryButtonStyle())
                     .frame(maxWidth: 280)
             }

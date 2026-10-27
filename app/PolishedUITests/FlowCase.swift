@@ -69,6 +69,74 @@ class FlowCase: XCTestCase {
         return element
     }
 
+    /// Waits until `element` is gone.
+    @MainActor
+    func waitUntilGone(_ element: XCUIElement, _ message: String, timeout: TimeInterval = 15) {
+        let expectation = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: element)
+        if XCTWaiter().wait(for: [expectation], timeout: timeout) != .completed {
+            step("FAILED \(message)")
+            XCTFail(message)
+        }
+    }
+
+    /// Any element whose label contains `text`.
+    @MainActor
+    func labelled(_ text: String) -> XCUIElement {
+        app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS %@", text)).firstMatch
+    }
+
+    /// Opens a menu and picks one of its items.
+    @MainActor
+    func choose(_ item: String, from menu: XCUIElement) {
+        waitFor(menu, "the menu for \(item)")
+        menu.tap()
+        let entry = app.buttons[item].firstMatch
+        waitFor(entry, "the menu item \(item)", timeout: 8)
+        entry.tap()
+    }
+
+    /// Scrolls until `element` is clear of the navigation bar and the floating tab bar: an element
+    /// can be "hittable" while a bar still covers it, and the tap then lands on the bar. (A form's
+    /// lazy rows are not there at all until they scroll in.)
+    @MainActor
+    func scrollTo(_ element: XCUIElement, _ message: String) {
+        let screen = app.windows.firstMatch.frame
+        var swipes = 0
+        while swipes < 12 {
+            if element.exists, element.isHittable {
+                let frame = element.frame
+                if frame.minY < 150 {
+                    app.swipeDown()
+                } else if frame.maxY > screen.height - 140 {
+                    app.swipeUp()
+                } else {
+                    break
+                }
+            } else {
+                app.swipeUp()
+            }
+            swipes += 1
+        }
+        waitFor(element, message, timeout: 3)
+        // A tap on a scroll view that is still decelerating only stops it.
+        sleep(1)
+    }
+
+    /// A button of the confirmation that just came up (an action sheet on a phone, a popover on
+    /// an iPad), not the button of the same name that opened it.
+    @MainActor
+    func dialogButton(_ title: String) -> XCUIElement {
+        let candidates = [app.sheets.buttons[title], app.popovers.buttons[title], app.alerts.buttons[title]]
+        let deadline = Date().addingTimeInterval(8)
+        while Date() < deadline {
+            if let found = candidates.first(where: { $0.exists }) { return found.firstMatch }
+            usleep(200_000)
+        }
+        step("FAILED the confirmation button \(title)")
+        XCTFail("the confirmation button \(title)")
+        return candidates[0]
+    }
+
     @MainActor
     func tapTab(_ title: String) {
         // A phone's tab bar, or the floating bar at the top of an iPad.
@@ -83,7 +151,10 @@ class FlowCase: XCTestCase {
     func waitForLabel(_ element: XCUIElement, containing text: String, timeout: TimeInterval = 15) {
         let predicate = NSPredicate(format: "label CONTAINS %@", text)
         let expectation = XCTNSPredicateExpectation(predicate: predicate, object: element)
-        XCTAssertEqual(XCTWaiter().wait(for: [expectation], timeout: timeout), .completed, "\(element) label should contain \(text)")
+        if XCTWaiter().wait(for: [expectation], timeout: timeout) != .completed {
+            step("FAILED label should contain \(text)")
+            XCTFail("\(element) label should contain \(text); it is \(element.label)")
+        }
     }
 
     /// Opens the search field (a button on a phone, the field itself on a regular width).

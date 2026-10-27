@@ -95,12 +95,14 @@ private struct CollectionList: View {
     @State private var groups = Resource<BottleGroups>()
     @State private var state: BottleState?
     @State private var archived = false
+    @State private var bottleSheet: BottleSheetMode?
 
     private var endpoint: Endpoint<BottleGroups> { .bottles(state: state?.rawValue, archived: archived) }
 
     var body: some View {
         content
             .revalidating(groups, endpoint)
+            .sheet(item: $bottleSheet) { BottleSheet(mode: $0) }
     }
 
     @ViewBuilder
@@ -130,12 +132,17 @@ private struct CollectionList: View {
             ForEach(value.groups) { group in
                 Section {
                     ForEach(group.bottles) { bottle in
-                        NavigationLink(value: Route.shade(group.shade.id)) {
-                            BottleRow(bottle: bottle)
-                                .padding(.horizontal, -16)
-                                .padding(.vertical, -8)
+                        BottleRow(
+                            bottle: bottle,
+                            onEdit: { bottleSheet = .edit(bottle, group.shade) },
+                            onLevel: { level in Task { await setLevel(bottle, to: level) } }
+                        )
+                        .listRowInsets(EdgeInsets())
+                        .listRowBackground(Color.surface)
+                        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                            Button(bottle.archived ? "Restore" : "Archive") { Task { await archive(bottle) } }
+                                .tint(Color.ink2)
                         }
-                        .rowSurface(.shade(group.shade.id), selection: selection)
                     }
                 } header: {
                     NavigationLink(value: Route.shade(group.shade.id)) {
@@ -163,6 +170,30 @@ private struct CollectionList: View {
             ProgressView().frame(maxWidth: .infinity).padding(.top, 60)
                 .listRowBackground(Color.clear)
         }
+    }
+
+    /// The level changes in this list at once; the write follows.
+    private func setLevel(_ bottle: Bottle, to level: BottleState) async {
+        let groups = groups
+        await app.writes.changeLevel(bottle, to: level) { id, change in
+            groups.update { value in
+                for group in value.groups.indices {
+                    if let index = value.groups[group].bottles.firstIndex(where: { $0.id == id }) {
+                        change(&value.groups[group].bottles[index])
+                    }
+                }
+            }
+        }
+    }
+
+    private func archive(_ bottle: Bottle) async {
+        var patch = BottlePatch()
+        patch.archived = .set(!bottle.archived)
+        do {
+            _ = try await app.writes.perform(.updateBottle(id: bottle.id, patch), affecting: .bottleChange)
+        } catch let error as APIError {
+            app.writes.show("Couldn\u{2019}t \(bottle.archived ? "restore" : "archive") it. \(error.message)", kind: .failure)
+        } catch {}
     }
 
     private var levelChips: some View {

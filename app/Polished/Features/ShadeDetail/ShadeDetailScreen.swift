@@ -5,13 +5,17 @@ import PolishedStore
 import SwiftUI
 
 /// One shade: its lit tip on the plate, the shop's photos, the bottles owned, the facts, and the
-/// wheels it is swatched on (docs/NATIVE.md 5.2). Read-only until run 3.
+/// wheels it is swatched on (docs/NATIVE.md 5.2). Add bottle, the heart and the bottles' levels
+/// write; the tip colour can be set by hand.
 struct ShadeDetailScreen: View {
     let id: Int
     @Environment(AppModel.self) private var app
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var detail = Resource<ShadeDetail>()
     @State private var storePage: URL?
+    @State private var bottleSheet: BottleSheetMode?
+    /// A heart tap is in flight: the next one waits for the item's id.
+    @State private var heartBusy = false
 
     var body: some View {
         ScrollView {
@@ -34,18 +38,29 @@ struct ShadeDetailScreen: View {
         .background(Color.board)
         .navigationTitle("")
         .toolbarTitleDisplayMode(.inline)
+        .toolbar {
+            if horizontalSizeClass == .regular, let shade = detail.value?.shade {
+                ToolbarItem(placement: .primaryAction) {
+                    Button("Add bottle", systemImage: "plus") { bottleSheet = .add(shade) }
+                        .keyboardShortcut("n")
+                }
+            }
+        }
         .revalidating(detail, .shade(id: id))
         .safariSheet($storePage)
+        .sheet(item: $bottleSheet) { BottleSheet(mode: $0) }
     }
 
     @ViewBuilder
     private func content(_ value: ShadeDetail) -> some View {
         let shade = value.shade
         plate(value)
+        actions(value)
         if !value.images.isEmpty { photos(value.images, title: shade.title) }
         if !value.bottles.isEmpty { bottles(value.bottles) }
         facts(value)
         if !value.swatchedOn.isEmpty { swatched(value.swatchedOn) }
+        TipColourSection(detail: detail, value: value)
         if let store = value.storeUrl, let url = URL(string: store) {
             Button {
                 storePage = url
@@ -70,6 +85,59 @@ struct ShadeDetailScreen: View {
     private func plate(_ value: ShadeDetail) -> some View {
         let shade = value.shade
         return DetailPlate(shade: shade, onSale: value.onSale)
+    }
+
+    // MARK: Actions
+
+    /// Add bottle, and the heart: on the wishlist or not.
+    private func actions(_ value: ShadeDetail) -> some View {
+        let wished = value.wishlist != nil
+        return HStack(spacing: 12) {
+            Button("Add bottle") { bottleSheet = .add(value.shade) }
+                .buttonStyle(PrimaryButtonStyle())
+                .accessibilityIdentifier("add-bottle")
+            Button {
+                Task { await toggleHeart(value) }
+            } label: {
+                Image(systemName: wished ? "heart.fill" : "heart")
+                    .font(.title3)
+                    .foregroundStyle(wished ? Color.heart : Color.ink)
+                    .frame(width: 54, height: 50)
+                    .background(Color.fill, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(wished ? "On the wishlist, tap to remove" : "Add to the wishlist")
+            .accessibilityAddTraits(wished ? .isSelected : [])
+            .accessibilityIdentifier("wishlist-heart")
+            .sensoryFeedback(.selection, trigger: wished)
+        }
+    }
+
+    /// The heart is optimistic: it flips at once, and flips back with a status line when the
+    /// server refuses.
+    private func toggleHeart(_ value: ShadeDetail) async {
+        guard !heartBusy else { return }
+        heartBusy = true
+        defer { heartBusy = false }
+        let detail = detail
+        let shadeID = value.shade.id
+        if let entry = value.wishlist {
+            await app.writes.toggle(
+                lane: "wish-\(shadeID)", .removeWish(id: entry.id), affecting: .wishlistChange,
+                failure: "Couldn\u{2019}t save. Still on your wishlist.",
+                apply: { detail.update { $0.wishlist = nil; $0.shade.wishlisted = false } },
+                revert: { detail.update { $0.wishlist = entry; $0.shade.wishlisted = true } })
+        } else {
+            await app.writes.toggle(
+                lane: "wish-\(shadeID)", .wish(shadeID: shadeID), affecting: .wishlistChange,
+                failure: "Couldn\u{2019}t save. Not on your wishlist.",
+                apply: { detail.update { $0.wishlist = WishlistEntry(id: 0, priority: 2, note: nil); $0.shade.wishlisted = true } },
+                revert: { detail.update { $0.wishlist = nil; $0.shade.wishlisted = false } },
+                onSuccess: { item in
+                    detail.update { $0.wishlist = WishlistEntry(id: item.id, priority: item.priority, note: item.note) }
+                })
+        }
     }
 
     // MARK: Photos
@@ -105,11 +173,23 @@ struct ShadeDetailScreen: View {
             SectionHeading(title: bottles.count == 1 ? "Bottle" : "Bottles")
             VStack(spacing: 0) {
                 ForEach(Array(bottles.enumerated()), id: \.element.id) { index, bottle in
-                    BottleRow(bottle: bottle)
+                    BottleRow(
+                        bottle: bottle,
+                        onEdit: { if let shade = detail.value?.shade { bottleSheet = .edit(bottle, shade) } },
+                        onLevel: { level in Task { await setLevel(bottle, to: level) } })
                     if index < bottles.count - 1 { Divider().padding(.leading, 16) }
                 }
             }
             .groupCard()
+        }
+    }
+
+    private func setLevel(_ bottle: Bottle, to level: BottleState) async {
+        let detail = detail
+        await app.writes.changeLevel(bottle, to: level) { id, change in
+            detail.update { value in
+                if let index = value.bottles.firstIndex(where: { $0.id == id }) { change(&value.bottles[index]) }
+            }
         }
     }
 
@@ -191,6 +271,7 @@ struct DetailPlate: View {
     var body: some View {
         HStack(alignment: .center, spacing: 22) {
             TipView(shade.recipe, size: .xl, painting: .direct)
+                .arrival(of: shade.id)
                 .padding(.vertical, 10)
             VStack(alignment: .leading, spacing: 8) {
                 Text(shade.title)
@@ -262,43 +343,95 @@ struct DetailPlate: View {
 }
 
 /// One bottle in a group: when it was bought and for how much, when it was opened, the notes; the
-/// level at the trailing edge, the P code as the lightest fact.
+/// level at the trailing edge as a menu that changes it, the P code as the lightest fact. The
+/// body opens the edit sheet.
 struct BottleRow: View {
     let bottle: Bottle
+    var onEdit: (() -> Void)?
+    var onLevel: ((BottleState) -> Void)?
 
     var body: some View {
         HStack(alignment: .center, spacing: 12) {
-            VStack(alignment: .leading, spacing: 3) {
-                HStack(alignment: .firstTextBaseline, spacing: 8) {
-                    Text(bottle.factsLine)
-                        .font(.subheadline)
-                        .foregroundStyle(Color.ink)
-                    if let code = bottle.printedCode {
-                        Text(code)
-                            .font(.footnote)
-                            .monospacedDigit()
-                            .foregroundStyle(Color.ink3)
-                    }
-                }
-                if let opened = Words.day(bottle.openedOn) {
-                    Text("Opened \(opened)")
-                        .font(.footnote)
-                        .foregroundStyle(Color.ink2)
-                }
-                if let notes = bottle.notes {
-                    Text(notes)
-                        .font(.footnote)
-                        .foregroundStyle(Color.ink2)
-                        .lineLimit(2)
-                }
+            Button {
+                onEdit?()
+            } label: {
+                info
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .contentShape(Rectangle())
             }
-            Spacer(minLength: 8)
-            LevelLabel(state: bottle.state)
+            .buttonStyle(.plain)
+            .disabled(onEdit == nil)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(bottle.spokenLabel)
+            .accessibilityHint(onEdit == nil ? "" : "Edit this bottle")
+            .accessibilityAddTraits(onEdit == nil ? [] : .isButton)
+            .accessibilityIdentifier("bottle-\(bottle.id)")
+            if let onLevel {
+                LevelMenu(bottle: bottle, choose: onLevel)
+            } else {
+                LevelLabel(state: bottle.state)
+            }
         }
         .padding(.horizontal, 16)
-        .padding(.vertical, 12)
+        .padding(.vertical, 6)
         .frame(minHeight: 50)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(bottle.spokenLabel)
+    }
+
+    private var info: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Text(bottle.factsLine)
+                    .font(.subheadline)
+                    .foregroundStyle(Color.ink)
+                if let code = bottle.printedCode {
+                    Text(code)
+                        .font(.footnote)
+                        .monospacedDigit()
+                        .foregroundStyle(Color.ink3)
+                }
+            }
+            if let opened = Words.day(bottle.openedOn) {
+                Text("Opened \(opened)")
+                    .font(.footnote)
+                    .foregroundStyle(Color.ink2)
+            }
+            if let notes = bottle.notes {
+                Text(notes)
+                    .font(.footnote)
+                    .foregroundStyle(Color.ink2)
+                    .lineLimit(2)
+            }
+        }
+        .padding(.vertical, 6)
+    }
+}
+
+/// The level, tappable: its arc and word, and a menu of the four levels. The change is optimistic.
+struct LevelMenu: View {
+    let bottle: Bottle
+    let choose: (BottleState) -> Void
+
+    var body: some View {
+        Menu {
+            Picker("Level", selection: Binding(get: { bottle.state }, set: choose)) {
+                ForEach(BottleState.allCases, id: \.self) { level in
+                    Text(level.label).tag(level)
+                }
+            }
+        } label: {
+            HStack(spacing: 6) {
+                LevelLabel(state: bottle.state)
+                Image(systemName: "chevron.up.chevron.down")
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(Color.ink3)
+                    .accessibilityHidden(true)
+            }
+            .frame(minHeight: 44)
+            .contentShape(Rectangle())
+        }
+        .accessibilityLabel("Level, \(bottle.state.label)")
+        .accessibilityHint("Change how much is left")
+        .accessibilityIdentifier("bottle-level-\(bottle.id)")
+        .sensoryFeedback(.selection, trigger: bottle.state)
     }
 }

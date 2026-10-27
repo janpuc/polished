@@ -4,26 +4,28 @@ import PolishedModels
 import Testing
 
 /// A recorded response of `spec/api/fixtures/`: `{request, status, body}`.
-private struct Recording {
+struct Recording {
     var method: String
     var path: String
+    var requestBody: Any?
     var status: Int
     var body: Any
     var bodyData: Data
 }
 
-private func recording(_ file: String) throws -> Recording {
+func recording(_ file: String) throws -> Recording {
     let root = try #require(try Fixtures.json("api/fixtures/\(file)") as? [String: Any])
     let request = try #require(root["request"] as? [String: Any])
     let body = try #require(root["body"])
     let data = try JSONSerialization.data(withJSONObject: body, options: [.fragmentsAllowed])
     return Recording(
         method: request["method"] as? String ?? "", path: request["path"] as? String ?? "",
+        requestBody: request["body"],
         status: root["status"] as? Int ?? 0, body: body, bodyData: data)
 }
 
 /// The keys of `original` (non-null values) that `reencoded` lacks: what the DTO silently dropped.
-private func droppedKeys(_ original: Any, _ reencoded: Any, path: String = "") -> [String] {
+func droppedKeys(_ original: Any, _ reencoded: Any, path: String = "") -> [String] {
     switch (original, reencoded) {
     case (let original as [String: Any], let reencoded as [String: Any]):
         return original.flatMap { key, value -> [String] in

@@ -14,9 +14,22 @@ final class AppModel {
     let serverURL: URL
     let api: any PolishedAPI
     let router = Router()
+    /// Every write goes through here (docs/NATIVE.md 2.3).
+    let writes: WriteCoordinator
     let launch: LaunchOptions
     /// For Settings: whether the token is the launch argument's, which has nothing to revoke.
     let usesDevToken: Bool
+
+    /// The household's time zone from `/me`, which decides what "today" is for dates the server
+    /// checks; the phone's until it arrives.
+    private(set) var day = HouseholdDay()
+    /// The last bottle added, so its shade's tip can arrive (docs/NATIVE.md 5.7, moment 3).
+    private(set) var arrival = Arrival(shadeID: 0, serial: 0)
+
+    struct Arrival: Equatable {
+        var shadeID: Int
+        var serial: Int
+    }
 
     @ObservationIgnored private let cache: SnapshotStore?
 
@@ -37,7 +50,7 @@ final class AppModel {
         self.session = session
         let cache = (try? SnapshotStore.make(inMemory: launch.inMemoryCache)) ?? (try? SnapshotStore.make(inMemory: true))
         self.cache = cache
-        api = LiveAPI(
+        let live = LiveAPI(
             baseURL: launch.server,
             appVersion: Self.version,
             token: { session.token },
@@ -49,9 +62,22 @@ final class AppModel {
                     await cache?.clear()
                 }
             })
+        api = live
+        writes = WriteCoordinator(api: live, cache: cache)
         if launch.forceSignedOut { session.signOut() }
         if let tab = launch.tab { router.tab = tab }
         router.focusSearch = launch.focusSearch
+    }
+
+    /// Reads the household's time zone once signed in.
+    func loadHouseholdZone() async {
+        guard let me = try? await api.me(), let zone = TimeZone(identifier: me.server.timezone) else { return }
+        day = HouseholdDay(timeZone: zone)
+    }
+
+    /// A bottle of `shadeID` was just added: its tip arrives wherever it is on screen.
+    func arrive(shadeID: Int) {
+        arrival = Arrival(shadeID: shadeID, serial: arrival.serial + 1)
     }
 
     /// The device name the server lists under Devices.

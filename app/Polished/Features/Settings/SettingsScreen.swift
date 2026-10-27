@@ -12,6 +12,17 @@ struct SettingsScreen: View {
     @State private var devices = Resource<Devices>()
     @State private var sync = Resource<SyncStatus>()
     @State private var confirmsSignOut = false
+    @State private var syncPhase = SyncPhase.idle
+    @State private var showsManualShade = false
+
+    /// What "Sync now" is doing.
+    private enum SyncPhase: Equatable {
+        case idle
+        /// Started; polling the status until it ends.
+        case running
+        /// Told no: the sentence to show.
+        case refused(String)
+    }
 
     var body: some View {
         List {
@@ -69,6 +80,14 @@ struct SettingsScreen: View {
                 } else {
                     ProgressView()
                 }
+                syncControl
+            }
+            .listRowBackground(Color.surface)
+
+            Section {
+                Button("Add a shade by hand") { showsManualShade = true }
+                    .foregroundStyle(Color.ink)
+                    .accessibilityIdentifier("add-shade-by-hand")
             }
             .listRowBackground(Color.surface)
 
@@ -104,9 +123,75 @@ struct SettingsScreen: View {
             async let c: Void = sync.load(.sync(), api: app.api)
             _ = await (a, b, c)
         }
+        .sheet(isPresented: $showsManualShade) {
+            ManualShadeSheet { id in
+                dismiss()
+                app.router.open(.shade(id: id))
+            }
+        }
         .confirmationDialog("Sign out of Polished on this device?", isPresented: $confirmsSignOut, titleVisibility: .visible) {
             Button("Sign out", role: .destructive) { Task { await app.signOut() } }
         }
+    }
+
+    // MARK: Sync now
+
+    /// The button, and the sentence under it when the server said no (a sync is running, or the
+    /// last one was too recent: `retry_after_s`).
+    @ViewBuilder
+    private var syncControl: some View {
+        let running = syncPhase == .running || sync.value?.running == true
+        Button {
+            Task { await syncNow() }
+        } label: {
+            HStack {
+                Text(running ? "Syncing\u{2026}" : "Sync now").foregroundStyle(Color.ink)
+                Spacer()
+                if running { ProgressView() }
+            }
+            .frame(minHeight: 44)
+        }
+        .disabled(running)
+        .accessibilityIdentifier("sync-now")
+        if case .refused(let line) = syncPhase {
+            Text(line)
+                .font(.footnote)
+                .foregroundStyle(Color.ink2)
+                .accessibilityIdentifier("sync-refused")
+        }
+    }
+
+    private func syncNow() async {
+        syncPhase = .running
+        do {
+            _ = try await app.writes.perform(.runSync(), affecting: .syncStarted)
+        } catch APIError.conflict(let code, _) where code == "sync_running" {
+            syncPhase = .running
+            await watchSync()
+            return
+        } catch APIError.cooldown(let seconds, let message) {
+            syncPhase = .refused(message.isEmpty ? "The last sync was a moment ago. Try again in \(Words.wait(seconds: seconds))." : message)
+            return
+        } catch let error as APIError {
+            syncPhase = .refused(error.message)
+            return
+        } catch {
+            syncPhase = .idle
+            return
+        }
+        await watchSync()
+    }
+
+    /// Polls the sync status every two seconds until the run has ended (at most two minutes).
+    private func watchSync() async {
+        for _ in 0..<60 {
+            await sync.load(.sync(), api: app.api)
+            if sync.value?.running != true { break }
+            try? await Task.sleep(for: .seconds(2))
+            if Task.isCancelled { return }
+        }
+        syncPhase = .idle
+        await app.writes.didWrite(.syncStarted)
     }
 
     private func row(_ title: String, _ value: String) -> some View {

@@ -1,8 +1,8 @@
 import Foundation
 import PolishedModels
 
-/// The server contract as the app sees it (`spec/api/openapi.yaml`): one async method per GET and
-/// the auth calls. The requirements `get` and `cached` carry every GET; the named methods in the
+/// The server contract as the app sees it (`spec/api/openapi.yaml`): one async method per GET, one
+/// for every write and the auth calls. The requirements `get` and `cached` carry every GET; the named methods in the
 /// extension are the contract's endpoints spelled out, so a screen reads `api.home()` and a test
 /// double implements only `get`.
 public protocol PolishedAPI: Sendable {
@@ -10,6 +10,10 @@ public protocol PolishedAPI: Sendable {
     func get<Value: Decodable & Sendable>(_ endpoint: Endpoint<Value>) async throws -> Value
     /// The last answer kept for the endpoint, if any; never touches the network.
     func cached<Value: Decodable & Sendable>(_ endpoint: Endpoint<Value>) async -> Value?
+
+    /// A write of the contract (`Request` names them). A 2xx answer decodes to `Response`
+    /// (`NoContent` for a 204); anything else throws the `APIError` of its status.
+    func send<Response: Decodable & Sendable>(_ request: Request<Response>) async throws -> Response
 
     /// `POST /auth/exchange`: public; the code and the verifier are the credential.
     func exchange(_ request: ExchangeRequest) async throws -> ExchangeResponse

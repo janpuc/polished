@@ -51,6 +51,14 @@ public actor SnapshotStore: ResponseCache {
         try? modelContext.save()
     }
 
+    public func invalidate(prefixes: [String]) {
+        let records = (try? modelContext.fetch(FetchDescriptor<SnapshotRecord>())) ?? []
+        for record in records where prefixes.contains(where: { record.key.hasPrefix($0) }) {
+            modelContext.delete(record)
+        }
+        try? modelContext.save()
+    }
+
     public func clear() {
         try? modelContext.delete(model: SnapshotRecord.self)
         try? modelContext.save()

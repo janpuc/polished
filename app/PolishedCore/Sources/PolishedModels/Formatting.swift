@@ -31,6 +31,12 @@ public enum Words {
         return "\(parts[2]) \(months[parts[1] - 1]) \(parts[0])"
     }
 
+    /// 3600 -> "1 h", 3660 -> "61 min", 45 -> "1 min": a wait, rounded up, for "try again in ...".
+    public static func wait(seconds: Int) -> String {
+        let minutes = max(1, (seconds + 59) / 60)
+        return minutes >= 60 && minutes % 60 == 0 ? "\(minutes / 60) h" : "\(minutes) min"
+    }
+
     /// "2026-10-26" -> a date at noon UTC, for weekday names; nil when it is not a date.
     public static func date(_ iso: String) -> Date? {
         let parts = iso.prefix(10).split(separator: "-").compactMap { Int($0) }

@@ -88,6 +88,12 @@ public struct WishlistEntry: Codable, Sendable, Hashable {
     public var id: Int
     public var priority: Int
     public var note: String?
+
+    public init(id: Int, priority: Int, note: String?) {
+        self.id = id
+        self.priority = priority
+        self.note = note
+    }
 }
 
 /// `GET /shades/{id}`.

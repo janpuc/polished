@@ -16,8 +16,10 @@ public enum APIError: Error, Sendable, Equatable {
     case cooldown(retryAfterSeconds: Int, message: String)
     /// 400 `bad_request`, `bad_code`.
     case badRequest(code: String, message: String)
-    /// No connection, a timeout, or the server unreachable.
+    /// No connection, or the server unreachable.
     case offline
+    /// The server did not answer in time; the one error a toggle retries.
+    case timeout
     case server(status: Int)
     /// The body did not match the contract.
     case malformed(String)
@@ -32,6 +34,7 @@ public enum APIError: Error, Sendable, Equatable {
         case .validation(_, let message, _): message
         case .cooldown(_, let message): message
         case .offline: "You're offline."
+        case .timeout: "The server took too long to answer."
         case .server: "The server had a problem. Try again in a moment."
         case .malformed: "The server sent something the app doesn't understand."
         }

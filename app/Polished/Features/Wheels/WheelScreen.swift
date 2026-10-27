@@ -5,12 +5,20 @@ import PolishedStore
 import SwiftUI
 
 /// One wheel: its name in Fraunces, the ring of real tips with the count in the hub, and the
-/// swatches as a list. A slot opens the swatch (docs/NATIVE.md 5.2). Reading only until run 4.
+/// swatches as a list; at the foot Rename, the tag's moves and Delete (docs/NATIVE.md 5.2). A slot
+/// opens the swatch; the builder arrives in run 4.
 struct WheelScreen: View {
     let slug: String
     @Environment(AppModel.self) private var app
     @State private var wheel = Resource<WheelDetail>()
     @State private var picked: Tile?
+    @State private var sheet: WheelSheet?
+    @State private var confirmsNewTag = false
+
+    private enum WheelSheet: String, Identifiable {
+        case rename, delete, takeTag
+        var id: String { rawValue }
+    }
 
     var body: some View {
         ScrollView {
@@ -39,6 +47,43 @@ struct WheelScreen: View {
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
         }
+        .sheet(item: $sheet) { which in
+            if let value = wheel.value {
+                switch which {
+                case .rename:
+                    RenameWheelSheet(wheel: value) { archived in
+                        if archived { app.router.closeWheel(slug: slug) }
+                    }
+                case .delete:
+                    DeleteWheelSheet(wheel: value) { swatches in
+                        app.router.closeWheel(slug: slug)
+                        app.writes.show(
+                            swatches == 0 ? "Deleted \(value.name)" : "Deleted \(value.name) and \(swatches) swatch\(swatches == 1 ? "" : "es")")
+                    }
+                case .takeTag:
+                    TakeTagSheet(wheel: value) { other, moved in
+                        app.router.swapWheelSlugs(slug, other.slug)
+                        app.writes.show("\(value.name) took the tag of \(other.name)")
+                    }
+                }
+            }
+        }
+        .confirmationDialog("Make a new tag URL?", isPresented: $confirmsNewTag, titleVisibility: .visible) {
+            Button("New tag URL", role: .destructive) { Task { await newTag() } }
+        } message: {
+            Text("The old sticker will stop working.")
+        }
+    }
+
+    private func newTag() async {
+        guard let value = wheel.value else { return }
+        do {
+            let renewed = try await app.writes.perform(.regenerateTag(wheelID: value.id), affecting: .wheelChange)
+            app.router.replaceWheelSlug(slug, with: renewed.slug)
+            app.writes.show("New tag URL. Write it to the sticker again.")
+        } catch let error as APIError {
+            app.writes.show("Couldn\u{2019}t make a new tag URL. \(error.message)", kind: .failure)
+        } catch {}
     }
 
     @ViewBuilder
@@ -62,7 +107,45 @@ struct WheelScreen: View {
                     swatches(value)
                 }
             }
+            foot(value)
         }
+    }
+
+    /// Rename (with Archive under it), the tag's moves, and the red Delete.
+    private func foot(_ value: WheelDetail) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            SectionHeading(title: "This wheel")
+            VStack(spacing: 0) {
+                footRow(value.archived ? "Rename or restore" : "Rename or archive", id: "rename-wheel") { sheet = .rename }
+                Divider().padding(.leading, 16)
+                footRow("New tag URL", id: "new-tag-url") { confirmsNewTag = true }
+                if !value.others.isEmpty {
+                    Divider().padding(.leading, 16)
+                    footRow("Take the tag of…", id: "take-the-tag") { sheet = .takeTag }
+                }
+                Divider().padding(.leading, 16)
+                footRow("Delete", color: Color.bad, id: "delete-wheel") { sheet = .delete }
+            }
+            .groupCard()
+        }
+        .padding(.top, 8)
+    }
+
+    private func footRow(_ title: String, color: Color = Color.ink, id: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack {
+                Text(title).foregroundStyle(color)
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(Color.ink3)
+            }
+            .padding(.horizontal, 16)
+            .frame(minHeight: 50)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier(id)
     }
 
     private func ring(_ value: WheelDetail) -> some View {

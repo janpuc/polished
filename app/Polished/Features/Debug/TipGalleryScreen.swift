@@ -68,7 +68,7 @@ private struct GalleryBoard: View {
                 .font(.title2.weight(.semibold))
                 .foregroundStyle(Color.ink)
                 .accessibilityIdentifier("gallery-\(scheme == .light ? "light" : "dark")")
-            WearTodayHero(wear: Wear(shade: SampleShade.acidDrip.row, bottle: Bottle(id: 1, shadeId: 31, state: .half, printedCode: "P12"), wornToday: false)) {}
+            WearTodayHero(wear: Wear(shade: SampleShade.acidDrip.row, bottle: Bottle(id: 1, shadeId: 31, state: .half, printedCode: "P12"), wornToday: false), wore: {}, another: {})
             ForEach([TipSize.xl, .l, .m, .s], id: \.self) { size in
                 GallerySection(size: size, cases: cases)
             }
