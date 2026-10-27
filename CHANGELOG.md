@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.7.0](https://github.com/janpuc/polished/compare/v0.6.0...v0.7.0) (2026-10-27)
+
+
+### Features
+
+* **app:** every screen reading real data (Home, Shades with fuzzy search, shade detail, Bottles, History, Wishlist, Wheels and the ring, Settings), sign-in with PKCE, deep links, offline cache, simulator flows on iPhone, iPad and iPhone Duo ([2b361b1](https://github.com/janpuc/polished/commit/2b361b102168b6d2a05a6f920e4484f9d9cd6fa8))
+* web Home shelf (Wear today with I wore this and Another, Recently added rack on the ledge, wheel card, collection numbers), arrival moment, view transitions, empty states ([89a4d6d](https://github.com/janpuc/polished/commit/89a4d6d7dc55940974f1088570ca1c7bc58986c0))
+
+
+### Documentation
+
+* roadmap notes multi-brand catalog, crowdsourced identification, curated wheels, single-nail swatches, hand view ([435e5c0](https://github.com/janpuc/polished/commit/435e5c042bc9f4fd3e288f0c2b0da17d2778a133))
+
 ## [0.6.0](https://github.com/janpuc/polished/compare/v0.5.0...v0.6.0) (2026-10-26)
 
 
