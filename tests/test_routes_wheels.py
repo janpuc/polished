@@ -346,7 +346,7 @@ def test_a_filled_tip_is_the_stack_drawing_and_never_a_photo(client, catalog):
 
 def test_home_opens_on_the_ring_of_the_wheel_touched_last(catalog, client):
     page = client.get("/").text
-    assert "No wheels yet" in page and 'href="/wheels"' in page
+    assert "No wheels yet" in page and 'href="/wheels"' in page and "Make one" in page
     assert page.count('class="slot slot-pos-') == 12 and "is-filled" not in page
     quiet = wheels.create(catalog, "Winter")
     busy = wheels.create(catalog, "Holos")
@@ -354,14 +354,14 @@ def test_home_opens_on_the_ring_of_the_wheel_touched_last(catalog, client):
     page = client.get("/").text
     slug = wheels.get(catalog, busy)["slug"]
     assert f'<a class="home-wheel" href="/w/{slug}">' in page
-    assert "<strong>Holos</strong>, 1 of 20" in page and "Winter" not in page
-    assert page.count('class="slot slot-pos-') == 20 and 'class="ring ring-home"' in page
+    assert 'class="home-wheel-name">Holos<' in page and "1 of 20" in page and "Winter" not in page
+    assert page.count('class="slot slot-pos-') == 20 and 'class="ring ring-card"' in page
     swatch(catalog, quiet, 1, "flakie-holo-taco")
     catalog.execute(
         "update stack set updated_at = '2030-01-01T00:00:00.000Z' where id = ?",
         (wheels.slot_tile(catalog, wheels.get(catalog, quiet), 1)["stack_id"],),
     )
-    assert "<strong>Winter</strong>, 1 of 20" in client.get("/").text
+    assert 'class="home-wheel-name">Winter<' in client.get("/").text
 
 
 def test_swatched_on_rows_lead_with_the_stack_tip(catalog, client):

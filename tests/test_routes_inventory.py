@@ -379,21 +379,24 @@ def test_the_owned_filter_lists_only_owned_shades(seeded):
 def test_home_shows_counts_and_recent_bottles(seeded):
     client, conn = seeded
     html = client.get("/").text
-    assert "bottles</a>" not in html and "Recent bottles" not in html  # nothing to count yet
-    assert "No bottles yet" in html and 'href="/lookup?scan=1"' in html
+    assert "Collection" not in html and "All 0 bottles" not in html  # nothing to count yet
+    assert "Nothing to wear yet" in html and 'href="/lookup?scan=1"' in html
     make_bottle(client, conn, "thirst-trap", printed_code="259")
     make_bottle(client, conn, "thirst-trap")
     make_bottle(client, conn, "peely-base", state="half")
     client.post(f"/shades/{sid(conn, 'rest-in-peach')}/wishlist")
     html = client.get("/").text
-    line = re.search(r'<p class="stats-line">(.*?)</p>', html, re.S).group(1)
-    assert re.findall(r'<a href="([^"]+)">([^<]+)</a>', line) == [
-        ("/bottles", "3 bottles"),
-        ("/shades?owned=owned", "2 shades"),
-        ("/wishlist", "1 wished"),
+    section = re.search(r'<div class="collection">(.*?)</div>', html, re.S).group(1)
+    assert re.findall(
+        r'<a class="count[^"]*" href="([^"]+)">.*?count-n">(\d+)<.*?label">([^<]+)<', section, re.S
+    ) == [
+        ("/bottles", "3", "bottles"),
+        ("/shades?owned=owned", "2", "shades"),
+        ("/wishlist", "1", "wished, $13.50"),
     ]
-    assert "Recent bottles" in html and "No bottles yet" not in html
-    assert re.findall(r'class="shelf-title">([^<]+)<', html)[:3] == [
+    assert "Recently added" in html and "Nothing to wear yet" not in html
+    assert ">All 3 bottles</a>" in html
+    assert re.findall(r'class="rack-name">([^<]+)<', html)[:3] == [
         "Peely Base",
         "Thirst Trap",
         "Thirst Trap",
@@ -403,8 +406,10 @@ def test_home_shows_counts_and_recent_bottles(seeded):
 def test_home_groups_the_browse_links_and_keeps_the_rest_on_more(seeded):
     client, _ = seeded
     html = client.get("/").text
-    for href in ("/shades", "/shades?kind=topper", "/more"):
+    for href in ("/shades", "/shades?kind=topper"):
         assert f'class="group-link" href="{href}"' in html
+    assert html.count('class="group-link"') == 3  # the mark beside the greeting leads to More
+    assert 'class="greeting-mark" href="/more"' in html
     for kept_out in ("/shades/new", "/sync", "/identifiers", "Sign out"):
         assert kept_out not in html
     more = client.get("/more")

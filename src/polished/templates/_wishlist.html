@@ -1,3 +1,4 @@
+{% from "_tip.html" import unpainted %}
 {# Everything on the wishlist page that a change can alter: the checkout head and the groups. #}
 <div id="wishlist">
   {% if bought %}<p class="notice" role="status">{{ bought }} bottle{{ '' if bought == 1 else 's' }} added. See them in <a href="/bottles/history">History</a>.</p>{% endif %}
@@ -13,7 +14,7 @@
   {% endfor %}
   {% else %}
   <div class="empty-state">
-    <div class="nail-glyph" aria-hidden="true"></div>
+    {{ unpainted("l") }}
     <h2>Nothing on the wishlist</h2>
     <p>Open a shade and tap Wishlist to save it for the next order.</p>
     <a class="btn" href="/shades">Browse shades</a>

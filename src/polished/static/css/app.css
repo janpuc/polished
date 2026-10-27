@@ -99,6 +99,7 @@
   --tip-l-h: 118px;
   --tip-xl-w: 96px;
   --tip-xl-h: 158px;
+  --rack-pitch: 88px;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -374,9 +375,12 @@ h3 {
    because Safari's automatic optical sizing would pick the text cut at these sizes. */
 .greeting,
 .title-detail,
+.wear-name,
 .title-wheel,
 .wheel-name,
-.hub-name {
+.home-wheel-name,
+.hub-name,
+.count-n {
   font-family: var(--display);
   font-weight: 600;
   font-variation-settings: "opsz" 144;
@@ -1670,113 +1674,373 @@ mark {
   font-size: 0.8125rem;
 }
 
-/* 8. Home */
-.shelf {
+/* 8. Home: the shelf (docs/VISUAL.md section 6). One column on the phone in the order hero, rack,
+   wheel, collection, links; the rail and panel shells set it in two columns (section 17). */
+.home-cols {
+  display: block;
+}
+
+.home-col:first-child > section:first-child > .section-title {
+  margin-top: 24px;
+}
+
+.section-head {
   display: flex;
-  gap: 12px;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 2rem 0 0.75rem;
+}
+
+.section-head .section-title {
+  margin: 0;
+}
+
+.section-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--tap);
+  margin: -10px 0;
+  color: var(--ink-2);
+  font-size: 0.9375rem;
+  line-height: 1.25rem;
+  font-weight: 600;
+  text-decoration: none;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.section-link:active {
+  color: var(--ink);
+}
+
+/* Wear today: the shade on a plate (--velvet: the surface by day, the darkest plum by night, so
+   holo and glitter have something to stand out from). The phone sets the tip and the name side by
+   side and the two buttons under them; once the slot is wide enough (a container query, since the
+   slot is what the shell makes narrow or wide) the buttons move beside the tip. */
+.wear-slot {
+  container-type: inline-size;
+}
+
+.wear {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+  border: 1px solid transparent;
+  border-radius: 20px;
+  background: var(--velvet);
+  box-shadow: var(--ring-edge);
+}
+
+.wear-tip {
+  display: block;
+  padding-bottom: 6px;
+}
+
+.wear-text {
+  display: contents;
+}
+
+.wear-name,
+.wear-lead {
+  margin: 0;
+}
+
+.wear-name {
+  font-size: 1.75rem;
+  line-height: 1.9375rem;
+  text-wrap: balance;
+  overflow-wrap: break-word;
+}
+
+/* The link is the name; padding gives a finger 44px to hit without moving the text. */
+.wear-name a {
+  display: inline-block;
+  margin-block: -7px;
+  padding-block: 7px;
+  color: inherit;
+  text-decoration: none;
+}
+
+.wear-lead {
+  font-size: 1.375rem;
+  line-height: 1.75rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.wear-facts {
+  margin: 6px 0 0;
+  color: var(--ink-2);
+  font-size: 0.9375rem;
+  line-height: 1.25rem;
+  text-wrap: pretty;
+}
+
+.wear-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  gap: 8px;
+}
+
+.wear-actions .btn {
+  flex: 1 1 0;
+}
+
+.wear-actions .btn-secondary {
+  flex: 0 0 auto;
+}
+
+/* "Worn today" takes the place of the filled button: ink, a check, nothing to press. */
+.wear-done {
+  display: flex;
+  flex: 1 1 0;
+  align-items: center;
+  gap: 8px;
+  min-height: 50px;
+  margin: 0;
+  font-size: 1.0625rem;
+  line-height: 1.375rem;
+  font-weight: 600;
+}
+
+.wear-done:focus {
+  outline: none;
+}
+
+.wear-done .icon {
+  flex: none;
+}
+
+@container (min-width: 440px) {
+  .wear {
+    column-gap: 24px;
+    padding: 24px;
+  }
+
+  .wear-text {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    min-width: 0;
+  }
+
+  .wear-actions .btn,
+  .wear-done {
+    flex: 0 0 auto;
+  }
+
+  .wear-actions .btn {
+    padding: 0 24px;
+  }
+}
+
+/* The rack: a horizontal list of tips standing on the ledge. The ledge belongs to the rack, not to
+   the scrolling list, so it runs the full width and stays still while the tips pass over it; the
+   contact shadows of the tips rest on it. The tips stand 88px apart on the phone, 104 on the
+   rail and 120 from 1280 (--rack-pitch), and the next one peeks over the edge. */
+.rack {
+  --rack-pad: 8px;
+  position: relative;
   margin: 0 calc(-1 * var(--gutter));
-  padding: 4px var(--gutter) 8px;
+}
+
+.rack::before,
+.rack::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  left: 0;
+  pointer-events: none;
+}
+
+.rack::before {
+  top: calc(var(--rack-pad) + var(--tip-l-h));
+  height: 1.5px;
+  background: var(--line);
+}
+
+.rack::after {
+  top: calc(var(--rack-pad) + var(--tip-l-h) + 1.5px);
+  height: 10px;
+  background: linear-gradient(rgb(var(--shadow-ink) / 0.08), transparent);
+}
+
+.rack-list {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  margin: 0;
+  padding: var(--rack-pad) var(--gutter) 0;
   overflow-x: auto;
-  scroll-snap-type: x proximity;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory;
   scroll-padding-inline: var(--gutter);
   scrollbar-width: none;
   list-style: none;
 }
 
-.shelf::-webkit-scrollbar {
+.rack-list::-webkit-scrollbar {
   display: none;
 }
 
-.shelf-item {
-  display: flex;
-  flex: none;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  width: 80px;
-  color: var(--ink);
-  text-align: center;
-  text-decoration: none;
+.rack-list > li,
+.rack-list.is-empty > .rack-item {
+  flex: 0 0 var(--rack-pitch);
   scroll-snap-align: start;
 }
 
-.shelf-item .shelf-title {
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  font-size: 0.8125rem;
-  line-height: 1.125rem;
-  font-weight: 500;
-  overflow-wrap: anywhere;
-}
-
-/* The wheel Home opens on: its ring at 200px, tips only, and one line under it. The whole block
-   is the link. */
-.home-wheel {
+.rack-item {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
-  margin: 16px calc(-1 * var(--gutter)) 0;
-  padding: 8px var(--gutter) 0;
+  padding-bottom: 12px;
+  color: var(--ink);
+  text-align: center;
+  text-decoration: none;
+}
+
+.rack .tip::before {
+  bottom: -7px;
+  height: 10px;
+}
+
+/* A tip on the ledge keeps the edge and the contact shadow; the lift is for tips on paper. */
+.rack .tip-face {
+  box-shadow: 0 0 0 1.5px var(--surface), 0 1px 2px rgb(var(--shadow-ink) / 0.18);
+}
+
+.rack-name {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  margin-top: 18px;
+  padding: 0 2px;
+  overflow: hidden;
+  font-size: 0.8125rem;
+  line-height: 1.125rem;
+  font-weight: 600;
+  text-wrap: balance;
+  overflow-wrap: anywhere;
+}
+
+.rack-empty {
+  margin: 8px 0 0;
+  color: var(--ink-2);
+  font-size: 0.9375rem;
+  line-height: 1.25rem;
+}
+
+@media (prefers-color-scheme: dark) {
+  .rack::after {
+    background: linear-gradient(rgb(0 0 0 / 0.3), transparent);
+  }
+
+  .rack .tip-face {
+    box-shadow: 0 0 0 1px oklch(1 0 0 / 0.14), 0 1px 2px rgb(0 0 0 / 0.5);
+  }
+}
+
+/* The wheel Home opens on: a card with its ring at 132px (tips only), the name in the display face
+   and how far it is. The whole card is the link, so it has no chevron to take the room. */
+.home-wheel {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+  border: 1px solid transparent;
+  border-radius: var(--r-group);
+  background: var(--surface);
+  box-shadow: var(--ring-edge);
   color: inherit;
   text-decoration: none;
 }
 
-.home-wheel-line {
-  display: inline-flex;
-  align-items: center;
-  min-height: var(--tap);
-  color: var(--ink-2);
-  font-size: 1.0625rem;
-  line-height: 1.375rem;
-  font-variant-numeric: tabular-nums;
+.home-wheel:active {
+  background: var(--fill);
 }
 
-.home-wheel-line strong {
-  color: var(--ink);
-  font-weight: 600;
-}
-
-.home-wheel-line .icon {
-  margin-left: 2px;
-  color: var(--ink-3);
-}
-
-.home-wheel:active .home-wheel-line {
-  color: var(--ink);
-}
-
-/* Counts as one quiet line of links. */
-.stats-line {
+.home-wheel-text {
   display: flex;
-  flex-wrap: wrap;
-  column-gap: 0.75ch;
-  margin: 8px 0 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.home-wheel-name {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  font-size: 1.375rem;
+  line-height: 1.5rem;
+  text-wrap: balance;
+  overflow-wrap: anywhere;
+}
+
+/* With no wheel the name is only a sentence, not a wheel's name. */
+.home-wheel.is-empty .home-wheel-name {
+  font-family: var(--sans);
+  font-variation-settings: normal;
+  letter-spacing: -0.01em;
+}
+
+.home-wheel-count {
   color: var(--ink-2);
   font-size: 0.9375rem;
   line-height: 1.25rem;
   font-variant-numeric: tabular-nums;
 }
 
-.stats-line a {
-  display: inline-flex;
-  align-items: center;
-  min-height: var(--tap);
-  color: var(--ink);
-  font-weight: 600;
+/* Collection: the three numbers in the display face, each a link to what it counts. A group's
+   concentric radii (16 outside, 3 of padding, 12 inside). */
+.collection {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: start;
+  padding: 3px;
+  border: 1px solid transparent;
+  border-radius: var(--r-group);
+  background: var(--surface);
+  box-shadow: var(--ring-edge);
+}
+
+.count {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 12px;
+  border-radius: var(--r-row);
+  color: inherit;
   text-decoration: none;
 }
 
-.stats-line a:not(:last-child)::after {
-  content: ",";
+.count:active {
+  background: var(--fill);
+}
+
+.count-n {
+  font-size: 1.75rem;
+  line-height: 1.75rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.count-wished .count-n {
+  color: var(--heart);
+}
+
+.count-label {
   color: var(--ink-2);
-  font-weight: 400;
+  font-size: 0.8125rem;
+  line-height: 1.125rem;
+  font-variant-numeric: tabular-nums;
 }
 
 .home-links {
-  margin-top: 16px;
+  margin-top: 32px;
 }
 
 .more-account {
@@ -2539,6 +2803,18 @@ mark {
   margin-top: 12px;
 }
 
+/* The tip of a bottle just added, beside the line that says so. */
+.added-head {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 8px;
+}
+
+.added-head .result-lead {
+  margin: 0;
+}
+
 /* The shade a code resolved to: the bottle photo and the app's own tip side by side. */
 .result-card {
   display: flex;
@@ -2785,6 +3061,15 @@ mark {
   margin: 0 auto;
 }
 
+.ring-card {
+  --ring: 51px;
+  --slot-h: 21px;
+  --rail: 7px;
+  flex: none;
+  width: 132px;
+  margin: 0;
+}
+
 .ring-mini {
   --ring: 28px;
   --slot-h: 14px;
@@ -2882,7 +3167,7 @@ mark {
   background: var(--fill);
 }
 
-.ring:not(.ring-home, .ring-mini) .is-filled .slot-tip::before {
+.ring:not(.ring-home, .ring-card, .ring-mini) .is-filled .slot-tip::before {
   box-shadow: 0 0 0 1.5px var(--surface),
     calc(1px * var(--s)) calc(1px * var(--c)) 2px rgb(var(--shadow-ink) / 0.18),
     calc(6px * var(--s)) calc(6px * var(--c)) 12px -4px rgb(var(--shadow-ink) / 0.35);
@@ -2890,7 +3175,8 @@ mark {
 
 /* The small rings keep the edge and a contact shadow, which is all a tip of 20 by 32 or 9 by 14 can
    carry. */
-.ring-home .is-filled .slot-tip::before {
+.ring-home .is-filled .slot-tip::before,
+.ring-card .is-filled .slot-tip::before {
   box-shadow: 0 0 0 1px var(--surface), calc(0.5px * var(--s)) calc(1.5px * var(--c)) 2px
     rgb(var(--shadow-ink) / 0.3);
 }
@@ -2900,13 +3186,14 @@ mark {
 }
 
 @media (prefers-color-scheme: dark) {
-  .ring:not(.ring-home, .ring-mini) .is-filled .slot-tip::before {
+  .ring:not(.ring-home, .ring-card, .ring-mini) .is-filled .slot-tip::before {
     box-shadow: 0 0 0 1px oklch(1 0 0 / 0.14),
       calc(1px * var(--s)) calc(1px * var(--c)) 2px rgb(0 0 0 / 0.5),
       calc(8px * var(--s)) calc(8px * var(--c)) 14px -4px rgb(0 0 0 / 0.7);
   }
 
   .ring-home .is-filled .slot-tip::before,
+  .ring-card .is-filled .slot-tip::before,
   .ring-mini .is-filled .slot-tip::before {
     box-shadow: 0 0 0 1px oklch(1 0 0 / 0.14), 0 1px 2px rgb(0 0 0 / 0.5);
   }
@@ -2964,8 +3251,9 @@ mark {
   object-fit: cover;
 }
 
-/* The small rings (Home, the wheels list) are too small for light: the mat and nothing else. */
+/* The small rings (the card on Home, the wheels list) are too small for light: the mat and nothing else. */
 .ring-home .tip-art::after,
+.ring-card .tip-art::after,
 .ring-mini .tip-art::after {
   background: none;
   mix-blend-mode: normal;
@@ -4304,6 +4592,7 @@ span.layer-btn {
     --tip-l-h: 144px;
     --tip-xl-w: 120px;
     --tip-xl-h: 197px;
+    --rack-pitch: 104px;
   }
 
   body {
@@ -4331,9 +4620,29 @@ span.layer-btn {
     padding-bottom: calc(env(safe-area-inset-bottom) + 48px);
   }
 
-  /* The shelf's tips are as wide as the shell makes them; the item is a little wider. */
-  .shelf-item {
-    width: calc(var(--tip-l-w) + 8px);
+  /* Home in two columns: the hero and the rack on the left, the wheel, the collection and the
+     links on the right. The rack lines its first tip up with the column's edge (the tip is
+     centred in its pitch, so the list is pulled out by half the difference) and the ledge keeps
+     the column's width. */
+  .home-cols {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 300px;
+    column-gap: 28px;
+    align-items: start;
+  }
+
+  .home-col:last-child > section:first-child > .section-head {
+    margin-top: 24px;
+  }
+
+  .rack {
+    margin-inline: 0;
+  }
+
+  .rack-list {
+    margin-inline: calc((var(--tip-l-w) - var(--rack-pitch)) / 2);
+    padding-inline: 0;
+    scroll-padding-inline: 0;
   }
 
   /* The side nav: an icon rail here, labelled and with a / hint from 1280. */
@@ -4594,6 +4903,11 @@ span.layer-btn {
 
   main.wide {
     max-width: 1120px;
+  }
+
+  .home-cols {
+    grid-template-columns: minmax(0, 1fr) 320px;
+    column-gap: 32px;
   }
 
   body.has-panel,
@@ -4862,6 +5176,12 @@ span.layer-btn {
     --panel-w: 400px;
     --tip-l-w: 96px;
     --tip-l-h: 158px;
+    --rack-pitch: 120px;
+  }
+
+  .greeting {
+    font-size: 2.5rem;
+    line-height: 2.625rem;
   }
 
   .side-brand {
@@ -4994,6 +5314,96 @@ span.layer-btn {
 
 .tag-steps-wide[open] summary .icon {
   rotate: 90deg;
+}
+
+/* 18. Arrivals and view transitions (docs/VISUAL.md section 8). Two authored moments, both on
+   named properties and both once: a new bottle's tip arrives (scale and opacity on a spring-like
+   curve with one specular sweep across it) and a row's tip carries over to the shade page. The
+   hero after "Another" gets the sweep alone. Nothing here runs on a plain page load. Under reduced
+   motion the arrival is a 150ms fade and there is no sweep and no view transition. */
+.tip-face::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(115deg, transparent 38%, oklch(1 0 0 / 0.7) 48%, transparent 58%)
+    100% 0 / 300% 100% no-repeat;
+  opacity: 0;
+  pointer-events: none;
+}
+
+@keyframes tip-arrive {
+  from {
+    opacity: 0;
+    scale: 0.85;
+  }
+}
+
+@keyframes tip-sweep {
+  from {
+    opacity: 1;
+    background-position: 100% 0;
+  }
+
+  to {
+    opacity: 1;
+    background-position: 0 0;
+  }
+}
+
+@keyframes tip-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .rack-item.is-arriving .tip,
+  .added-head.is-arriving .tip {
+    animation: tip-arrive 600ms linear(0, 0.4 7%, 0.8 15%, 1.04 30%, 0.98 45%, 1) both;
+  }
+
+  .rack-item.is-arriving .tip-face::before,
+  .added-head.is-arriving .tip-face::before,
+  .wear.is-arriving .tip-face::before {
+    animation: tip-sweep 700ms cubic-bezier(0.16, 1, 0.3, 1) 100ms both;
+  }
+
+  @view-transition {
+    navigation: auto;
+  }
+
+  /* Only the tip travels; the rest of the page cuts, as it always did. */
+  ::view-transition-old(root) {
+    display: none;
+    animation: none;
+  }
+
+  ::view-transition-new(root) {
+    mix-blend-mode: normal;
+    animation: none;
+  }
+
+  ::view-transition-group(*) {
+    animation-duration: 350ms;
+    animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rack-item.is-arriving .tip,
+  .added-head.is-arriving .tip,
+  .wear.is-arriving {
+    animation: tip-fade 150ms linear both;
+  }
+}
+
+/* chrome.js adds this class for the moment the system changes between light and dark, so the
+   colours of every surface switch together instead of each running its own transition. */
+.theme-switching *,
+.theme-switching *::before,
+.theme-switching *::after {
+  transition: none !important;
 }
 
 /* 14. Preferences */

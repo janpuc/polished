@@ -16,7 +16,7 @@ from starlette.responses import Response
 
 from .. import bottles, identifiers, shades, wishlist
 from ..db import get_conn, transaction
-from ..web import render
+from ..web import render, set_arrival
 
 router = APIRouter()
 
@@ -220,6 +220,7 @@ def create_bottle(
                 **actions_context(conn, shade_id),
             },
         )
+        set_arrival(response, bottle_id)
     response.headers.update(SHEET_CLOSE)
     return response
 

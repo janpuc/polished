@@ -133,6 +133,34 @@ def clear_flash(response: Response) -> None:
     response.delete_cookie(FLASH_COOKIE, path="/")
 
 
+ARRIVED_COOKIE = "polished_arrived"
+ARRIVED_SECONDS = 600
+
+
+def set_arrival(response: Response, bottle_id: int) -> None:
+    """Remembers the bottle just added, so the next Home draws its tip arriving on the rack (the
+    one authored moment, docs/VISUAL.md section 8). A cookie, like the flash line, so a reload does
+    not replay it."""
+    response.set_cookie(
+        ARRIVED_COOKIE,
+        str(bottle_id),
+        max_age=ARRIVED_SECONDS,
+        httponly=True,
+        samesite="lax",
+        path="/",
+    )
+
+
+def pop_arrival(request: Request) -> int | None:
+    """The bottle id set_arrival() left, if any. The response must call clear_arrival()."""
+    raw = request.cookies.get(ARRIVED_COOKIE, "")
+    return int(raw) if raw.isdecimal() else None
+
+
+def clear_arrival(response: Response) -> None:
+    response.delete_cookie(ARRIVED_COOKIE, path="/")
+
+
 def is_partial_request(request: Request) -> bool:
     """HTMX asked for a fragment. A history restore (back button after a reload) needs the whole
     page, which is why historyCacheSize is 0 and the two headers are in Vary."""

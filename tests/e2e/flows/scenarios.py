@@ -652,7 +652,7 @@ def tabs(t: Trace) -> None:
     with t.step("Home"):
         nav.get_by_role("link", name="Home").click()
         expect(page.get_by_role("heading", level=1, name=GREETING)).to_be_visible()
-        expect(page.get_by_text("Recent bottles")).to_be_visible()
+        expect(page.get_by_role("heading", name="Recently added")).to_be_visible()
 
     for tab, heading in (
         ("Shades", "Shades"),
@@ -999,3 +999,267 @@ def tag_page(t: Trace) -> None:
         expect(
             page.get_by_role("button", name=re.compile("Copied|Select and copy"))
         ).to_be_visible()
+
+
+# Home, the shelf (docs/VISUAL.md section 6)
+
+PHONE_SCREEN_PX = 844  # the spec's phone: 390 by 844
+SURFACE = {"light": "rgb(254, 252, 251)", "dark": "rgb(32, 19, 29)"}
+VELVET = {"light": "rgb(254, 252, 251)", "dark": "rgb(15, 7, 14)"}
+
+
+def animation_names(page) -> list[str]:
+    """The CSS animations that are running or holding their end state on the page."""
+    return page.evaluate("document.getAnimations().map((a) => a.animationName)")
+
+
+def wait_for_animation(page, name: str) -> None:
+    page.wait_for_function(
+        "(name) => document.getAnimations().some((a) => a.animationName === name)", arg=name
+    )
+
+
+@flow("home-empty", "Home with nothing yet: unpainted tips, the empty rack and ring, one button")
+def home_empty(t: Trace) -> None:
+    page = t.page
+    hero = page.locator("#wear-slot")
+
+    with t.step("Home says there is nothing to wear and where to start"):
+        t.goto("/")
+        expect(page.get_by_role("heading", level=1, name=GREETING)).to_be_visible()
+        expect(page.get_by_role("heading", level=2, name="Wear today")).to_be_visible()
+        expect(hero.get_by_role("heading", name="Nothing to wear yet")).to_be_visible()
+        expect(hero.get_by_role("link", name="Scan a bottle")).to_be_visible()
+        expect(hero.locator(".tip")).to_have_count(1)
+        expect(hero.get_by_role("button", name="I wore this")).to_have_count(0)
+
+    with t.step("the empty rack is unpainted tips on the ledge and one line"):
+        expect(page.get_by_text("Bottles you add stand here, newest first.")).to_be_visible()
+        expect(page.locator(".rack-list.is-empty .tip")).to_have_count(3)
+        expect(page.locator(".rack-list.is-empty img")).to_have_count(0)
+        expect(page.get_by_role("link", name=re.compile(r"^All \d+ bottles"))).to_have_count(0)
+
+    with t.step("no wheel: the unpainted ring and Make one"):
+        card = page.get_by_role("link", name=re.compile("No wheels yet"))
+        expect(card).to_be_visible()
+        expect(card).to_contain_text("Make one")
+        expect(card).to_have_attribute("href", "/wheels")
+        expect(card.locator(".slot.is-filled")).to_have_count(0)
+        expect(page.get_by_role("heading", level=2, name="Collection")).to_have_count(0)
+
+    with t.step("the empty wishlist draws the unpainted tip"):
+        t.goto("/wishlist")
+        expect(page.get_by_role("heading", name="Nothing on the wishlist")).to_be_visible()
+        expect(page.locator(".empty-state .tip")).to_have_count(1)
+
+
+@flow("home-shelf", "Home as a shelf: hero, rack on its ledge, wheel card, collection, two columns")
+def home_shelf(t: Trace) -> None:
+    page = t.page
+    shell = shell_of(t)
+
+    with t.step("something on the shelf: three bottles, a wish and a wheel with a swatch"):
+        for title in ("Thirst Trap", "Spirit Fingers", "Magnetic Taco"):
+            add_bottle(t, title)
+        open_shade(t, "Mermaid Jelly")
+        page.get_by_role("button", name="Add to the wishlist").click()
+        expect(page.get_by_role("button", name="On the wishlist, tap to remove")).to_be_visible()
+        make_wheel(t, f"Holos {t.uid}")
+        swatch(t, 1, [("thirst trap", "Thirst Trap")])
+
+    with t.step("Home has every part of the shelf"):
+        t.goto("/")
+        expect(page.get_by_role("heading", level=1, name=GREETING)).to_be_visible()
+        for heading in ("Wear today", "Recently added", "Wheels", "Collection"):
+            expect(page.get_by_role("heading", level=2, name=heading)).to_be_visible()
+        expect(page.get_by_role("button", name="I wore this")).to_be_visible()
+        expect(page.get_by_role("button", name="Another")).to_be_visible()
+        expect(page.locator(".rack-item")).to_have_count(3)
+        expect(page.get_by_role("link", name="All 3 bottles")).to_be_visible()
+        expect(page.get_by_role("link", name=re.compile(f"Holos {t.uid}"))).to_be_visible()
+        expect(page.locator(".count-n")).to_have_text(["3", "3", "1"])
+        for link in ("Browse all shades", "Toppers", "New and in stock"):
+            expect(page.get_by_role("link", name=link)).to_be_visible()
+
+    with t.step(f"the {shell} shell sets the sections in its columns", full_page=True):
+        hero = box_of(page.locator(".wear"))
+        rack = box_of(page.locator(".rack"))
+        card = box_of(page.locator(".home-wheel"))
+        links = box_of(page.locator(".home-links"))
+        if shell == "phone":
+            assert card["y"] > rack["y"] + rack["height"], "the wheel card follows the rack"
+            assert links["y"] > card["y"], "the links come last"
+            assert abs(card["x"] - hero["x"]) < 1, "one column"
+            assert (
+                rack["x"] <= 1
+                and rack["width"] >= page.evaluate("document.documentElement.clientWidth") - 1
+            ), "the ledge bleeds"
+            height = page.evaluate("document.documentElement.scrollHeight")
+            assert height <= 2 * PHONE_SCREEN_PX, f"Home is {height}px tall"
+        else:
+            assert card["x"] > hero["x"] + hero["width"], "the wheel card sits right of the hero"
+            assert abs(card["y"] - hero["y"]) < 3, "the two columns start level"
+            assert abs(links["x"] - card["x"]) < 1, "the links are in the second column"
+            assert rack["y"] > hero["y"] + hero["height"], "the rack sits under the hero"
+            assert abs(rack["x"] - hero["x"]) < 1 and abs(rack["width"] - hero["width"]) < 1, (
+                "the rack and the hero share the left column"
+            )
+
+    with t.step("the ledge runs under the tips and the rack snaps"):
+        ledge = page.evaluate(
+            """() => {
+              const rack = document.querySelector('.rack');
+              const tip = rack.querySelector('.tip').getBoundingClientRect();
+              const before = getComputedStyle(rack, '::before');
+              const list = getComputedStyle(rack.querySelector('.rack-list'));
+              return {
+                ledgeTop: rack.getBoundingClientRect().top + parseFloat(before.top),
+                foot: tip.bottom, height: before.height, snap: list.scrollSnapType,
+              };
+            }"""
+        )
+        assert abs(ledge["ledgeTop"] - ledge["foot"]) <= 1, ledge
+        assert ledge["height"] == "1.5px" and "x mandatory" in ledge["snap"], ledge
+
+    with t.step(f"the hero plate is the {'velvet' if t.scheme == 'dark' else 'surface'}"):
+        plate = page.locator(".wear").evaluate("(el) => getComputedStyle(el).backgroundColor")
+        assert plate == VELVET[t.scheme], plate
+        card_fill = page.locator(".home-wheel").evaluate(
+            "(el) => getComputedStyle(el).backgroundColor"
+        )
+        assert card_fill == SURFACE[t.scheme], card_fill
+
+    with t.step("the display face is on the greeting, the shade, the wheel and the numbers"):
+        for selector in (".greeting", ".wear-name", ".home-wheel-name", ".count-n"):
+            face = page.locator(selector).first.evaluate("(el) => getComputedStyle(el).fontFamily")
+            assert face.startswith("Fraunces"), (selector, face)
+        sizes = page.evaluate(
+            "[...document.querySelectorAll('.wear-name, .home-wheel-name, .count-n')]"
+            ".map((el) => parseFloat(getComputedStyle(el).fontSize))"
+        )
+        assert min(sizes) >= 22, sizes
+
+    with t.step("a rack tip opens its shade"):
+        page.locator(".rack-item").first.click()
+        expect(page.get_by_role("heading", level=1)).to_be_visible()
+        assert "/shades/" in page.url
+
+    with t.step("switching the system theme does not smear"):
+        t.goto("/")
+        expect(page.locator(".wear")).to_be_visible()
+        other = "light" if t.scheme == "dark" else "dark"
+        before = page.locator("body").evaluate("(el) => getComputedStyle(el).backgroundColor")
+        page.emulate_media(color_scheme=other)
+        page.wait_for_function(
+            "(was) => getComputedStyle(document.body).backgroundColor !== was", arg=before
+        )
+        page.wait_for_function(
+            "() => !document.documentElement.classList.contains('theme-switching')"
+        )
+        page.emulate_media(color_scheme=t.scheme)
+        expect(page.locator(".wear")).to_be_visible()
+
+
+@flow("wear-today", "Wear today: I wore this flips the hero, Another picks a different shade")
+def wear_today(t: Trace) -> None:
+    page = t.page
+    title = page.locator(".wear-name")
+
+    with t.step("two bottles to choose from"):
+        add_bottle(t, "Thirst Trap")
+        add_bottle(t, "Spirit Fingers")
+        t.goto("/")
+        expect(title).to_be_visible()
+        expect(page.get_by_role("button", name="I wore this")).to_be_visible()
+
+    with t.step("I wore this flips the hero to Worn today, without a page load"):
+        first = title.inner_text()
+        page.evaluate("window.__stay = 'same page'")
+        page.get_by_role("button", name="I wore this").click()
+        expect(page.locator("#wear-slot").get_by_text("Worn today")).to_be_visible()
+        expect(page.get_by_role("button", name="I wore this")).to_have_count(0)
+        expect(title).to_have_text(first)
+        assert page.evaluate("window.__stay") == "same page", "the page reloaded"
+        assert page.evaluate("document.activeElement.id") == "wear-primary", "focus was lost"
+
+    with t.step("a reload still says Worn today"):
+        page.reload()
+        expect(page.locator("#wear-slot").get_by_text("Worn today")).to_be_visible()
+        expect(title).to_have_text(first)
+
+    with t.step("Another shows a different shade with one sweep across its tip"):
+        page.get_by_role("button", name="Another").click()
+        expect(title).not_to_have_text(first)
+        wait_for_animation(page, "tip-sweep")
+        expect(page.get_by_role("button", name="I wore this")).to_be_visible()
+        expect(page.locator(".wear")).to_have_class(re.compile(r"\bis-arriving\b"))
+        assert "tip-arrive" not in animation_names(page), "the hero only sweeps"
+
+    with t.step("wearing it too: both are Worn today in turn"):
+        second = title.inner_text()
+        page.get_by_role("button", name="I wore this").click()
+        expect(page.locator("#wear-slot").get_by_text("Worn today")).to_be_visible()
+        page.reload()
+        expect(title).to_have_text(second)
+
+    with t.step("under reduced motion Another is a fade, with no sweep"):
+        page.emulate_media(reduced_motion="reduce")
+        page.get_by_role("button", name="Another").click()
+        expect(title).not_to_have_text(second)
+        wait_for_animation(page, "tip-fade")
+        names = animation_names(page)
+        assert "tip-sweep" not in names and "tip-arrive" not in names, names
+
+
+@flow(
+    "bottle-arrives", "A new bottle arrives on the rack once, and the tip carries over to its shade"
+)
+def bottle_arrives(t: Trace) -> None:
+    page = t.page
+    nav = page.get_by_role("navigation", name="Main")
+    first = page.locator(".rack-item").first
+
+    with t.step("add a bottle: Home has it first on the rack, arriving"):
+        add_bottle(t, "Thirst Trap")
+        nav.get_by_role("link", name="Home").click()
+        expect(page.get_by_role("heading", level=1, name=GREETING)).to_be_visible()
+        expect(first).to_contain_text("Thirst Trap")
+        expect(first).to_have_class(re.compile(r"\bis-arriving\b"))
+        wait_for_animation(page, "tip-arrive")
+        wait_for_animation(page, "tip-sweep")
+
+    with t.step("it arrives once: a reload leaves it standing"):
+        page.reload()
+        expect(first).to_contain_text("Thirst Trap")
+        expect(page.locator(".rack-item.is-arriving")).to_have_count(0)
+        names = animation_names(page)
+        assert "tip-arrive" not in names and "tip-sweep" not in names, names
+
+    with t.step("under reduced motion the next one fades in, without scale or sweep"):
+        page.emulate_media(reduced_motion="reduce")
+        add_bottle(t, "Spirit Fingers")
+        nav.get_by_role("link", name="Home").click()
+        expect(first).to_contain_text("Spirit Fingers")
+        expect(first).to_have_class(re.compile(r"\bis-arriving\b"))
+        wait_for_animation(page, "tip-fade")
+        names = animation_names(page)
+        assert "tip-arrive" not in names and "tip-sweep" not in names, names
+        page.emulate_media(reduced_motion="no-preference")
+
+    with t.step("a rack tip is named for the view transition as its shade is revealed"):
+        page.add_init_script(
+            """addEventListener('pagereveal', (event) => setTimeout(() => {
+              const tip = document.querySelector('.detail-head .tip');
+              sessionStorage.setItem('vt', JSON.stringify({
+                transition: !!event.viewTransition,
+                name: tip ? tip.style.viewTransitionName : null,
+              }));
+            }, 0));"""
+        )
+        t.goto("/")
+        first.click()
+        expect(page.get_by_role("heading", level=1, name="Spirit Fingers")).to_be_visible()
+        seen = page.evaluate("JSON.parse(sessionStorage.getItem('vt') || 'null')")
+        if seen and seen["transition"]:  # a browser without cross-document transitions skips this
+            shade = re.search(r"/shades/(\d+)", page.url).group(1)
+            assert seen["name"] == f"tip-{shade}", seen

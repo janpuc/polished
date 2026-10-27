@@ -900,7 +900,7 @@ auth gate → routes.
   A stack goes on top of the last opaque layer (the ones below are covered); a jelly tints what is
   below; a topper or a clear base coat adds only its finish, so "One-Coat Black + Flakie Holo Taco"
   is flakes on black. With nothing opaque below, layers go on a sheer nude, so a lone topper shows.
-  Every list shows tips (shade rows, the Home shelf, picker results, the wishlist, bottle groups); the
+  Every list shows tips (shade rows, the Home rack, picker results, the wishlist, bottle groups); the
   bottle photo is kept only in the shade page's strip and the lookup result card.
   **The light on a tip is CSS** (`_tip.html`: `.tip` > `.tip-face` > `<img>`; VISUAL.md section 5): the
   drawing keeps the paint (base, finish, the gloss stripe, the small highlight at (66, 30), the dome whose
@@ -909,8 +909,9 @@ auth gate → routes.
   goes into `revision()`: bump it whenever `render()` draws differently, since the image URLs are cached
   for good and only a new revision makes a browser fetch the new drawing.
 - **The ring at small sizes** (`_mini_ring.html`, the same `.slot` and `.tip` CSS with `--ring`,
-  `--slot-h` and `--rail` set per size, tips only, nothing to tap): `.ring-home` is 200px (radius 78,
-  tips 20 by 32) and links to the wheel from Home with "Holos, 13 of 20"; `.ring-mini` is 72px (radius 28,
+  `--slot-h` and `--rail` set per size, tips only, nothing to tap): `.ring-card` is 132px (radius 51, tips 13 by
+  21) in Home's wheel card, which links to the wheel with its name and "13 of 20, 2 drafts"; `.ring-home` is
+  200px (radius 78, tips 20 by 32) and is now only the Wheels page's empty state; `.ring-mini` is 72px (radius 28,
   tips 9 by 14) in front of each wheel in the Wheels list; at these sizes the tip keeps only its mat (no
   specular pool or rim). A tip is never wider than its pitch on the ring,
   so a 40-slot wheel gets narrower tips instead of overlapping ones. Home shows the wheel whose saved or
@@ -1117,7 +1118,9 @@ builds it.
 
 | Method | Path | Purpose | Response | Stage |
 |---|---|---|---|---|
-| GET | `/` | Home: large title with the icon, search, the most recently touched wheel as a 200px ring, recent bottles as tips, one line of counts as links, a short grouped list (Browse all shades, Toppers, New and in stock, More) | full page | 3 |
+| GET | `/` | Home, the shelf (item 87): the greeting with the icon, search, Wear today (the hero), the six newest bottles as a rack of tips, the most recently touched wheel as a card with a 132px ring, the collection as three numbers that link, and three links (Browse all shades, Toppers, New and in stock). `?another=1&shown={id}` is the hero's "Another" for a browser without htmx | full page | 3 |
+| POST | `/wear/{shade_id}` | "I wore this": logs the shade as worn today in the household's date (one row per shade per day, `wear.record`; 404 for an unknown shade). htmx gets the hero saying "Worn today"; without htmx a 303 to `/`. Origin-checked like every web POST | partial / redirect | 3 |
+| GET | `/wear/another` | A different owned shade than `shown` for the hero (`wear.pick_another`), with `is-arriving` so its tip gets the one sweep; as a page it redirects to `/?another=1&shown=` | partial | 3 |
 | GET | `/more` | Add a shade by hand, Catalog sync, Learned codes, and Sign out under "Signed in as …" | full page | 2b |
 | GET | `/search` | Typeahead rows. Params `q`, `ctx` (`home`, `stack`, `learn`), `filter` (`owned/toppers/all`), `stack_id`, `kind`+`value` for `learn` (422 without a valid code). Row action depends on `ctx`; `home` in stage 3, `learn` in 5, `stack` in 7. Always rows only (the page that asked is on screen), nothing for an empty query. `home` adds a "Look up “259” as a code" link when `q` is all digits or a P code. Ranked and typo-tolerant (section 6); rows mark the matched words with `<mark>` | partial | 3 |
 | GET | `/shades` | Browse list with filters (section 6). A search with words that needed typo tolerance says "N matches, closest first" in the count line (N above one); the first result row is `aria-current` (the cursor of `keys.js`); rows whose names are all but the same as another row of the page carry the official collection, else the release year, as a hint. The filters' `change` trigger listens on `.filter-panel` only, so a change event of the search field does not fire a second, history-pushing request | full page; P = rows + Load more | 3 |
@@ -1839,6 +1842,55 @@ carry the shade page's action bar as an out-of-band copy when `ctx=shade`, becau
     - **Not measured:** WebKit, so iOS Safari's handling of the grabber's `touch-action: none` and of
       `:has()` rules is unverified here; hover tooltips were not screenshotted.
 
+87. **v3 run 3, "the shelf"** (`docs/advice/fable-v3-web-2026-10-26.md` sections 5, 2.5, 2.7 moments 3 and 4 and 6;
+    VISUAL.md section 13 is new). Home is the shelf of the spec's wireframes, in one column on the phone and two
+    from 700. Where it departs from the spec or fills a gap:
+    - **Wear on the web** reuses `wear.py` as it is: `GET /` shows `wear.pick_today`; `POST /wear/{id}` is
+      `wear.record` and answers the hero as a fragment ("Worn today"; a 303 to `/` without htmx); "Another" is
+      `GET /wear/another?shown={id}`, a random draw that excludes the shade on screen (`wear.pick_another`). The
+      page says which shade it shows because the server keeps no state; `/?another=1` does the same for a page
+      load. "Another" is a button with `hx-get`, not a link, since it changes the page without leaving it. After
+      "I wore this" "Another" stays, so a second shade can be worn the same day (`pick_today` then shows the last
+      one worn).
+    - **The hero's heading** is an `h3` under the "Wear today" `h2`; the shade title role (Fraunces 28/31) is its
+      only serif. With nothing owned the empty hero's line is sans, because "Nothing to wear yet" is not a shade's
+      name; likewise "No wheels yet" in the wheel card.
+    - **The rack** is `bottles.recent(6)`: the six newest bottles that are not archived, so one shade with two
+      bottles stands twice. The ledge belongs to the rack, not to the scrolling list, so it spans the full width
+      and stays still. The names go **under** the ledge (the spec's prototype put them above, which left the
+      contact shadows off the ledge, and its checklist asks for the shadows to touch it).
+    - **The wheel card has no chevron**: a 320px column leaves 108px for the text beside a 132px ring, and "14 of 20,
+      1 draft" wrapped; the whole card is the link. "All N" shows only with more than one wheel.
+    - **Collection hides while all three numbers are zero** (as the old stat line did); the wished number is
+      `--heart`, the spec's gradient number having been rejected. The "Passport" link of the prototype is not built
+      (no Passport page in phase 1). The three numbers link to Bottles, owned Shades and the Wishlist.
+    - **More** left the Home links (the spec lists three); the mark beside the greeting, the side nav and the tab
+      bar's More page reach it as before.
+    - **The arrival** (moment 3) happens where a bottle's tip is on screen as it is added. A shade page has no tip
+      on its bottle rows, so adding there sets a ten-minute cookie (`polished_arrived`, the bottle id,
+      like the flash line) that the next Home reads and clears: the new bottle's rack tip arrives once, and a
+      cookie naming any bottle but the newest is ignored. Adding from the lookup page draws the shade's tip arriving
+      in the "Added" result and sets no cookie. The sweep is `.tip-face::before` (the spec's gloss band moved by
+      `background-position`; a registered custom property was not needed).
+    - **The view transition** (moment 4) uses one name per page, `tip-{id}`, set by `static/js/transitions.js` on
+      the row tip as the page is left (`pageswap`) and on the head tip as the next is revealed (`pagereveal`),
+      instead of naming every row: the CSP forbids a style attribute and names must be unique. It has to be a
+      classic script in the head: a deferred or module script can miss `pagereveal`. The root snapshot is not
+      animated (the old one is hidden), so only the tip travels. A transition the browser skips (a screenshot, a
+      second navigation) rejects its promises; `transitions.js` absorbs them, because unobserved they showed as
+      page errors in the browser flows.
+    - **Reduced motion and the theme switch:** the at-rule `@view-transition`, the scale and the sweep are inside
+      `prefers-reduced-motion: no-preference`; reduced motion gets a 150ms fade. `chrome.js` puts `theme-switching`
+      on the root for two animation frames after the system scheme changes, which turns every transition off.
+    - **Empty states:** the unpainted tip replaces the line drawing in the empty Wishlist and stands in the empty
+      hero and rack (three tips on the ledge); the Bottles and History empty states and the 404 page keep the line
+      drawing for now.
+    - **Flows:** new `home-empty`, `home-shelf`, `wear-today` and `bottle-arrives`; the `tabs` flow reads "Recently
+      added". Home was measured at 1433px on the phone profile with nine bottles (two screens of 844 are 1688).
+    - **Not measured:** WebKit, so Safari's cross-document view transition, `linear()` easing and container queries
+      are unverified here (all are Safari 17.2 to 18.2 features with the fallbacks above); the sweep and the
+      arrival were checked in Chromium with the animations paused at 330ms.
+
 ## 15. Home-ops manifests
 
 Prepared as files under `deploy/home-ops/` in this repo (stage 8) for Jan to copy into
@@ -1958,6 +2010,6 @@ The iPhone and iPad app (docs/NATIVE.md) talks to a JSON API under `/api/v1`, in
 
 **17.6 Writes.** Every write of NATIVE.md §3 lives under `src/polished/api/` and calls the domain modules; no rule is restated. Bodies are JSON, a PATCH changes only the keys it sends, money is cents, dates may not pass today in the household timezone, and errors carry the web's sentences (`field`, and `fields` when several are wrong). Stack refusals map as in the web: NotADraft 409, StackFull and EmptyStack 422, the not-found kinds 404. Multi-row writes (`/wishlist/bought`, save, wheel delete, bottle create with its learned P code) are single transactions. A write without a Bearer token is a 401 and changes nothing.
 
-**17.7 Wear.** `wear(shade_id, worn_on, created_at)`, unique per shade per day (migration 009), written by `POST /api/v1/wear/{shade_id}` in the household's local date. `src/polished/wear.py` holds the rules (framework-free, shared with the web's Home): the candidates are shades with a bottle that is neither archived nor empty; today's pick is drawn by a generator seeded with the date, weighted by wearings of the previous 30 days (a recent wearing counts for between 0.1 and 1); the shade already worn today is shown instead; "Another" is a random draw excluding the shown shade, with the same weights counting today too. A sheet-shade merge moves wearings to the shop shade.
+**17.7 Wear.** `wear(shade_id, worn_on, created_at)`, unique per shade per day (migration 009), written by `POST /api/v1/wear/{shade_id}` and, for the web, `POST /wear/{shade_id}` (`routes/wear.py`), in the household's local date. `src/polished/wear.py` holds the rules (framework-free, shared by the API and the web's Home, which call it directly and not through the API): the candidates are shades with a bottle that is neither archived nor empty; today's pick is drawn by a generator seeded with the date, weighted by wearings of the previous 30 days (a recent wearing counts for between 0.1 and 1); the shade already worn today is shown instead; "Another" is a random draw excluding the shown shade, with the same weights counting today too. A sheet-shade merge moves wearings to the shop shade.
 
 **17.8 Shared fixtures.** The tip drawing is split in `tips.py` into `ops(layers)`, a flat list of paint operations (rect with a solid, linear or radial fill, dots, star, polygon, path with an optional blur or a gradient fill, rotated ellipse), and `svg(ops)`, today's markup; `render()` is `svg(ops(layers))`. The random numbers of a tip come from `TipRandom`, SplitMix64 seeded with the shade id (CPython's `random.Random` is not portable), so the app can reproduce them bit for bit. `scripts/make_tip_fixtures.py` records `spec/tips/cases.json` (`{source, cases:[{name, layers, ops}]}`, numbers rounded to 3 decimals, colours lowercase), `spec/tips/random.json` (first values of `random()` and `below(1000)` for five seeds), `spec/identifiers/gtin.json` and `printed.json` (inputs with the output of `normalise_gtin` / `normalise_printed`, rejects as null) and `tests/fixtures/tip_svg_sha1.json` (the sha1 of `render()` for every case, so a change of drawing cannot slip by: it fails until `DRAWING_VERSION` is bumped and the file regenerated). `tests/test_tips_spec.py` fails when any file differs from what the code makes now and checks the ops, the generator and the vectors against them. `DRAWING_VERSION` goes into `revision()`, which is the tip image URL's `?v=` and the API's `Tip.revision`; `revision()` hashes sorted tuples, never a frozenset's repr, so it is the same after every restart (a test runs it under four `PYTHONHASHSEED` values). Dust, glitter and flake positions moved once with `TipRandom` (`DRAWING_VERSION` 3).

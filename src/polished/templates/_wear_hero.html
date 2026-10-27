@@ -1,0 +1,40 @@
+{# The Wear today hero (docs/VISUAL.md section 6): the shade on its plate, the one filled action and
+   "Another". Swapped as a whole into #wear-slot by "I wore this" (POST /wear/{id}, which then says
+   "Worn today") and by "Another" (GET /wear/another), which sets `arriving` for one specular sweep
+   across the new tip. `wear` is None when nothing is owned: the unpainted tip and "Scan a bottle".
+   The ids on the two buttons let htmx give the focus back to the same place after a swap. #}
+{% from "_icons.html" import icon with context %}
+{% from "_tip.html" import tip, unpainted %}
+{% if wear %}
+{% set shade = wear.shade %}
+<div class="wear{% if arriving %} is-arriving{% endif %}{% if wear.worn %} is-worn{% endif %}">
+  <a class="wear-tip" href="/shades/{{ shade.id }}" tabindex="-1" aria-hidden="true">{{ tip(shade, "xl", false) }}</a>
+  <div class="wear-text">
+    <div class="wear-body">
+      <h3 class="wear-name"><a href="/shades/{{ shade.id }}">{{ shade.title }}</a></h3>
+      {% if wear.facts %}<p class="wear-facts">{{ wear.facts }}</p>{% endif %}
+    </div>
+    <div class="wear-actions">
+      {% if wear.worn %}
+      <p id="wear-primary" class="wear-done" tabindex="-1">{{ icon("check") }}Worn today</p>
+      {% else %}
+      <button id="wear-primary" type="button" class="btn" hx-post="/wear/{{ shade.id }}">I wore this</button>
+      {% endif %}
+      <button id="wear-another" type="button" class="btn btn-secondary" hx-get="/wear/another?shown={{ shade.id }}">Another</button>
+    </div>
+  </div>
+</div>
+{% else %}
+<div class="wear is-empty">
+  <div class="wear-tip" aria-hidden="true">{{ unpainted("xl") }}</div>
+  <div class="wear-text">
+    <div class="wear-body">
+      <h3 class="wear-lead">Nothing to wear yet</h3>
+      <p class="wear-facts">Scan the code under a bottle and it turns up here.</p>
+    </div>
+    <div class="wear-actions">
+      <a class="btn" href="/lookup?scan=1">{{ icon("camera") }}Scan a bottle</a>
+    </div>
+  </div>
+</div>
+{% endif %}

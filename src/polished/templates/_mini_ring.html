@@ -1,11 +1,12 @@
 {# The ring of a wheel at a small size: the painted tips on their hairline ring, nothing to tap.
-   `size` is "home" (200px) or "mini" (72px, the wheels list); the CSS (.ring-home, .ring-mini)
+   `size` is "home" (200px, the wheels page with none yet), "card" (132px, Home's wheel card) or
+   "mini" (72px, the wheels list); the CSS (.ring-home, .ring-card, .ring-mini)
    sets the radius and tip height, the slot classes place the tips like the big ring on the wheel
    page. `tiles` come from wheels.slot_grid, or `empty` draws the unpainted ring a new wheel
    starts as. #}
 {% from "_tip_img.html" import stack_tip %}
 {% macro mini_ring(tiles, count, size) -%}
-{% set w, h = {"home": (20, 32), "mini": (9, 14)}[size] -%}
+{% set w, h = {"home": (20, 32), "card": (13, 21), "mini": (9, 14)}[size] -%}
 <span class="ring ring-{{ size }}" aria-hidden="true">
   {%- for tile in tiles %}
   <span class="slot slot-pos-{{ tile.position }} ring-n-{{ count }}{% if tile.filled %} is-filled{% endif %}"><span class="slot-tip"><span class="tip-art">{% if tile.filled %}{{ stack_tip(tile.stack_id, tile.layers, w, h) }}{% endif %}</span></span></span>

@@ -91,7 +91,16 @@ def test_the_display_face_is_used_by_four_roles_and_nothing_else():
     for rule in re.finditer(r"([^{}]+)\{([^{}]*)\}", css):
         if "font-family: var(--display)" in rule.group(2):
             selectors |= {part.strip() for part in rule.group(1).split(",")}
-    assert selectors == {".greeting", ".title-detail", ".title-wheel", ".wheel-name", ".hub-name"}
+    assert selectors == {
+        ".greeting",
+        ".title-detail",
+        ".wear-name",
+        ".title-wheel",
+        ".wheel-name",
+        ".home-wheel-name",
+        ".hub-name",
+        ".count-n",
+    }
     assert "background-clip: text" not in css  # no gradient text
 
 

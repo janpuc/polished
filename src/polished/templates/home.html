@@ -1,9 +1,10 @@
 {% extends "base.html" %}
 {% from "_icons.html" import icon with context %}
-{% from "_tip.html" import tip %}
+{% from "_tip.html" import tip, unpainted %}
 {% from "_mini_ring.html" import mini_ring %}
 {% set tab = "home" %}
 {% block title %}Polished{% endblock %}
+{% block main_class %}wide{% endblock %}
 {% block content %}
 <header class="greeting-head">
   <h1 class="greeting">{{ greeting }}{% if first_name %}, {{ first_name }}{% endif %}</h1>
@@ -23,45 +24,77 @@
   </div>
 </form>
 <div id="search-results" aria-live="polite"></div>
-{% if wheel %}
-<a class="home-wheel" href="/w/{{ wheel.slug }}">
-  {{ mini_ring(tiles, wheel.slot_count, "home") }}
-  <span class="home-wheel-line"><strong>{{ wheel.name }}</strong>, {{ wheel.filled }} of {{ wheel.slot_count }}{{ icon("chevron-right", "icon-sm") }}</span>
-</a>
-{% else %}
-<a class="home-wheel" href="/wheels">
-  {{ mini_ring(tiles, 12, "home") }}
-  <span class="home-wheel-line"><strong>No wheels yet</strong>, make one{{ icon("chevron-right", "icon-sm") }}</span>
-</a>
-{% endif %}
-{% if recent %}
-<h2 class="section-title">Recent bottles</h2>
-<ul class="shelf">
-  {% for bottle in recent %}
-  <li><a class="shelf-item" href="/shades/{{ bottle.shade_id }}">
-    {{ tip(bottle, "l") }}
-    <span class="shelf-title">{{ bottle.title }}</span>
-  </a></li>
-  {% endfor %}
-</ul>
-{% else %}
-<div class="empty-state">
-  <h2>No bottles yet</h2>
-  <p>Scan the code under a bottle, or add one from its shade page.</p>
-  <a class="btn" href="/lookup?scan=1">{{ icon("camera") }}Scan a bottle</a>
+<div class="home-cols">
+  <div class="home-col">
+    <section aria-labelledby="wear-title">
+      <h2 class="section-title" id="wear-title">Wear today</h2>
+      <div id="wear-slot" class="wear-slot" hx-target="this" hx-swap="innerHTML" aria-live="polite">
+        {% include "_wear_hero.html" %}
+      </div>
+    </section>
+    <section aria-labelledby="rack-title">
+      <div class="section-head">
+        <h2 class="section-title" id="rack-title">Recently added</h2>
+        {% if counts.bottles %}<a class="section-link" href="/bottles">{{ "1 bottle" if counts.bottles == 1 else "All %d bottles"|format(counts.bottles) }}</a>{% endif %}
+      </div>
+      <div class="rack">
+        {% if recent %}
+        <ul class="rack-list">
+          {% for bottle in recent %}
+          <li><a class="rack-item{% if bottle.id == arrived_bottle_id %} is-arriving{% endif %}" href="/shades/{{ bottle.shade_id }}">
+            {{ tip(bottle, "l", false) }}
+            <span class="rack-name">{{ bottle.title|replace(".", ".\u200b") }}</span>
+          </a></li>
+          {% endfor %}
+        </ul>
+        {% else %}
+        <div class="rack-list is-empty" aria-hidden="true">
+          {% for _ in range(3) %}<span class="rack-item">{{ unpainted("l") }}</span>{% endfor %}
+        </div>
+        {% endif %}
+      </div>
+      {% if not recent %}<p class="rack-empty">Bottles you add stand here, newest first.</p>{% endif %}
+    </section>
+  </div>
+  <div class="home-col">
+    <section aria-labelledby="wheels-title">
+      <div class="section-head">
+        <h2 class="section-title" id="wheels-title">Wheels</h2>
+        {% if wheel_count > 1 %}<a class="section-link" href="/wheels">All {{ wheel_count }}</a>{% endif %}
+      </div>
+      {% if wheel %}
+      <a class="home-wheel" href="/w/{{ wheel.slug }}">
+        {{ mini_ring(tiles, wheel.slot_count, "card") }}
+        <span class="home-wheel-text">
+          <span class="home-wheel-name">{{ wheel.name }}</span>
+          <span class="home-wheel-count">{{ wheel.filled }} of {{ wheel.slot_count }}{% if wheel.drafts %}, {{ wheel.drafts }} draft{{ '' if wheel.drafts == 1 else 's' }}{% endif %}</span>
+        </span>
+      </a>
+      {% else %}
+      <a class="home-wheel is-empty" href="/wheels">
+        {{ mini_ring(tiles, 12, "card") }}
+        <span class="home-wheel-text">
+          <span class="home-wheel-name">No wheels yet</span>
+          <span class="home-wheel-count">Make one</span>
+        </span>
+      </a>
+      {% endif %}
+    </section>
+    {% if counts.bottles or counts.shades or wishlist.count %}
+    <section aria-labelledby="collection-title">
+      <h2 class="section-title" id="collection-title">Collection</h2>
+      <div class="collection">
+        <a class="count" href="/bottles"><span class="count-n">{{ counts.bottles }}</span><span class="count-label">bottle{{ '' if counts.bottles == 1 else 's' }}</span></a>
+        <a class="count" href="/shades?owned=owned"><span class="count-n">{{ counts.shades }}</span><span class="count-label">shade{{ '' if counts.shades == 1 else 's' }}</span></a>
+        <a class="count count-wished" href="/wishlist"><span class="count-n">{{ wishlist.count }}</span><span class="count-label">wished{% if wishlist.total_cents %}, {{ wishlist.total_cents|money }}{% endif %}</span></a>
+      </div>
+    </section>
+    {% endif %}
+    <ul class="group home-links">
+      <li><a class="group-link" href="/shades">Browse all shades{{ icon("chevron-right") }}</a></li>
+      <li><a class="group-link" href="/shades?kind=topper">Toppers{{ icon("chevron-right") }}</a></li>
+      <li><a class="group-link" href="/shades?status=buyable&amp;sort=released">New and in stock{{ icon("chevron-right") }}</a></li>
+    </ul>
+  </div>
 </div>
-{% endif %}
-{% if counts.bottles or counts.shades or wishlist.count %}
-<p class="stats-line">
-  <a href="/bottles">{{ counts.bottles }} bottle{{ '' if counts.bottles == 1 else 's' }}</a>
-  <a href="/shades?owned=owned">{{ counts.shades }} shade{{ '' if counts.shades == 1 else 's' }}</a>
-  <a href="/wishlist">{{ wishlist.count }} wished</a>
-</p>
-{% endif %}
-<ul class="group home-links">
-  <li><a class="group-link" href="/shades">Browse all shades{{ icon("chevron-right") }}</a></li>
-  <li><a class="group-link" href="/shades?kind=topper">Toppers{{ icon("chevron-right") }}</a></li>
-  <li><a class="group-link" href="/shades?status=buyable&amp;sort=released">New and in stock{{ icon("chevron-right") }}</a></li>
-  <li><a class="group-link" href="/more">More{{ icon("chevron-right") }}</a></li>
-</ul>
 {% endblock %}

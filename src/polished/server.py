@@ -16,7 +16,20 @@ from .auth import AuthGateMiddleware, build_oidc_client
 from .catalog.scheduler import Scheduler, close_stale_runs_at_startup
 from .catalog.sync import SyncRunner
 from .config import Settings
-from .routes import bottles, health, home, lookup, pwa, shades, stacks, sync, tips, wheels, wishlist
+from .routes import (
+    bottles,
+    health,
+    home,
+    lookup,
+    pwa,
+    shades,
+    stacks,
+    sync,
+    tips,
+    wear,
+    wheels,
+    wishlist,
+)
 from .security import OriginCheckMiddleware, SecurityHeadersMiddleware
 from .web import STATIC_DIR
 
@@ -71,6 +84,7 @@ def create_app(settings: Settings) -> FastAPI:
     app.include_router(health.router)
     app.include_router(auth.router)
     app.include_router(home.router)
+    app.include_router(wear.router)
     app.include_router(shades.router)
     app.include_router(bottles.router)
     app.include_router(wishlist.router)

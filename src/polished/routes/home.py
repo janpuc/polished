@@ -10,8 +10,9 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from .. import bottles, identifiers, shades, wheels, wishlist
 from ..db import get_conn
 from ..gtin import is_numeric
-from ..web import render
+from ..web import clear_arrival, pop_arrival, render
 from . import _builder as builder
+from . import wear as wear_routes
 
 router = APIRouter()
 
@@ -30,11 +31,20 @@ def first_name(user: dict | None) -> str:
     return words[0] if words else ""
 
 
+RACK_SIZE = 6
+
+
 @router.get("/")
-def home(request: Request, conn: Conn):
+def home(request: Request, conn: Conn, another: int = 0, shown: int | None = None):
+    """The shelf (docs/VISUAL.md section 6): what to wear today, the bottles added last, the wheel
+    worked on last and the collection in numbers. `another` (and `shown`, the shade on screen) is
+    the hero's "Another" for a browser without htmx."""
     now = datetime.now(ZoneInfo(request.app.state.settings.timezone))
+    today = wear_routes.household_today(request)
     total = conn.execute("select count(*) from shade").fetchone()[0]
     wheel = wheels.most_recent(conn)
+    recent = bottles.recent(conn, RACK_SIZE)
+    arrived = pop_arrival(request)
     context = {
         "greeting": greeting(now),
         "first_name": first_name(getattr(request.state, "user", None)),
@@ -42,11 +52,17 @@ def home(request: Request, conn: Conn):
         "shade_count": total,
         "counts": bottles.counts(conn),
         "wishlist": wishlist.summary(wishlist.items(conn)),
-        "recent": bottles.recent(conn),
+        "recent": recent,
+        "arrived_bottle_id": arrived if recent and recent[0]["id"] == arrived else None,
         "wheel": wheel,
+        "wheel_count": len(wheels.list_wheels(conn)),
         "tiles": wheels.slot_grid(conn, wheel) if wheel else wheels.unpainted_ring(),
-    }
-    return render(request, "home.html", context)
+        "arriving": bool(another),
+    } | wear_routes.hero_context(conn, wear_routes.choose(conn, today, bool(another), shown), today)
+    response = render(request, "home.html", context)
+    if arrived is not None:
+        clear_arrival(response)
+    return response
 
 
 @router.get("/more")

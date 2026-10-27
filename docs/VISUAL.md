@@ -1,11 +1,11 @@
 # polished: visual design
 
 The look of the app as built: the swatch book of the overhaul of 2026-10-25, lit and lettered by v3 run 1 of
-2026-10-26 ("light and letters"), then given three shells by v3 run 2 of the same day (section 12). The direction is Fable's (`docs/advice/fable-swatch-book-2026-10-25.md`, then
+2026-10-26 ("light and letters"), given three shells by v3 run 2 of the same day (section 12) and a Home
+shelf by v3 run 3 of 2026-10-27 (section 13). The direction is Fable's (`docs/advice/fable-swatch-book-2026-10-25.md`, then
 `docs/advice/fable-v3-web-2026-10-26.md`, whose prototypes and screenshots are the visual target); this file
-records what was built and where it departs (DESIGN.md section 14, items 41, 80 to 82, 85 and 86). DESIGN.md wins
-on behaviour; this file wins on looks. Everything lives in `static/css/app.css`. Run 3 (the Home shelf, wear and
-Home's two-column layout) is not built; Home keeps its phone content in every shell.
+records what was built and where it departs (DESIGN.md section 14, items 41, 80 to 82 and 85 to 87). DESIGN.md wins
+on behaviour; this file wins on looks. Everything lives in `static/css/app.css`.
 
 ## 1. Concept
 
@@ -128,7 +128,7 @@ the dome whose edge is .18).
 - `.tip-face::after` is the light on the surface, `soft-light`: a specular pool at the light's side, a diagonal
   gloss band, the 1px `--mat`, the `--rim` on the lit edges and an occlusion on the others.
 - Sizes (tokens `--tip-*`): `tip-s` 28 by 46 (inline, the bought sheet, "Swatched on"), `tip-m` 40 by 66 (every
-  list row), `tip-l` 72 by 118 (the Home shelf, the Wheels list, the empty states' unpainted tip), `tip-xl` 96 by
+  list row), `tip-l` 72 by 118 (the Home rack, the Wheels list, the empty states' unpainted tip), `tip-xl` 96 by
   158 (the shade head, the builder's head). `tip-s` has no lift. The ring's slots are 38 by 62.
 - A shade with no colour yet is drawn neutral; `unpainted()` is a lit tip with no painting, for a state that
   has no shade to show (no results).
@@ -153,7 +153,8 @@ date only when it differs from the row above), and a quiet row at the foot: Tag 
 Delete wheel.
 
 **The ring at small sizes** (`_mini_ring.html`) is the same markup and CSS with other values of `--ring`,
-`--slot-h` and `--rail`: 200px on Home (radius 78, tips 20 by 32), 72px in the Wheels list (radius 28, tips
+`--slot-h` and `--rail`: 132px in Home's wheel card (radius 51, tips 13 by 21), 200px on the Wheels page when
+there is no wheel yet (radius 78, tips 20 by 32), 72px in the Wheels list (radius 28, tips
 9 by 14). Tips only, not tappable, never wider than their pitch; they keep the edge and a contact shadow but
 no pool or rim, which a tip that small cannot carry.
 
@@ -205,14 +206,8 @@ tolerance found some of the matches the count line reads "3 matches, closest fir
 the same as another row of the page carry the official collection (else the release year) in `--ink-3` at 13px
 after the finishes. The first result is the cursor (`aria-current`, a `--fill` row) that Enter opens.
 
-**Home.** The greeting in Fraunces, "Good morning", "Good afternoon" or "Good evening" by the hour in
-`POLISHED_TIMEZONE` and the first name of the signed-in account, with the date in `--ink-2` under it and the icon
-tile (36px, radius 9, a `--mat` ring so plum does not vanish into plum) trailing on that row, a link to More; the
-search field; the most recently touched wheel as a 200px ring with "Holos, 13 of 20 ›" under it (the whole block
-is the link; with no wheel an unpainted ring and "No wheels yet, make one ›"); "Recent bottles" as a shelf of
-`tip-l` with names under; one quiet line of links ("9 bottles, 8 shades, 6 wished"); a grouped list of Browse all
-shades, Toppers, New and in stock, More. With no bottles the shelf is one line and one button, "Scan a bottle".
-(The v3 shelf, the wear hero and the collection numbers are run 3.)
+**Home** is the shelf of section 13: the greeting, the search, Wear today, the Recently added rack on its ledge, the
+wheel card, the collection numbers and three links.
 
 **Shades.** Title with a "+" , the search field and a filter button with a count badge, "372 shades", then
 rows. With no match: the unpainted tip, "No shades match", "Nothing matches “overstim”. Try fewer letters, or clear
@@ -257,8 +252,7 @@ steps sit in a closed disclosure.
 unpainted ring on Home and in Wheels, the lit unpainted tip in a search with no result), never foil.
 
 **Icons.** `static/icons/ui.svg`, 1.75px stroke at 24, `currentColor`, filled for the active tab. Added in
-run 1: `calendar` (the date field), `qr`, `trash`, `sparkle`, `sidebar` and `arrow-up-right` (the last four wait
-for run 3). Run 2 added `ellipsis` (More in the side nav). The level arc is CSS, not an icon.
+run 1: `calendar` (the date field), `qr`, `trash`, `sparkle`, `sidebar` and `arrow-up-right` (the last four are still unused). Run 2 added `ellipsis` (More in the side nav). The level arc is CSS, not an icon.
 
 ## 7. The layer-stack builder
 
@@ -282,7 +276,8 @@ The wider shells add: the centred modal arrives from `scale .96` and `opacity 0`
 240ms; the right-hand sheet slides in over 280ms and out over 200ms; the shade panel slides over 280ms and 200ms.
 Under `prefers-reduced-motion` there is no scale, slide or turn; the sheet and the panel fade over 150ms and the
 save ring shows still for a second. Transitions name their properties (never `all`). Nothing animates on load. The
-authored arrival of a new bottle's tip, view transitions and the theme-switch suppression are run 3.
+arrival of a new bottle's tip, the row to shade view transition and the theme-switch suppression are run 3
+(section 13.4).
 
 ## 9. Copy
 
@@ -366,3 +361,78 @@ are centred at 420px with no side nav.
 is a right panel at 1440 with its footer stuck; at 390 nothing changed but the grabber drags; `/` focuses search;
 Delete asks, deletes and lands on Wheels with "Deleted Holos"; the tag page shows the steps on the phone and the
 collapsed version with the iPhone lede on the rail and panel shells.
+
+## 13. Home, the shelf
+
+Run 3. A shelf, not a dashboard: one column on the phone, two from 700 (`.home-cols`; the main column is
+`main.wide`). Every part is a section with its own heading (`aria-labelledby`); "Wear today", "Recently added",
+"Wheels" and "Collection" are section titles (22/28, 600), never eyebrows. A section's trailing link ("All 9
+bottles", "All 2") is 15/600 `--ink-2` with a 44px hit area.
+
+| | Phone, under 700 | Rail, 700 to 999 | Panel, 1000 and up |
+|---|---|---|---|
+| Order | greeting, search, Wear today, rack, wheel, collection, links | the hero and the rack left; the wheel, the collection and the links in a 300px column right | as the rail, the right column 320px; 1120 wide, the sidebar from 1280 |
+| Rack pitch | 88px, a tip peeks at the edge | 104px | 104px, 120px from 1280 |
+| Greeting | 34/36 | 34/36 | 34/36, 40/42 from 1280 |
+
+Home is about 1430px tall on the phone with nine bottles (the spec's limit is two screens, 1688).
+
+**13.1 Wear today.** `#wear-slot` holds the hero (`_wear_hero.html`), the one block htmx swaps. The hero is a plate
+(`--velvet`: the surface by day, the darkest plum by night, so holo and glitter have contrast) with the shade's
+`tip-xl`, its name in Fraunces 28/31 (a link to the shade), one line of facts in `--ink-2` ("Holographic,
+metallic, shimmer. P12, half left": the finishes, then the code and the level of the bottle that would be
+worn) and two buttons. **I wore this** is the one filled action of Home (`POST /wear/{id}`); after it the same
+place says "Worn today" with a check, nothing to press, and **Another** (secondary, `GET /wear/another?shown=`)
+stays. On the phone the tip and the name sit side by side and the buttons span under them; once the slot is
+440px wide (a container query, so the shell decides through the column) the buttons move beside the tip. The
+two buttons carry ids (`wear-primary`, `wear-another`) so htmx gives focus back to the same place after a swap.
+With nothing owned the hero is the unpainted tip, "Nothing to wear yet" and "Scan a bottle" (the filled action
+then). The hero's name link has 44px to hit by padding, not size.
+
+**13.2 The rack.** `.rack` is a horizontal list of `tip-l` with the shade's name under (13/600, two lines
+balanced), `scroll-snap-type: x mandatory`, snapping to the start. It stands on a **ledge**: a 1.5px `--line` rule
+across the full width of the column (edge to edge on the phone) at the tips' foot, with a 10px gradient of
+`--shadow-ink` at 8 percent (30 percent black in dark) under it. The ledge belongs to `.rack`, not to the
+scrolling list, so it stays still while the tips pass over it; the contact shadows of the tips rest on it
+(`.rack .tip::before { bottom: -7px; height: 10px }`) and a tip on the ledge has the die-cut edge and no lift.
+The names sit under the ledge, with a zero-width break after a full stop so "Overstimulated.exe" breaks at the dot.
+Six tips, newest first; "All 9 bottles" (or "1 bottle"). An empty rack is three unpainted tips on the same ledge
+and one line, "Bottles you add stand here, newest first." (no second button: the hero's is the one).
+
+**13.3 Wheel card and collection.** The wheel card is a `--r-group` card with a 132px ring (tips only, no
+chevron: the whole card is the link), the wheel's name in Fraunces 22/24 and "14 of 20, 1 draft" in `--ink-2`;
+"All 2" only with more than one wheel. With no wheel: the unpainted ring (12 tips), "No wheels yet" in the sans
+face (it is a sentence, not a wheel's name) and "Make one". **Collection** is a group of three links (bottles,
+shades, wished and what it comes to), each number in Fraunces 28/28, tabular; the wished number is `--heart`
+(pink means wanted), the others ink. It is hidden while all three are zero. Below, the group of three links:
+Browse all shades, Toppers, New and in stock. More is the mark beside the greeting and the navigation.
+
+**13.4 Motion.** Two authored moments and nothing on load.
+- **A new bottle arrives**, once. The tip scales from .85 and fades in over 600ms on `linear(0, .4 7%, .8 15%,
+  1.04 30%, .98 45%, 1)` while one specular sweep crosses it (`.tip-face::before`, a 115deg band whose
+  background-position runs from -56 to 144 percent of the tip over 700ms, started 100ms in). It plays on the
+  rack's first tip the next time Home is drawn after a bottle is added from a shade page (a one-use cookie,
+  `polished_arrived`, read and cleared by Home so a reload does not replay it) and in place on the lookup's "Added"
+  result.
+- **Another** gives the hero's new tip the sweep alone.
+- **Row to shade** is `@view-transition { navigation: auto }` with the shade's tip carried from the row or the rack
+  to the head of the shade page (350ms, `cubic-bezier(.16, 1, .3, 1)`); the rest of the page cuts as before. The
+  name `tip-{id}` is set by `transitions.js` (a classic script in the head, because `pagereveal` fires before a
+  deferred script runs) only on that pair, through the style object since the CSP forbids a style attribute.
+  Safari 18.2 and Chrome; a plain navigation elsewhere and on the panel shell, where a row opens in the panel.
+- **Reduced motion:** the arrival is a 150ms fade (`tip-fade`), the hero after Another fades the same way, there is
+  no sweep, no scale and no view transition (the at-rule lives inside `prefers-reduced-motion: no-preference`).
+- **Theme switch:** when the system changes between light and dark `chrome.js` adds `theme-switching` to the root
+  for two frames, which sets every transition to none, so no surface smears from one scheme to the other.
+
+**13.5 Empty states** (one line and one action, drawn with the unpainted tip, never foil): the hero with no bottles,
+the rack, the wheel card with no wheel, the Wishlist (`unpainted("l")` replaces the line drawing there), and the
+search with no result (run 1).
+
+**Checklist** (390, 834, 1024 and 1440, light and dark): Home fits two phone screens with nine bottles; the hero
+plate is `--velvet` in dark; "I wore this" turns the hero to "Worn today" without a page load and a reload says the
+same; Another shows a different shade with a sweep; a bottle added from its shade page arrives on the rack once
+and a reload leaves it standing; the ledge runs the column's full width, its rule at the tips' foot and the
+shadows on it; the 1440 Home has two columns with the rack under the hero; the reduced-motion run shows no sweep,
+no scale and no view transition; the greeting, the hero's shade, the wheel's name and the three numbers are in
+Fraunces and nothing under 22px is; one filled button; no horizontal overflow; no console error.
