@@ -31,29 +31,37 @@ enum TipPainting {
 struct TipView: View {
     let recipe: TipRecipe?
     let size: TipSize
+    /// A slot of a ring has its own size (the ring's geometry decides it); the edge and the
+    /// shadow thin out with the height.
+    var dimensions: CGSize?
     var light: TipLight = .static
     var painting: TipPainting = .cached
 
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
-    init(_ recipe: TipRecipe?, size: TipSize, light: TipLight = .static, painting: TipPainting = .cached) {
+    init(
+        _ recipe: TipRecipe?, size: TipSize, dimensions: CGSize? = nil, light: TipLight = .static,
+        painting: TipPainting = .cached
+    ) {
         self.recipe = recipe
         self.size = size
+        self.dimensions = dimensions
         self.light = light
         self.painting = painting
     }
 
     var body: some View {
-        let dimensions = size.dimensions(regular: horizontalSizeClass == .regular)
+        let dimensions = dimensions ?? size.dimensions(regular: horizontalSizeClass == .regular)
         let dark = colorScheme == .dark
+        let small = size == .s || dimensions.height < 40
         face(dimensions)
             .frame(width: dimensions.width, height: dimensions.height)
             .background {
                 // Outside the clip and larger than the face, so they must not take part in layout.
                 ZStack {
-                    TipShadow(dimensions: dimensions, dark: dark, lifted: size != .s)
-                    TipEdge(dimensions: dimensions, dark: dark, thin: size == .s)
+                    TipShadow(dimensions: dimensions, dark: dark, lifted: !small)
+                    TipEdge(dimensions: dimensions, dark: dark, thin: small)
                 }
             }
             .accessibilityHidden(true)

@@ -1,6 +1,16 @@
 #if DEBUG
 import NailTips
+import PolishedModels
 import SwiftUI
+
+extension SampleShade {
+    /// The shade as the API would send it, for the gallery's hero.
+    var row: ShadeRow {
+        ShadeRow(
+            id: id, title: name, finishes: tip.finishes.sorted(), ownedCount: 1,
+            tip: Tip(id: id, hex: tip.hex, hex2: tip.hex2, finishes: tip.finishes.sorted()))
+    }
+}
 
 /// A case of `spec/tips/cases.json`; the build copies the file into the app as `TipCases.json`
 /// (Debug only), so the gallery shows exactly the recipes the parity tests pin.
@@ -58,7 +68,7 @@ private struct GalleryBoard: View {
                 .font(.title2.weight(.semibold))
                 .foregroundStyle(Color.ink)
                 .accessibilityIdentifier("gallery-\(scheme == .light ? "light" : "dark")")
-            WearTodayCard(shade: .acidDrip, detail: "P12, half left")
+            WearTodayHero(wear: Wear(shade: SampleShade.acidDrip.row, bottle: Bottle(id: 1, shadeId: 31, state: .half, printedCode: "P12"), wornToday: false)) {}
             ForEach([TipSize.xl, .l, .m, .s], id: \.self) { size in
                 GallerySection(size: size, cases: cases)
             }

@@ -31,6 +31,23 @@ struct SecondaryButtonStyle: ButtonStyle {
     }
 }
 
+/// A small secondary action inside a card: Fill capsule, 44 pt tall to tap, ink text.
+struct CompactButtonStyle: ButtonStyle {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(Color.ink)
+            .padding(.horizontal, 14)
+            .frame(minHeight: 40)
+            .background(Color.fill, in: Capsule())
+            .frame(minHeight: 44)
+            .contentShape(Rectangle())
+            .pressScale(configuration.isPressed, reduceMotion: reduceMotion)
+    }
+}
+
 extension View {
     /// Press: scale 0.96 from the current value with a spring, so it can be interrupted
     /// (docs/NATIVE.md 5.7). Reduce Motion keeps an opacity change only.
@@ -64,9 +81,13 @@ struct SectionHeading: View {
                 .foregroundStyle(Color.ink)
             Spacer()
             if let trailing {
-                Text(trailing)
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(Color.ink2)
+                HStack(spacing: 4) {
+                    Text(trailing)
+                    Image(systemName: "chevron.right")
+                        .font(.caption.weight(.bold))
+                }
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(Color.ink2)
             }
         }
         .accessibilityAddTraits(.isHeader)

@@ -16,7 +16,7 @@ let package = Package(
         .target(name: "NailTips"),
         .target(name: "PolishedModels", dependencies: ["NailTips"]),
         .target(name: "PolishedAPI", dependencies: ["PolishedModels"]),
-        .target(name: "PolishedStore", dependencies: ["PolishedModels"]),
+        .target(name: "PolishedStore", dependencies: ["PolishedModels", "PolishedAPI"]),
         .testTarget(
             name: "PolishedCoreTests",
             dependencies: ["NailTips", "PolishedModels", "PolishedAPI", "PolishedStore"]

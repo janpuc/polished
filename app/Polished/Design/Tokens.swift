@@ -35,3 +35,17 @@ extension Color {
     /// The lit edge of a tip.
     static let rim = Color("Rim")
 }
+
+extension Color {
+    /// A colour from `#rrggbb` (the tips' sampled colours); mid grey when it does not parse.
+    init(hex: String) {
+        let digits = hex.trimmingCharacters(in: CharacterSet(charactersIn: "#"))
+        guard digits.count == 6, let value = Int(digits, radix: 16) else {
+            self = .gray
+            return
+        }
+        self.init(
+            red: Double((value >> 16) & 0xFF) / 255, green: Double((value >> 8) & 0xFF) / 255,
+            blue: Double(value & 0xFF) / 255)
+    }
+}

@@ -1,8 +1,8 @@
 #!/bin/sh
 # Generates the project, runs the PolishedCore tests on the Mac (`swift test`) and the app's
-# tests (PolishedTests hosts the same sources, PolishedUITests screenshots the app) on the
-# iPhone 18 Pro simulator, then exports the screenshot attachments to
-# ~/.cache/polished/native/<timestamp>/.
+# tests on the iPhone 18 Pro simulator (PolishedTests hosts the same sources; PolishedUITests runs
+# the flows against the local server of lib/server.sh, which this script starts and stops), then
+# exports the screenshot attachments to ~/.cache/polished/native/<timestamp>/.
 #
 #   app/Scripts/test.sh
 #
@@ -10,7 +10,8 @@
 # has just the iPhone Duo (see docs/NATIVE.md 6.2). Exit status is xcodebuild's.
 set -eu
 set -o pipefail
-cd "$(dirname "$0")/.."
+. "$(dirname "$0")/lib/server.sh"
+cd "$ROOT/app"
 
 DEVICE="${POLISHED_TEST_DEVICE:-iPhone 18 Pro}"
 OS="${POLISHED_TEST_OS:-27.0}"
@@ -19,13 +20,15 @@ OUT="$HOME/.cache/polished/native/$STAMP"
 mkdir -p "$OUT"
 
 xcodegen generate -q
+trap stop_server EXIT
+start_server
 
 echo "== swift test (PolishedCore, on the Mac)"
 (cd PolishedCore && swift test 2>&1 | tail -3)
 
 echo "== xcodebuild test ($DEVICE, iOS $OS)"
 status=0
-xcodebuild test \
+TEST_RUNNER_POLISHED_SERVER="$SERVER_BASE" xcodebuild test \
   -project Polished.xcodeproj -scheme Polished \
   -destination "platform=iOS Simulator,name=$DEVICE,OS=$OS" \
   -derivedDataPath build/DerivedData \

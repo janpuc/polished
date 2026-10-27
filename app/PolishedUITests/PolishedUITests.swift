@@ -1,7 +1,7 @@
 import XCTest
 
-/// Launches the app and keeps screenshots as attachments; `Scripts/test.sh` exports them with
-/// `xcresulttool export attachments`. Not a behaviour test yet: the flows arrive from run 2 on.
+/// The tip gallery, screenshotted top to bottom: `Scripts/gallery.sh` exports the attachments.
+/// Needs no server.
 final class PolishedUITests: XCTestCase {
     override func setUp() {
         continueAfterFailure = false
@@ -32,18 +32,5 @@ final class PolishedUITests: XCTestCase {
             attach(String(format: "gallery-%02d", page), app)
         }
         XCTAssertTrue(end.exists, "reached the end of the gallery")
-    }
-
-    /// Each of the five tabs once.
-    @MainActor
-    func testTabsScreenshots() throws {
-        let app = XCUIApplication()
-        app.launch()
-        for tab in ["Home", "Shades", "Bottles", "Wheels", "Wishlist"] {
-            let button = app.tabBars.buttons[tab].firstMatch
-            XCTAssertTrue(button.waitForExistence(timeout: 20), "\(tab) tab")
-            button.tap()
-            attach("tab-\(tab.lowercased())", app)
-        }
     }
 }
