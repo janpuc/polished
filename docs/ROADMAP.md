@@ -67,6 +67,31 @@ Written down, not designed in detail.
 - **App Store.** Guideline 5.2 (third-party IP) is why nothing brand-specific ships in the binary;
   consider asking Holo Taco for their blessing before going public.
 
+### Requests noted by Jan on 2026-10-27 (not designed, not built; the MVP comes first)
+
+- **Multi-brand with a curated catalog.** Polished has to work across brands, and the shade to
+  colour mapping is curated by us, not left to each user. The identity of a bottle is what every
+  brand has: **brand + name + barcode**. Brand-specific oddities such as Holo Taco's printed P codes
+  are dropped as an identifier (they don't exist elsewhere and would only confuse matching).
+  Identification is "scan the barcode and you're done".
+- **Crowdsourced identification.** When a scanned barcode is unknown, the user labels it (brand,
+  shade, maybe a photo or a colour) and that submission comes back to us. One report is a strong
+  signal, not proof (people make mistakes), so submissions are weighed (several agreeing reports,
+  reporter history) and curated before they enter the shared catalog. The same path fills missing
+  barcodes and colours. Needs consent and a privacy statement; ties into the colour hints above.
+- **Curated wheel models.** Users don't type "20-nail wheel": they pick from a curated list of
+  swatch wheels that actually exist (slot count, ring geometry, shape, maybe the maker), and the
+  visualization follows the model. A custom slot count stays possible as an override.
+- **Single-nail swatches.** Besides wheels, support swatches on single nails, e.g. nail strips on a
+  keychain ring, with their own visualization. Identifying them needs something other than one NFC
+  tag per nail (wasteful) or a QR per nail (tedious). Options to evaluate: one tag or QR per
+  keychain/strip with numbered positions; tiny printed codes (Data Matrix or a short number) on the
+  back of each nail; recognising the nail from a photo by its colour and finish against her own
+  swatches (on-device); or picking from a short list filtered by colour family. Open question.
+- **Hand view.** A preview of a planned mani on a hand: five fingers (or two hands), each nail
+  assigned a shade or a layer stack, like the wheel builder but for what she would paint, with
+  accent nails and patterns. Uses the same tip renderer, drawn on nail shapes of a hand.
+
 ### What phases 1 and 2 avoid so phase 3 stays open
 
 - No new Holo Taco specifics beyond today's catalog adapter (keep brand rules in `catalog/`).
