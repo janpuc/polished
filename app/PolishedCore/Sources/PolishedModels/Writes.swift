@@ -1,0 +1,253 @@
+import Foundation
+
+/// A field of a PATCH body: left out (the server keeps the value), cleared (`null`) or set. The
+/// contract's PATCH routes change only the keys they are sent (docs/NATIVE.md 3, "Writes").
+public enum Patch<Value: Sendable & Hashable>: Sendable, Hashable {
+    case keep
+    case clear
+    case set(Value)
+
+    /// `value` set, or cleared when it is nil.
+    public init(_ value: Value?) {
+        self = value.map { .set($0) } ?? .clear
+    }
+}
+
+extension KeyedEncodingContainer {
+    fileprivate mutating func encode<Value: Encodable & Sendable & Hashable>(
+        _ patch: Patch<Value>, forKey key: Key
+    ) throws {
+        switch patch {
+        case .keep: break
+        case .clear: try encodeNil(forKey: key)
+        case .set(let value): try encode(value, forKey: key)
+        }
+    }
+}
+
+// MARK: Bottles
+
+/// `POST /shades/{id}/bottles`. Every field is optional; the level defaults to full on the server.
+public struct BottleRequest: Encodable, Sendable, Hashable {
+    public var state: BottleState
+    public var printedCode: String?
+    public var boughtOn: String?
+    public var pricePaidCents: Int?
+    public var openedOn: String?
+    public var notes: String?
+
+    public init(
+        state: BottleState = .full, printedCode: String? = nil, boughtOn: String? = nil,
+        pricePaidCents: Int? = nil, openedOn: String? = nil, notes: String? = nil
+    ) {
+        self.state = state
+        self.printedCode = printedCode
+        self.boughtOn = boughtOn
+        self.pricePaidCents = pricePaidCents
+        self.openedOn = openedOn
+        self.notes = notes
+    }
+}
+
+/// `PATCH /bottles/{id}`: any subset of the bottle's fields, `archived` included.
+public struct BottlePatch: Encodable, Sendable, Hashable {
+    public var state: Patch<BottleState> = .keep
+    public var printedCode: Patch<String> = .keep
+    public var boughtOn: Patch<String> = .keep
+    public var pricePaidCents: Patch<Int> = .keep
+    public var openedOn: Patch<String> = .keep
+    public var notes: Patch<String> = .keep
+    public var archived: Patch<Bool> = .keep
+
+    public init() {}
+
+    private enum CodingKeys: String, CodingKey {
+        case state, printedCode, boughtOn, pricePaidCents, openedOn, notes, archived
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(state, forKey: .state)
+        try container.encode(printedCode, forKey: .printedCode)
+        try container.encode(boughtOn, forKey: .boughtOn)
+        try container.encode(pricePaidCents, forKey: .pricePaidCents)
+        try container.encode(openedOn, forKey: .openedOn)
+        try container.encode(notes, forKey: .notes)
+        try container.encode(archived, forKey: .archived)
+    }
+}
+
+/// What the server learned from a P code on a new bottle: `previousShade` is nil when the code was
+/// new, else the shade it already meant (that match stays).
+public struct LearnedCode: Codable, Sendable, Hashable {
+    public var code: String
+    public var previousShade: ShadeRow?
+}
+
+/// `POST /shades/{id}/bottles` (201).
+public struct BottleCreated: Codable, Sendable, Hashable {
+    public var bottle: Bottle
+    public var learned: LearnedCode?
+}
+
+// MARK: Wishlist
+
+/// `PUT /shades/{id}/wishlist`: the priority of a new item (an existing item is kept as it is).
+public struct WishlistAdd: Encodable, Sendable, Hashable {
+    public var priority: Int
+
+    public init(priority: Int = 2) {
+        self.priority = priority
+    }
+}
+
+/// `PATCH /wishlist/{item_id}`.
+public struct WishlistPatch: Encodable, Sendable, Hashable {
+    public var priority: Patch<Int> = .keep
+    public var note: Patch<String> = .keep
+
+    public init(priority: Patch<Int> = .keep, note: Patch<String> = .keep) {
+        self.priority = priority
+        self.note = note
+    }
+
+    private enum CodingKeys: String, CodingKey { case priority, note }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(priority, forKey: .priority)
+        try container.encode(note, forKey: .note)
+    }
+}
+
+public struct BoughtItem: Encodable, Sendable, Hashable {
+    public var id: Int
+    /// Always sent, `null` when no price was paid.
+    public var priceCents: Int?
+
+    public init(id: Int, priceCents: Int?) {
+        self.id = id
+        self.priceCents = priceCents
+    }
+
+    private enum CodingKeys: String, CodingKey { case id, priceCents }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(priceCents, forKey: .priceCents)
+    }
+}
+
+/// `POST /wishlist/bought`: one full bottle per item, on one date.
+public struct BoughtRequest: Encodable, Sendable, Hashable {
+    public var items: [BoughtItem]
+    public var boughtOn: String?
+
+    public init(items: [BoughtItem], boughtOn: String? = nil) {
+        self.items = items
+        self.boughtOn = boughtOn
+    }
+}
+
+/// `POST /wishlist/bought`: the new bottles and what is left of the wishlist.
+public struct Bought: Codable, Sendable, Hashable {
+    public var bottles: [Bottle]
+    public var wishlist: Wishlist
+}
+
+// MARK: Shades
+
+/// `POST /shades`: a shade entered by hand ("polish", "topper" or "base").
+public struct ManualShadeRequest: Encodable, Sendable, Hashable {
+    public var title: String
+    public var kind: String
+
+    public init(title: String, kind: String) {
+        self.title = title
+        self.kind = kind
+    }
+}
+
+/// `PUT /shades/{id}/tip-colour`: `#rrggbb`, or nil (sent as `null`) to go back to the sampled colour.
+public struct TipColourRequest: Encodable, Sendable, Hashable {
+    public var hex: String?
+
+    public init(hex: String?) {
+        self.hex = hex
+    }
+
+    private enum CodingKeys: String, CodingKey { case hex }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(hex, forKey: .hex)
+    }
+}
+
+/// `POST /wear/{shade_id}`.
+public struct WearRecorded: Codable, Sendable, Hashable {
+    public var wornOn: String
+
+    public init(wornOn: String) {
+        self.wornOn = wornOn
+    }
+}
+
+// MARK: Wheels
+
+/// `POST /wheels`: a name (cut to 60 characters) and 1 to 40 slots.
+public struct WheelRequest: Encodable, Sendable, Hashable {
+    public var name: String
+    public var slotCount: Int
+
+    public init(name: String, slotCount: Int = 20) {
+        self.name = name
+        self.slotCount = slotCount
+    }
+}
+
+/// `PATCH /wheels/{id}`: `name` and/or `archived`.
+public struct WheelPatch: Encodable, Sendable, Hashable {
+    public var name: Patch<String> = .keep
+    public var archived: Patch<Bool> = .keep
+
+    public init(name: Patch<String> = .keep, archived: Patch<Bool> = .keep) {
+        self.name = name
+        self.archived = archived
+    }
+
+    private enum CodingKeys: String, CodingKey { case name, archived }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(name, forKey: .name)
+        try container.encode(archived, forKey: .archived)
+    }
+}
+
+/// `POST /wheels/{id}/slug/take`.
+public struct TakeTagRequest: Encodable, Sendable, Hashable {
+    public var fromWheelId: Int
+
+    public init(fromWheelId: Int) {
+        self.fromWheelId = fromWheelId
+    }
+}
+
+/// `DELETE /wheels/{id}`.
+public struct WheelDeleted: Codable, Sendable, Hashable {
+    public var deletedSwatches: Int
+}
+
+// MARK: Sync
+
+/// `POST /sync/run` (202): the run goes on in the background; `GET /sync` says when it ends.
+public struct SyncStarted: Codable, Sendable, Hashable {
+    public var runId: Int
+}
+
+/// The body of a 204.
+public struct NoContent: Codable, Sendable, Hashable {
+    public init() {}
+}
