@@ -30,7 +30,7 @@ private struct ShadesSplit: View {
     @Environment(AppModel.self) private var app
     let model: ShadeListModel
     @State private var detailPath: [Route] = []
-    @State private var columns = NavigationSplitViewVisibility.automatic
+    @State private var columns = NavigationSplitViewVisibility.all
 
     var body: some View {
         let selection = Binding<Route?>(
@@ -50,6 +50,7 @@ private struct ShadesSplit: View {
             .routeDestinations()
             .onChange(of: selection.wrappedValue) { detailPath = [] }
         }
+        .navigationSplitViewStyle(.balanced)
         .collapsesSidebarForBuilder($columns)
     }
 }

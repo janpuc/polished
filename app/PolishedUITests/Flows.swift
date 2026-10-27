@@ -458,6 +458,8 @@ final class ScanTypedFlow: FlowCase {
         waitFor(app.buttons["Yes, add a bottle"].firstMatch, "the confirm button")
         step("suggestion")
 
+        // The card that appeared under the field took the keyboard with it on an iPad.
+        if !field.hasKeyboardFocus { field.tap() }
         field.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: 3))
         field.typeText("810170284120")
         waitFor(element("scan-lead"), "the known barcode")
@@ -637,6 +639,26 @@ final class BuilderFlow: FlowCase {
         openBuilder(slot: 11)
         sleep(1)
         step("opened")
+
+        if UIDevice.current.userInterfaceIdiom == .pad {
+            // The sidebar folds while the builder is open in both orientations and the ring keeps
+            // its room (read in the screenshots). The builder is closed (the draft stays) before
+            // each turn and opened again after it.
+            closeBuilderKeepingDraft()
+            XCUIDevice.shared.orientation = .landscapeLeft
+            sleep(2)
+            waitFor(slot(11), "slot 11 in landscape").tap()
+            waitFor(app.staticTexts["Slot 11"].firstMatch, "the builder in landscape")
+            waitFor(element("builder-save"), "the builder's actions in landscape")
+            sleep(1)
+            step("opened-landscape")
+            closeBuilderKeepingDraft()
+            XCUIDevice.shared.orientation = .portrait
+            sleep(2)
+            waitFor(slot(11), "slot 11 in portrait again").tap()
+            waitFor(app.staticTexts["Slot 11"].firstMatch, "the builder in portrait again")
+            sleep(1)
+        }
 
         button("Over black").tap()
         waitFor(app.buttons["Remove One-Coat Black"].firstMatch, "One-Coat Black as the base")

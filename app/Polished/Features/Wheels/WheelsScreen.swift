@@ -29,7 +29,7 @@ struct WheelsTab: View {
 private struct WheelsSplit: View {
     @Environment(AppModel.self) private var app
     @State private var detailPath: [Route] = []
-    @State private var columns = NavigationSplitViewVisibility.automatic
+    @State private var columns = NavigationSplitViewVisibility.all
 
     var body: some View {
         let selection = Binding<Route?>(
@@ -49,6 +49,7 @@ private struct WheelsSplit: View {
             .routeDestinations()
             .onChange(of: selection.wrappedValue) { detailPath = [] }
         }
+        .navigationSplitViewStyle(.balanced)
         .collapsesSidebarForBuilder($columns)
     }
 }

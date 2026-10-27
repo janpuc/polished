@@ -21,6 +21,8 @@ class FlowCase: XCTestCase {
     override func setUp() async throws {
         continueAfterFailure = false
         stepNumber = 0
+        // A flow that turned the device (BuilderFlow) must not leave the next one sideways.
+        XCUIDevice.shared.orientation = .portrait
         try await resetServer()
     }
 

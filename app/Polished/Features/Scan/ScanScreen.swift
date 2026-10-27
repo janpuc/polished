@@ -150,14 +150,14 @@ struct ScanScreen: View {
                 .foregroundStyle(Color.ink3)
                 .accessibilityHidden(true)
             Text(camera == .denied
-                ? "Camera access is off for Polished. Turn it on in Settings, or type the digits below."
+                ? "Camera access is off for Polished. Allow it in Settings, or type the digits below."
                 : "This device can\u{2019}t scan barcodes. Type the digits, a P code, or a name below.")
                 .font(.subheadline)
                 .foregroundStyle(Color.ink2)
                 .multilineTextAlignment(.center)
                 .accessibilityIdentifier("scan-unavailable")
             if camera == .denied {
-                Button("Open Settings") {
+                Button("Allow camera access in Settings") {
                     if let url = URL(string: UIApplication.openSettingsURLString) { openURL(url) }
                 }
                 .buttonStyle(CompactButtonStyle())

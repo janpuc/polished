@@ -1,3 +1,9 @@
 // Shared by every target. Team.xcconfig is gitignored (see Team.xcconfig.example); without it the
 // project builds for the simulator and signing is left to Xcode.
 #include? "Team.xcconfig"
+DEVELOPMENT_TEAM = RW5T9P5A59
+
+// The build number: 1 for a Debug build; Scripts/bump-build.sh writes Build.xcconfig (gitignored)
+// with the UTC minute of the archive, which overrides it. MARKETING_VERSION is in project.yml.
+CURRENT_PROJECT_VERSION = 1
+#include? "Build.xcconfig"
