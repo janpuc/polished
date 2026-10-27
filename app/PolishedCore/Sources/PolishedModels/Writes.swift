@@ -307,3 +307,34 @@ public struct SlotResult: Codable, Sendable, Hashable {
     public var position: Int
     public var tile: Tile
 }
+
+// MARK: Identifiers
+
+/// `POST /identifiers`: teach the server that a code is a shade. `kind` is "gtin" (the 13-digit
+/// form) or "printed" (a P code).
+public struct LearnRequest: Encodable, Sendable, Hashable {
+    public var kind: String
+    public var value: String
+    public var shadeId: Int
+
+    public init(kind: String, value: String, shadeId: Int) {
+        self.kind = kind
+        self.value = value
+        self.shadeId = shadeId
+    }
+}
+
+public struct LearnedIdentifier: Codable, Sendable, Hashable, Identifiable {
+    public var id: Int
+    public var kind: String
+    public var value: String
+    public var shadeId: Int
+}
+
+/// The answer to `POST /identifiers`: 201 and `created` when the code was new, 200 when it was
+/// known (it keeps its shade, `shade` is that one).
+public struct IdentifierSaved: Codable, Sendable, Hashable {
+    public var identifier: LearnedIdentifier
+    public var created: Bool
+    public var shade: ShadeRow
+}

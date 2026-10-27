@@ -30,12 +30,13 @@ private struct ShadesSplit: View {
     @Environment(AppModel.self) private var app
     let model: ShadeListModel
     @State private var detailPath: [Route] = []
+    @State private var columns = NavigationSplitViewVisibility.automatic
 
     var body: some View {
         let selection = Binding<Route?>(
             get: { app.router.path(.shades).first },
             set: { app.router.setPath(.shades, $0.map { [$0] } ?? []) })
-        NavigationSplitView {
+        NavigationSplitView(columnVisibility: $columns) {
             ShadeListScreen(model: model, selection: selection)
                 .navigationSplitViewColumnWidth(min: 340, ideal: 400, max: 440)
         } detail: {
@@ -49,6 +50,7 @@ private struct ShadesSplit: View {
             .routeDestinations()
             .onChange(of: selection.wrappedValue) { detailPath = [] }
         }
+        .collapsesSidebarForBuilder($columns)
     }
 }
 

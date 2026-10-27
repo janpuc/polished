@@ -37,12 +37,13 @@ private struct BottlesSplit: View {
     @Binding var mode: BottlesMode
     @Environment(AppModel.self) private var app
     @State private var detailPath: [Route] = []
+    @State private var columns = NavigationSplitViewVisibility.automatic
 
     var body: some View {
         let selection = Binding<Route?>(
             get: { app.router.path(.bottles).first },
             set: { app.router.setPath(.bottles, $0.map { [$0] } ?? []) })
-        NavigationSplitView {
+        NavigationSplitView(columnVisibility: $columns) {
             BottlesListScreen(mode: $mode, selection: selection)
                 .navigationSplitViewColumnWidth(min: 340, ideal: 400, max: 440)
         } detail: {
@@ -56,12 +57,14 @@ private struct BottlesSplit: View {
             .routeDestinations()
             .onChange(of: selection.wrappedValue) { detailPath = [] }
         }
+        .collapsesSidebarForBuilder($columns)
     }
 }
 
 struct BottlesListScreen: View {
     @Binding var mode: BottlesMode
     let selection: Binding<Route?>?
+    @State private var showsScan = false
 
     var body: some View {
         Group {
@@ -83,7 +86,12 @@ struct BottlesListScreen: View {
                 .frame(width: 220)
                 .accessibilityIdentifier("bottles-mode")
             }
+            ToolbarItem(placement: .topBarTrailing) {
+                Button("Scan a bottle", systemImage: "barcode.viewfinder") { showsScan = true }
+                    .accessibilityIdentifier("scan-button")
+            }
         }
+        .scanCover(isPresented: $showsScan)
     }
 }
 

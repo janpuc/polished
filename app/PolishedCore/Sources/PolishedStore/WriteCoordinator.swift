@@ -18,6 +18,8 @@ public struct WriteEffect: OptionSet, Sendable {
     public static let wishlist = WriteEffect(rawValue: 1 << 3)
     public static let wheels = WriteEffect(rawValue: 1 << 4)
     public static let sync = WriteEffect(rawValue: 1 << 5)
+    /// The learned codes and every lookup's answer.
+    public static let codes = WriteEffect(rawValue: 1 << 6)
 
     /// A bottle added, changed or deleted: Home's numbers and rack, the lists, the shade's page,
     /// the wishlist rows (they carry the owned count).
@@ -31,6 +33,8 @@ public struct WriteEffect: OptionSet, Sendable {
     /// A wheel made, renamed, archived, deleted or re-tagged; a shade's "Swatched on" names it.
     public static let wheelChange: WriteEffect = [.home, .shades, .wheels]
     public static let syncStarted: WriteEffect = [.home, .shades, .sync]
+    /// A code learned or forgotten changes what a scan finds, and a shade's page shows nothing of it.
+    public static let codeChange: WriteEffect = [.codes]
 
     var prefixes: [String] {
         var keys: [String] = []
@@ -40,6 +44,7 @@ public struct WriteEffect: OptionSet, Sendable {
         if contains(.wishlist) { keys.append("/api/v1/wishlist") }
         if contains(.wheels) { keys += ["/api/v1/wheels", "/api/v1/w/", "/api/v1/stacks"] }
         if contains(.sync) { keys.append("/api/v1/sync") }
+        if contains(.codes) { keys += ["/api/v1/identifiers", "/api/v1/lookup"] }
         return keys
     }
 }

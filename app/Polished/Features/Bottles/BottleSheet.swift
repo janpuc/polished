@@ -6,19 +6,20 @@ import SwiftUI
 
 /// Which bottle the sheet is for.
 enum BottleSheetMode: Identifiable {
-    case add(ShadeRow)
+    /// `printedCode` rides into the form: a scan of a P code, which the bottle then carries.
+    case add(ShadeRow, printedCode: String? = nil)
     case edit(Bottle, ShadeRow)
 
     var id: String {
         switch self {
-        case .add(let shade): "add-\(shade.id)"
+        case .add(let shade, _): "add-\(shade.id)"
         case .edit(let bottle, _): "edit-\(bottle.id)"
         }
     }
 
     var shade: ShadeRow {
         switch self {
-        case .add(let shade), .edit(_, let shade): shade
+        case .add(let shade, _), .edit(_, let shade): shade
         }
     }
 }
@@ -28,6 +29,8 @@ enum BottleSheetMode: Identifiable {
 /// message under the field it names. Archive and Delete live at the foot of an edit.
 struct BottleSheet: View {
     let mode: BottleSheetMode
+    /// Called after a bottle was added, with the sheet already closing.
+    var onAdded: (() -> Void)?
     @Environment(AppModel.self) private var app
     @Environment(\.dismiss) private var dismiss
     @State private var state = BottleState.full
@@ -172,8 +175,12 @@ struct BottleSheet: View {
 
     private func load() {
         switch mode {
-        case .add:
+        case .add(_, let printedCode):
             boughtOn = app.day.today()
+            if let printedCode {
+                self.printedCode = printedCode
+                showsMore = true
+            }
         case .edit(let bottle, _):
             state = bottle.state
             boughtOn = bottle.boughtOn
@@ -222,7 +229,7 @@ struct BottleSheet: View {
         }
         localPriceError = nil
         switch mode {
-        case .add(let shade):
+        case .add(let shade, _):
             let request = BottleRequest(
                 state: state, printedCode: trimmedCode, boughtOn: boughtOn, pricePaidCents: amount.value,
                 openedOn: openedOn, notes: trimmedNotes)
@@ -234,6 +241,7 @@ struct BottleSheet: View {
             tellWhatWasLearned(created.learned, shade: shade)
             app.arrive(shadeID: shade.id)
             dismiss()
+            onAdded?()
         case .edit(let bottle, _):
             var patch = BottlePatch()
             patch.state = .set(state)

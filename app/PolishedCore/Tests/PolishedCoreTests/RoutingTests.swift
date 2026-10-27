@@ -170,4 +170,56 @@ struct RouterTests {
         #expect(router.path(.wheels) == [.wheel(slug: "bbbbbb")])
         #expect(router.path(.shades) == [.wheel(slug: "aaaaaa")])
     }
+
+    // MARK: Links, cold and warm (docs/NATIVE.md 2.3)
+
+    @Test func aWarmLinkReplacesWhateverTheTabHeld() {
+        let router = Router()
+        router.paths[.wheels] = [.wheel(slug: "aaaaaa"), .shade(3)]
+        router.tab = .shades
+        router.handle(url("https://polished.janpuc.com/w/bbbbbb"), signedIn: true)
+        #expect(router.tab == .wheels)
+        #expect(router.path(.wheels) == [.wheel(slug: "bbbbbb")])
+    }
+
+    @Test func theSameLinkTwiceIsTheSameScreen() {
+        // A universal link can reach both onOpenURL and onContinueUserActivity.
+        let router = Router()
+        let link = url("https://polished.janpuc.com/shades/13")
+        router.handle(link, signedIn: true)
+        router.handle(link, signedIn: true)
+        #expect(router.tab == .shades)
+        #expect(router.path(.shades) == [.shade(13)])
+    }
+
+    @Test func theLastLinkWinsWhileSignedOut() {
+        let router = Router()
+        router.handle(url("https://polished.janpuc.com/w/k3m9xq"), signedIn: false)
+        router.handle(url("https://polished.janpuc.com/shades/13"), signedIn: false)
+        #expect(router.pendingLink == .shade(id: 13))
+        router.openPending()
+        #expect(router.tab == .shades)
+        #expect(router.path(.shades) == [.shade(13)])
+        #expect(router.path(.wheels).isEmpty)
+    }
+
+    @Test func aLinkThatIsNotOursKeepsTheLinkThatWaits() {
+        let router = Router()
+        router.handle(url("https://polished.janpuc.com/w/k3m9xq"), signedIn: false)
+        router.handle(url("https://polished.janpuc.com/wishlist"), signedIn: false)
+        #expect(router.pendingLink == .wheel(slug: "k3m9xq"))
+    }
+
+    @Test func theTagSheetFollowsTheWheelsAddress() {
+        let router = Router()
+        router.tagSlug = "k3m9xq"
+        router.replaceWheelSlug("k3m9xq", with: "t4n8qb")
+        #expect(router.tagSlug == "t4n8qb")
+        router.swapWheelSlugs("t4n8qb", "aaaaaa")
+        #expect(router.tagSlug == "aaaaaa")
+        router.swapWheelSlugs("bbbbbb", "aaaaaa")
+        #expect(router.tagSlug == "bbbbbb")
+        router.closeWheel(slug: "bbbbbb")
+        #expect(router.tagSlug == nil)
+    }
 }

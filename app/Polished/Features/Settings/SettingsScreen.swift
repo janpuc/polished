@@ -85,6 +85,9 @@ struct SettingsScreen: View {
             .listRowBackground(Color.surface)
 
             Section {
+                NavigationLink("Learned codes") { LearnedCodesScreen() }
+                    .foregroundStyle(Color.ink)
+                    .accessibilityIdentifier("learned-codes")
                 Button("Add a shade by hand") { showsManualShade = true }
                     .foregroundStyle(Color.ink)
                     .accessibilityIdentifier("add-shade-by-hand")

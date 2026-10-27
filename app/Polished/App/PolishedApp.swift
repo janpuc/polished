@@ -79,6 +79,7 @@ struct AppTabs: View {
         }
         .tabViewStyle(.sidebarAdaptable)
         .tabBarMinimizeBehavior(.onScrollDown)
+        .tagPresentation()
         .task { await app.loadHouseholdZone() }
     }
 }

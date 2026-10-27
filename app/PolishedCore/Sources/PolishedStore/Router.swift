@@ -31,6 +31,9 @@ public final class Router {
     public var shadesPreset: ShadeQuery?
     /// The Shades tab puts the cursor in its search field (Home's search field).
     public var focusSearch = false
+    /// The wheel whose Tag and QR sheet is up. It lives here, not in the wheel page, so the sheet
+    /// stays up when a new tag URL or a swap changes the wheel's address under it.
+    public var tagSlug: String?
 
     public init() {}
 
@@ -66,6 +69,7 @@ public final class Router {
 
     /// A wheel's tag changed: every stack that shows it follows the new address.
     public func replaceWheelSlug(_ old: String, with new: String) {
+        if tagSlug == old { tagSlug = new }
         for tab in paths.keys {
             paths[tab] = paths[tab]?.map { route in
                 if case .wheel(old, let highlight) = route { return .wheel(slug: new, highlight: highlight) }
@@ -76,6 +80,7 @@ public final class Router {
 
     /// Two wheels traded tags: each stack that shows one follows its address to the other.
     public func swapWheelSlugs(_ first: String, _ second: String) {
+        if tagSlug == first { tagSlug = second } else if tagSlug == second { tagSlug = first }
         for tab in paths.keys {
             paths[tab] = paths[tab]?.map { route in
                 if case .wheel(first, let highlight) = route { return .wheel(slug: second, highlight: highlight) }
@@ -87,6 +92,7 @@ public final class Router {
 
     /// A wheel is gone: it leaves every stack.
     public func closeWheel(slug: String) {
+        if tagSlug == slug { tagSlug = nil }
         for tab in paths.keys {
             paths[tab]?.removeAll { $0.wheelSlug == slug }
         }

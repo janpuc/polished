@@ -348,11 +348,26 @@ final class WheelDeleteFlow: FlowCase {
     }
 }
 
-/// The tag's moves: a new URL, and taking another wheel's tag.
-final class WheelTagFlow: FlowCase {
+/// The Tag page on a device without NFC (a simulator): the QR, the address and Copy, no Write and
+/// Check, "Write it from your iPhone"; then the tag's moves: a new URL, and taking another wheel's.
+final class TagFlow: FlowCase {
     @MainActor
-    func testWheelTag() throws {
-        launch(open: "https://polished.janpuc.com/w/\(wheelSlug)")
+    func testTag() throws {
+        openTag()
+        let qr = waitFor(element("tag-qr"), "the QR code")
+        XCTAssertTrue(qr.label.contains("/w/\(wheelSlug)"), "the QR is for this wheel: \(qr.label)")
+        waitForLabel(element("tag-lede"), containing: "Write it from your iPhone")
+        XCTAssertFalse(element("tag-write").exists, "Write to sticker is hidden without NFC")
+        XCTAssertFalse(element("tag-check").exists, "Check the sticker is hidden without NFC")
+        let address = element("tag-address")
+        XCTAssertTrue(address.label.hasSuffix("/w/\(wheelSlug)"), "the address: \(address.label)")
+        sleep(1)
+        step("tag-page")
+
+        element("tag-copy").tap()
+        waitForLabel(element("tag-copy"), containing: "Copied")
+        step("copied")
+
         let newTag = element("new-tag-url")
         scrollTo(newTag, "New tag URL")
         newTag.tap()
@@ -360,6 +375,10 @@ final class WheelTagFlow: FlowCase {
         step("new-tag-confirm")
         confirm.tap()
         waitFor(labelled("New tag URL. Write it"), "the status line")
+        let renewed = element("tag-address")
+        let deadline = Date().addingTimeInterval(10)
+        while renewed.label.hasSuffix("/w/\(wheelSlug)"), Date() < deadline { usleep(300_000) }
+        XCTAssertFalse(renewed.label.hasSuffix("/w/\(wheelSlug)"), "the address changed: \(renewed.label)")
         step("new-tag-done")
 
         let take = element("take-the-tag")
@@ -372,7 +391,128 @@ final class WheelTagFlow: FlowCase {
         step("take-confirm")
         swap.tap()
         waitFor(labelled("took the tag of Toppers"), "the status line")
+        sleep(1)
         step("take-done")
+    }
+}
+
+/// Writing a sticker and checking it, through the fake sticker of a Debug build (`-nfc ok`): Core
+/// NFC itself is device-only (docs/NATIVE.md 6.3). Blank, written, read back; a locked sticker;
+/// a sticker that opens another wheel.
+final class TagStickerFlow: FlowCase {
+    @MainActor
+    func testWriteAndCheck() throws {
+        openTag(extra: ["-nfc", "ok"])
+        let check = waitFor(element("tag-check"), "Check the sticker")
+        waitFor(element("tag-write"), "Write to sticker")
+        waitForLabel(element("tag-lede"), containing: "A sticker on the wheel opens it here")
+        step("tag-page")
+
+        check.tap()
+        waitForLabel(element("tag-outcome"), containing: "This sticker is empty")
+        step("blank")
+
+        element("tag-write").tap()
+        waitForLabel(element("tag-outcome"), containing: "Written. Tap it with your iPhone to open Holos.")
+        waitForLabel(element("tag-last-written"), containing: "Written ")
+        XCTAssertFalse(element("tag-last-written").label.contains("Not written yet"))
+        step("written")
+
+        element("tag-check").tap()
+        waitForLabel(element("tag-outcome"), containing: "This sticker opens Holos.")
+        step("checked")
+        app.terminate()
+
+        openTag(extra: ["-nfc", "readonly"])
+        waitFor(element("tag-write"), "Write to sticker").tap()
+        waitForLabel(element("tag-outcome"), containing: "This sticker is locked. Use another one.")
+        waitFor(app.buttons["Try again"].firstMatch, "Try again after a failure")
+        step("locked")
+        app.terminate()
+
+        openTag(extra: ["-nfc", "other"])
+        waitFor(element("tag-check"), "Check the sticker").tap()
+        waitForLabel(element("tag-outcome"), containing: "This sticker opens Toppers, not this wheel")
+        step("other-wheel")
+    }
+}
+
+/// The Scan screen's typed field on a device without a camera: a P code suggests, a barcode the
+/// app knows is a match, forgetting it makes it new, teaching it again, Add bottle, and the learned
+/// codes list.
+final class ScanTypedFlow: FlowCase {
+    @MainActor
+    func testScanTyped() throws {
+        launch()
+        let scanButton = waitFor(element("scan-button"), "Home's scan button")
+        scanButton.tap()
+        waitFor(element("scan-unavailable"), "the line that says the camera is not here")
+        waitFor(element("scan-field"), "the typed field")
+        step("scan")
+
+        let field = app.textFields["scan-field"].firstMatch
+        field.tap()
+        field.typeText("259")
+        waitFor(element("scan-suggestion"), "the P code suggestion")
+        waitForLabel(element("scan-suggestion"), containing: "Is it Spirit Fingers?")
+        waitFor(app.buttons["Yes, add a bottle"].firstMatch, "the confirm button")
+        step("suggestion")
+
+        field.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: 3))
+        field.typeText("810170284120")
+        waitFor(element("scan-lead"), "the known barcode")
+        waitForLabel(element("scan-lead"), containing: "Barcode 0810170284120 is")
+        step("match")
+
+        element("scan-not-it").tap()
+        dialogButton("Forget it").tap()
+        waitFor(element("scan-unknown-code"), "the barcode is new again")
+        waitForLabel(element("scan-unknown-code"), containing: "New barcode 0810170284120")
+        step("unknown-code")
+
+        let learn = app.textFields["learn-field"].firstMatch
+        learn.tap()
+        learn.typeText("spirit")
+        let row = waitFor(element("learn-row-\(spiritFingersID)"), "Spirit Fingers in the picker")
+        step("picker")
+        row.tap()
+        waitFor(element("scan-notice"), "the saved notice")
+        waitForLabel(element("scan-notice"), containing: "Saved. 0810170284120 is now Spirit Fingers.")
+        step("learned")
+
+        let add = waitFor(element("scan-add"), "Add bottle")
+        // The picker's field is still up: its key (Search) closes the keyboard, then Add bottle.
+        let key = app.keyboards.buttons.matching(NSPredicate(format: "label IN {'Search','search','Return','return','Done'}")).firstMatch
+        if key.waitForExistence(timeout: 2) { key.tap() }
+        add.tap()
+        waitFor(app.navigationBars["Add bottle"], "the Add bottle sheet")
+        step("add-bottle")
+        element("sheet-save").tap()
+        waitUntilGone(element("scan-field"), "the scan screen closes after the bottle is added")
+        waitFor(labelled("Added Spirit Fingers"), "the status line")
+        step("added")
+
+        // The learned codes: Settings on a phone (the mark on Home), the sidebar's tab on an iPad.
+        if element("settings-button").waitForExistence(timeout: 3) {
+            element("settings-button").tap()
+        } else {
+            tapTab("Settings")
+        }
+        let learned = element("learned-codes")
+        scrollTo(learned, "Learned codes in Settings")
+        learned.tap()
+        let code = waitFor(element("learned-list"), "the learned codes")
+        waitFor(labelled("Barcode 0810170284120"), "the barcode just taught")
+        step("learned-codes")
+        let first = app.cells.containing(NSPredicate(format: "label CONTAINS 'Barcode 0810170284120'")).firstMatch
+        waitFor(first, "the barcode's row")
+        first.swipeLeft()
+        let forget = waitFor(app.buttons["Forget"].firstMatch, "the swipe's Forget button")
+        step("swipe")
+        forget.tap()
+        waitUntilGone(labelled("Barcode 0810170284120"), "the barcode is forgotten")
+        XCTAssertTrue(code.exists)
+        step("forgotten")
     }
 }
 
@@ -598,5 +738,17 @@ final class BuilderResumeFlow: FlowCase {
         sleep(1)
         XCTAssertFalse(element("builder-resumed").exists, "Cancel threw the draft away")
         step("fresh")
+    }
+}
+
+extension FlowCase {
+    /// The wheel by its link, then Tag and QR from its foot.
+    @MainActor
+    func openTag(extra: [String] = []) {
+        launch(open: "https://polished.janpuc.com/w/\(wheelSlug)", extra: extra)
+        let row = element("tag-and-qr")
+        scrollTo(row, "Tag and QR")
+        row.tap()
+        waitFor(app.navigationBars["Tag and QR code"], "the Tag page")
     }
 }

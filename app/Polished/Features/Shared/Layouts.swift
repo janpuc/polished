@@ -87,3 +87,31 @@ extension View {
         listRowBackground(selection?.wrappedValue == route ? Color.fill2 : Color.surface)
     }
 }
+
+/// The layer builder opens beside the ring as an inspector; with the split view's list column open
+/// as well the ring is squeezed to nothing, so the column folds away while the builder is up and
+/// comes back as it was when the builder closes (the person's own choice is kept).
+private struct CollapsesSidebarForBuilder: ViewModifier {
+    @Binding var visibility: NavigationSplitViewVisibility
+    @Environment(AppModel.self) private var app
+    @State private var before: NavigationSplitViewVisibility?
+
+    func body(content: Content) -> some View {
+        content.onChange(of: app.builderIsOpen) { _, open in
+            if open {
+                before = visibility
+                withAnimation(.smooth(duration: 0.3)) { visibility = .detailOnly }
+            } else if let earlier = before {
+                before = nil
+                withAnimation(.smooth(duration: 0.3)) { visibility = earlier }
+            }
+        }
+    }
+}
+
+extension View {
+    /// Folds a `NavigationSplitView`'s list column away while the builder is open.
+    func collapsesSidebarForBuilder(_ visibility: Binding<NavigationSplitViewVisibility>) -> some View {
+        modifier(CollapsesSidebarForBuilder(visibility: visibility))
+    }
+}

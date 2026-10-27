@@ -17,7 +17,6 @@ struct WheelScreen: View {
     @State private var wheel = Resource<WheelDetail>()
     @State private var builder: BuilderTarget?
     @State private var sheet: WheelSheet?
-    @State private var confirmsNewTag = false
     /// The slot that was just saved: its tile gets the sweep once the builder has closed.
     @State private var swept: SweptSlot?
     @State private var saves = 0
@@ -28,7 +27,7 @@ struct WheelScreen: View {
     }
 
     private enum WheelSheet: String, Identifiable {
-        case rename, delete, takeTag
+        case rename, delete
         var id: String { rawValue }
     }
 
@@ -69,19 +68,12 @@ struct WheelScreen: View {
                         app.writes.show(
                             swatches == 0 ? "Deleted \(value.name)" : "Deleted \(value.name) and \(swatches) swatch\(swatches == 1 ? "" : "es")")
                     }
-                case .takeTag:
-                    TakeTagSheet(wheel: value) { other, moved in
-                        app.router.swapWheelSlugs(slug, other.slug)
-                        app.writes.show("\(value.name) took the tag of \(other.name)")
-                    }
                 }
             }
         }
-        .confirmationDialog("Make a new tag URL?", isPresented: $confirmsNewTag, titleVisibility: .visible) {
-            Button("New tag URL", role: .destructive) { Task { await newTag() } }
-        } message: {
-            Text("The old sticker will stop working.")
-        }
+        // The builder beside the ring needs the room of the split view's sidebar column.
+        .onChange(of: builder?.position != nil) { _, open in app.builderIsOpen = open }
+        .onDisappear { app.builderIsOpen = false }
     }
 
     private func openBuilder(_ tile: Tile, in value: WheelDetail) {
@@ -110,17 +102,6 @@ struct WheelScreen: View {
         }
     }
 
-    private func newTag() async {
-        guard let value = wheel.value else { return }
-        do {
-            let renewed = try await app.writes.perform(.regenerateTag(wheelID: value.id), affecting: .wheelChange)
-            app.router.replaceWheelSlug(slug, with: renewed.slug)
-            app.writes.show("New tag URL. Write it to the sticker again.")
-        } catch let error as APIError {
-            app.writes.show("Couldn\u{2019}t make a new tag URL. \(error.message)", kind: .failure)
-        } catch {}
-    }
-
     @ViewBuilder
     private func content(_ value: WheelDetail) -> some View {
         VStack(alignment: .leading, spacing: 24) {
@@ -146,18 +127,14 @@ struct WheelScreen: View {
         }
     }
 
-    /// Rename (with Archive under it), the tag's moves, and the red Delete.
+    /// Tag and QR, Rename (with Archive under it), and the red Delete.
     private func foot(_ value: WheelDetail) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             SectionHeading(title: "This wheel")
             VStack(spacing: 0) {
-                footRow(value.archived ? "Rename or restore" : "Rename or archive", id: "rename-wheel") { sheet = .rename }
+                footRow("Tag and QR", id: "tag-and-qr") { app.router.tagSlug = slug }
                 Divider().padding(.leading, 16)
-                footRow("New tag URL", id: "new-tag-url") { confirmsNewTag = true }
-                if !value.others.isEmpty {
-                    Divider().padding(.leading, 16)
-                    footRow("Take the tag of…", id: "take-the-tag") { sheet = .takeTag }
-                }
+                footRow(value.archived ? "Rename or restore" : "Rename or archive", id: "rename-wheel") { sheet = .rename }
                 Divider().padding(.leading, 16)
                 footRow("Delete", color: Color.bad, id: "delete-wheel") { sheet = .delete }
             }

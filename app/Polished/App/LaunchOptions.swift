@@ -6,7 +6,7 @@ import PolishedStore
 /// is how UI tests and simulators skip the Pocket ID sign-in against a local server
 /// (docs/NATIVE.md 6.2):
 ///
-///     -server http://127.0.0.1:8080 -token dev -uitest 1 -open https://…/w/k3m9xq -signedout 1
+///     -server http://127.0.0.1:8080 -token dev -uitest 1 -open https://…/w/k3m9xq -signedout 1 -nfc ok
 struct LaunchOptions {
     var server = URL(string: "https://polished.janpuc.com")!
     /// A development bearer token: skips sign-in, kept in memory.
@@ -22,6 +22,10 @@ struct LaunchOptions {
     /// Opens the Shades search as if Home's search field had been tapped (screenshots).
     var focusSearch = false
 
+    /// UI tests: a sticker in memory instead of Core NFC, "ok" (blank), "other" (holds another
+    /// wheel's link) or "readonly" (refuses a write).
+    var fakeStickers: String?
+
     static let current: LaunchOptions = {
         var options = LaunchOptions()
         #if DEBUG
@@ -32,6 +36,7 @@ struct LaunchOptions {
         options.openURL = defaults.string(forKey: "open").flatMap(URL.init(string:))
         options.forceSignedOut = defaults.bool(forKey: "signedout")
         options.focusSearch = defaults.bool(forKey: "focussearch")
+        options.fakeStickers = defaults.string(forKey: "nfc")
         options.tab = defaults.string(forKey: "tab").flatMap(AppTab.init(rawValue:))
         #endif
         return options

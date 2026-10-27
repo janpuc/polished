@@ -17,6 +17,7 @@ struct HomeScreen: View {
     @State private var anotherCount = 0
     @State private var woreCount = 0
     @State private var showsSettings = false
+    @State private var showsScan = false
     @Namespace private var tips
 
     var body: some View {
@@ -66,6 +67,7 @@ struct HomeScreen: View {
             .sensoryFeedback(.success, trigger: woreCount)
         }
         .environment(\.tipNamespace, tips)
+        .scanCover(isPresented: $showsScan)
         .sheet(isPresented: $showsSettings) {
             NavigationStack { SettingsScreen() }
                 .presentationSizing(.form)
@@ -78,7 +80,10 @@ struct HomeScreen: View {
     private func content(_ home: Home) -> some View {
         VStack(alignment: .leading, spacing: 28) {
             header(home)
-            searchField(home)
+            HStack(spacing: 10) {
+                searchField(home)
+                ScanButton { showsScan = true }
+            }
             ViewThatFits(in: .horizontal) {
                 HStack(alignment: .top, spacing: 28) {
                     VStack(alignment: .leading, spacing: 28) {

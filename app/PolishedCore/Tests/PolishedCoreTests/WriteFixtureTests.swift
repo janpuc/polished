@@ -61,6 +61,8 @@ private let writeFixtures: [WriteFixture] = [
     .init("wheel_delete.json", .deleteWheel(id: 3)),
     .init("wheel_slug_regenerate.json", .regenerateTag(wheelID: 3)),
     .init("wheel_slug_take.json", .takeTag(wheelID: 3, from: 2)),
+    .init("identifier_learn.json", .learn(LearnRequest(kind: "gtin", value: "5901234123457", shadeId: 1))),
+    .init("identifier_forget.json", .forgetCode(id: 4)),
     .init("sync_run.json", .runSync()),
     .init("slot_draft.json", .openDraft(wheelID: 3, position: 3)),
     .init("slot_draft_new.json", .openDraft(wheelID: 3, position: 4)),
@@ -88,8 +90,8 @@ private var patch: BottlePatch {
     return patch
 }
 
-/// The write fixtures that belong to the codes (run 5) and the sign-in.
-private let laterFixtures: Set<String> = ["auth_exchange.json", "identifier_forget.json", "identifier_learn.json"]
+/// The write fixtures that belong to the sign-in, which is device-only.
+private let laterFixtures: Set<String> = ["auth_exchange.json"]
 
 @Suite("Write fixtures")
 struct WriteFixtureTests {

@@ -126,6 +126,15 @@ extension Request {
         Request<SlotResult>("POST", "/api/v1/stacks/\(stackID)/cancel")
     }
 
+    // Codes
+    public static func learn(_ code: LearnRequest) -> Request<IdentifierSaved> {
+        make("POST", "/api/v1/identifiers", code)
+    }
+
+    public static func forgetCode(id: Int) -> Request<NoContent> {
+        Request<NoContent>("DELETE", "/api/v1/identifiers/\(id)")
+    }
+
     // Sync
     public static func runSync() -> Request<SyncStarted> {
         Request<SyncStarted>("POST", "/api/v1/sync/run")

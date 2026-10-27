@@ -23,6 +23,10 @@ final class AppModel {
     /// The household's time zone from `/me`, which decides what "today" is for dates the server
     /// checks; the phone's until it arrives.
     private(set) var day = HouseholdDay()
+    /// The wheel's layer builder is up beside the ring; a split view gives its sidebar column back.
+    var builderIsOpen = false
+    /// The NFC stickers (a fake one in a Debug build launched with `-nfc`).
+    let stickers: any StickerService
     /// The last bottle added, so its shade's tip can arrive (docs/NATIVE.md 5.7, moment 3).
     private(set) var arrival = Arrival(shadeID: 0, serial: 0)
 
@@ -64,6 +68,15 @@ final class AppModel {
             })
         api = live
         writes = WriteCoordinator(api: live, cache: cache)
+        #if DEBUG
+        if let mode = launch.fakeStickers {
+            stickers = FakeStickers(mode: mode, server: launch.server)
+        } else {
+            stickers = CoreNFCStickers()
+        }
+        #else
+        stickers = CoreNFCStickers()
+        #endif
         if launch.forceSignedOut { session.signOut() }
         if let tab = launch.tab { router.tab = tab }
         router.focusSearch = launch.focusSearch

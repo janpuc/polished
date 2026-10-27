@@ -50,3 +50,14 @@ public struct Identifier: Codable, Sendable, Hashable, Identifiable {
 public struct LearnedCodes: Codable, Sendable, Hashable {
     public var items: [Identifier]
 }
+
+extension LookupShade {
+    /// The same shade as a list row (the learn answer carries a row, not the photos).
+    public var row: ShadeRow {
+        ShadeRow(
+            id: id, title: title, kind: kind, source: source, isTopper: isTopper, priceCents: priceCents,
+            compareAtCents: compareAtCents, status: status, finishes: finishes, ownedCount: ownedCount,
+            wishlisted: wishlisted, heroImageUrl: heroImageUrl, releasedOn: releasedOn,
+            officialCollection: officialCollection, marks: marks, tip: tip)
+    }
+}

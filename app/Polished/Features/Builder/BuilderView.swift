@@ -42,6 +42,7 @@ struct BuilderView: View {
     @State private var showsCopySources = false
     @State private var confirmsRemoval = false
     @State private var loadedFields = false
+    @State private var showsScan = false
     @FocusState private var searchFocused: Bool
 
     private var model: BuilderModel { target.model }
@@ -279,6 +280,7 @@ struct BuilderView: View {
         @Bindable var model = model
         return VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 8) {
+            HStack(spacing: 8) {
                 Image(systemName: "magnifyingglass")
                     .foregroundStyle(Color.ink3)
                     .accessibilityHidden(true)
@@ -310,6 +312,9 @@ struct BuilderView: View {
                     withAnimation(.smooth) { scroll.scrollTo("picker", anchor: .top) }
                 }
             }
+                ScanButton { showsScan = true }
+            }
+            .scanCover(isPresented: $showsScan, purpose: .layer { shade in model.add(shade) })
 
             Picker("Show", selection: $model.scope) {
                 ForEach(PickScope.allCases) { scope in Text(scope.title).tag(scope) }
