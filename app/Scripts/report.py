@@ -190,6 +190,10 @@ def main() -> int:
     runs.sort(key=order)
     flows = expected or sorted({case.flow for _, cases in runs for case in cases})
 
+    def runs_flow(meta: dict, flow: str) -> bool:
+        """A run lists the flows it was asked for (flows.sh --duo-also); older runs ran them all."""
+        return "flows" not in meta or flow in meta["flows"].split(",")
+
     def find(cases: list[Case], flow: str) -> Case | None:
         return next((case for case in cases if case.flow == flow), None)
 
@@ -199,7 +203,9 @@ def main() -> int:
         row = []
         for _meta, cases in runs:
             case = find(cases, flow)
-            if case is None:
+            if not runs_flow(_meta, flow):
+                row.append("<td>not run</td>")
+            elif case is None:
                 row.append('<td class="miss">missing</td>')
                 failed += 1
             elif case.passed:
@@ -221,6 +227,8 @@ def main() -> int:
         for meta, cases in runs:
             case = find(cases, flow)
             title = f"{html.escape(meta['device'])} (iOS {html.escape(meta['os'])}), {html.escape(meta['scheme'])}"
+            if not runs_flow(meta, flow):
+                continue
             if case is None:
                 strips.append(f'<h3>{title}: <span class="miss">missing</span></h3>')
                 continue

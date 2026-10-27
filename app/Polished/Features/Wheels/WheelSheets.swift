@@ -187,7 +187,7 @@ struct DeleteWheelSheet: View {
                     .foregroundStyle(Color.ink)
                     .accessibilityAddTraits(.isHeader)
                 Text(
-                    "This removes the wheel, its \(swatches) and its tag address. The sticker will stop opening anything."
+                    "This removes the wheel\(wheel.filledCount == 0 ? "" : ", its \(swatches)") and its tag address. The sticker will stop opening anything."
                 )
                 .font(.body)
                 .foregroundStyle(Color.ink2)

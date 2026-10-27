@@ -237,7 +237,7 @@ struct ShadeDetailScreen: View {
             SectionHeading(title: "Swatched on")
             VStack(spacing: 0) {
                 ForEach(Array(places.enumerated()), id: \.element.id) { index, place in
-                    NavigationLink(value: Route.wheel(slug: place.slug)) {
+                    NavigationLink(value: Route.wheel(slug: place.slug, highlight: place.position)) {
                         HStack {
                             Text(place.name).foregroundStyle(Color.ink)
                             Text("slot \(place.position)").foregroundStyle(Color.ink2)

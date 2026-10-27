@@ -14,8 +14,8 @@ private struct RouteDestinations: ViewModifier {
                 } else {
                     ShadeDetailScreen(id: id)
                 }
-            case .wheel(let slug):
-                WheelScreen(slug: slug)
+            case .wheel(let slug, let highlight):
+                WheelScreen(slug: slug, highlight: highlight)
             }
         }
     }

@@ -5,15 +5,27 @@ import PolishedStore
 import SwiftUI
 
 /// One wheel: its name in Fraunces, the ring of real tips with the count in the hub, and the
-/// swatches as a list; at the foot Rename, the tag's moves and Delete (docs/NATIVE.md 5.2). A slot
-/// opens the swatch; the builder arrives in run 4.
+/// swatches as a list; at the foot Rename, the tag's moves and Delete (docs/NATIVE.md 5.2). A slot,
+/// filled or empty, opens the layer builder: a sheet on a phone, an inspector beside the ring on
+/// a regular width.
 struct WheelScreen: View {
     let slug: String
+    /// The slot to ring in foil, from a shade's "Swatched on".
+    var highlight: Int?
     @Environment(AppModel.self) private var app
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var wheel = Resource<WheelDetail>()
-    @State private var picked: Tile?
+    @State private var builder: BuilderTarget?
     @State private var sheet: WheelSheet?
     @State private var confirmsNewTag = false
+    /// The slot that was just saved: its tile gets the sweep once the builder has closed.
+    @State private var swept: SweptSlot?
+    @State private var saves = 0
+
+    private struct SweptSlot: Equatable {
+        var position: Int
+        var serial: Int
+    }
 
     private enum WheelSheet: String, Identifiable {
         case rename, delete, takeTag
@@ -42,11 +54,8 @@ struct WheelScreen: View {
         .navigationTitle("")
         .toolbarTitleDisplayMode(.inline)
         .revalidating(wheel, .wheel(slug: slug))
-        .sheet(item: $picked) { tile in
-            SwatchSheet(tile: tile, wheelName: wheel.value?.name ?? "")
-                .presentationDetents([.medium, .large])
-                .presentationDragIndicator(.visible)
-        }
+        .builderPresentation($builder, wheelName: wheel.value?.name ?? "") { outcome in finish(outcome) }
+        .sensoryFeedback(.success, trigger: saves)
         .sheet(item: $sheet) { which in
             if let value = wheel.value {
                 switch which {
@@ -72,6 +81,32 @@ struct WheelScreen: View {
             Button("New tag URL", role: .destructive) { Task { await newTag() } }
         } message: {
             Text("The old sticker will stop working.")
+        }
+    }
+
+    private func openBuilder(_ tile: Tile, in value: WheelDetail) {
+        guard builder?.position != tile.position else { return }
+        builder = BuilderTarget(
+            position: tile.position, saved: tile.filled,
+            model: BuilderModel(wheelID: value.id, position: tile.position, api: app.api, writes: app.writes))
+    }
+
+    /// The builder closed: a saved swatch gets its sweep once the sheet is gone, with the success
+    /// haptic as it lands (docs/NATIVE.md 5.7, 5.8).
+    private func finish(_ outcome: BuilderOutcome) {
+        let removed = builder?.position
+        builder = nil
+        switch outcome {
+        case .saved(let result):
+            Task {
+                try? await Task.sleep(for: .milliseconds(reduceMotion ? 200 : 450))
+                saves += 1
+                swept = SweptSlot(position: result.position, serial: saves)
+            }
+        case .removed:
+            if let removed { app.writes.show("Removed the swatch from slot \(removed)") }
+        case .cancelled, .closed:
+            break
         }
     }
 
@@ -149,8 +184,11 @@ struct WheelScreen: View {
     }
 
     private func ring(_ value: WheelDetail) -> some View {
-        WheelRing(tiles: value.tiles, slotCount: value.slotCount, filled: value.filledCount) { tile in
-            if tile.filled { picked = tile }
+        WheelRing(
+            tiles: value.tiles, slotCount: value.slotCount, filled: value.filledCount, highlighted: highlight,
+            editing: builder?.position, sweeping: swept.map { ($0.position, $0.serial) }
+        ) { tile in
+            openBuilder(tile, in: value)
         }
         .frame(maxWidth: .infinity)
         .accessibilityIdentifier("wheel-ring")
@@ -168,11 +206,12 @@ struct WheelScreen: View {
                 VStack(spacing: 0) {
                     ForEach(Array(filled.enumerated()), id: \.element.id) { index, tile in
                         Button {
-                            picked = tile
+                            openBuilder(tile, in: value)
                         } label: {
                             SwatchRow(tile: tile)
                         }
                         .buttonStyle(.plain)
+                        .accessibilityIdentifier("swatch-row-\(tile.position)")
                         if index < filled.count - 1 { Divider().padding(.leading, 76) }
                     }
                 }
@@ -216,84 +255,5 @@ struct SwatchRow: View {
         .accessibilityLabel(
             "Slot \(tile.position), \(tile.summary)" + (Words.day(tile.paintedOn).map { ", painted \($0)" } ?? ""))
         .accessibilityAddTraits(.isButton)
-    }
-}
-
-/// What a slot holds: the stack's tip, its layers with their coats, the note and the day. The
-/// builder that edits it arrives in run 4.
-struct SwatchSheet: View {
-    let tile: Tile
-    let wheelName: String
-    @Environment(\.dismiss) private var dismiss
-
-    var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 24) {
-                    HStack(alignment: .center, spacing: 20) {
-                        TipView(TipRecipe(tips: tile.layerTips), size: .xl, painting: .direct)
-                            .padding(.vertical, 8)
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("Slot \(tile.position)")
-                                .font(.title2.weight(.semibold))
-                                .foregroundStyle(Color.ink)
-                            Text(wheelName)
-                                .font(.subheadline)
-                                .foregroundStyle(Color.ink2)
-                            if let painted = Words.day(tile.paintedOn) {
-                                Text("Painted \(painted)")
-                                    .font(.subheadline)
-                                    .foregroundStyle(Color.ink2)
-                            }
-                        }
-                        Spacer(minLength: 0)
-                    }
-                    if let note = tile.note {
-                        Text(note)
-                            .font(.body)
-                            .foregroundStyle(Color.ink)
-                    }
-                    VStack(spacing: 0) {
-                        ForEach(Array(tile.layers.enumerated()), id: \.element.id) { index, layer in
-                            NavigationLink(value: Route.shade(layer.shadeId)) {
-                                HStack(spacing: 12) {
-                                    TipView(TipRecipe(layer.tip.shade), size: .s)
-                                        .padding(.vertical, 8)
-                                    VStack(alignment: .leading, spacing: 1) {
-                                        Text(layer.title)
-                                            .font(.body)
-                                            .foregroundStyle(Color.ink)
-                                        Text(layerLine(layer))
-                                            .font(.footnote)
-                                            .foregroundStyle(Color.ink2)
-                                    }
-                                    Spacer()
-                                }
-                                .padding(.horizontal, 16)
-                                .frame(minHeight: 56)
-                                .contentShape(Rectangle())
-                            }
-                            .buttonStyle(.plain)
-                            if index < tile.layers.count - 1 { Divider().padding(.leading, 60) }
-                        }
-                    }
-                    .groupCard()
-                }
-                .padding(16)
-            }
-            .background(Color.board)
-            .navigationBarTitleDisplayMode(.inline)
-            .navigationDestination(for: Route.self) { route in
-                if case .shade(let id) = route { ShadeDetailScreen(id: id) }
-            }
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }
-            }
-        }
-    }
-
-    private func layerLine(_ layer: Layer) -> String {
-        let coats = "\(layer.coats) coat\(layer.coats == 1 ? "" : "s")"
-        return layer.label.isEmpty ? coats : "\(layer.label), \(coats)"
     }
 }

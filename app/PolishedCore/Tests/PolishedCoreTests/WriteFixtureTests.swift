@@ -62,6 +62,22 @@ private let writeFixtures: [WriteFixture] = [
     .init("wheel_slug_regenerate.json", .regenerateTag(wheelID: 3)),
     .init("wheel_slug_take.json", .takeTag(wheelID: 3, from: 2)),
     .init("sync_run.json", .runSync()),
+    .init("slot_draft.json", .openDraft(wheelID: 3, position: 3)),
+    .init("slot_draft_new.json", .openDraft(wheelID: 3, position: 4)),
+    .init("slot_draft_resumed.json", .openDraft(wheelID: 3, position: 3)),
+    .init("slot_clear.json", .clearSlot(wheelID: 3, position: 3)),
+    .init("layer_add.json", .addLayer(stackID: 4, shadeID: 1)),
+    .init("layer_add_second.json", .addLayer(stackID: 4, shadeID: 14)),
+    .init("layer_coats.json", .changeCoats(stackID: 4, layerID: 6, delta: 1)),
+    .init("layer_move.json", .moveLayer(stackID: 4, layerID: 6, direction: "down")),
+    .init("layer_delete.json", .removeLayer(stackID: 4, layerID: 6)),
+    .init("stack_template_over_black.json", .template(stackID: 4, TemplateRequest(kind: "over_black"))),
+    .init("stack_template_copy.json", .template(stackID: 4, TemplateRequest(kind: "copy", sourceStackId: 1))),
+    .init("stack_template_last.json", .template(stackID: 4, TemplateRequest(kind: "last"))),
+    .init(
+        "stack_save.json",
+        .saveStack(stackID: 4, SaveStackRequest(name: "Black and flakes", note: "Dried fast", paintedOn: "2026-10-25"))),
+    .init("stack_cancel.json", .cancelStack(stackID: 5)),
 ]
 
 private var patch: BottlePatch {
@@ -72,13 +88,8 @@ private var patch: BottlePatch {
     return patch
 }
 
-/// The write fixtures that belong to the builder (run 4), the codes (run 5) and the sign-in.
-private let laterFixtures: Set<String> = [
-    "auth_exchange.json", "identifier_forget.json", "identifier_learn.json", "layer_add.json", "layer_add_second.json",
-    "layer_coats.json", "layer_delete.json", "layer_move.json", "slot_clear.json", "slot_draft.json",
-    "slot_draft_new.json", "slot_draft_resumed.json", "stack_cancel.json", "stack_save.json", "stack_template_copy.json",
-    "stack_template_last.json", "stack_template_over_black.json",
-]
+/// The write fixtures that belong to the codes (run 5) and the sign-in.
+private let laterFixtures: Set<String> = ["auth_exchange.json", "identifier_forget.json", "identifier_learn.json"]
 
 @Suite("Write fixtures")
 struct WriteFixtureTests {

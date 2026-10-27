@@ -10,7 +10,12 @@ public enum AppTab: String, Hashable, CaseIterable, Sendable {
 /// A screen pushed onto a tab's stack.
 public enum Route: Hashable, Sendable {
     case shade(Int)
-    case wheel(slug: String)
+    /// `highlight` is the slot to ring in foil (a shade's "Swatched on").
+    case wheel(slug: String, highlight: Int? = nil)
+
+    public var wheelSlug: String? {
+        if case .wheel(let slug, _) = self { slug } else { nil }
+    }
 }
 
 /// Which tab is up and what each tab's stack holds. Deep links and the Home shortcuts write
@@ -62,7 +67,10 @@ public final class Router {
     /// A wheel's tag changed: every stack that shows it follows the new address.
     public func replaceWheelSlug(_ old: String, with new: String) {
         for tab in paths.keys {
-            paths[tab] = paths[tab]?.map { $0 == .wheel(slug: old) ? .wheel(slug: new) : $0 }
+            paths[tab] = paths[tab]?.map { route in
+                if case .wheel(old, let highlight) = route { return .wheel(slug: new, highlight: highlight) }
+                return route
+            }
         }
     }
 
@@ -70,8 +78,8 @@ public final class Router {
     public func swapWheelSlugs(_ first: String, _ second: String) {
         for tab in paths.keys {
             paths[tab] = paths[tab]?.map { route in
-                if route == .wheel(slug: first) { return .wheel(slug: second) }
-                if route == .wheel(slug: second) { return .wheel(slug: first) }
+                if case .wheel(first, let highlight) = route { return .wheel(slug: second, highlight: highlight) }
+                if case .wheel(second, let highlight) = route { return .wheel(slug: first, highlight: highlight) }
                 return route
             }
         }
@@ -80,7 +88,7 @@ public final class Router {
     /// A wheel is gone: it leaves every stack.
     public func closeWheel(slug: String) {
         for tab in paths.keys {
-            paths[tab]?.removeAll { $0 == .wheel(slug: slug) }
+            paths[tab]?.removeAll { $0.wheelSlug == slug }
         }
     }
 

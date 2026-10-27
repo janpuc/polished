@@ -4,16 +4,21 @@ import SwiftUI
 
 /// The ring of a wheel: real painted tips on their hairline ring, slot 1 at twelve o'clock and the
 /// numbers running clockwise (the web's `.ring`). A filled slot shows its stack's painted tip, an
-/// empty one the plain Fill tip with its number, a draft the same with a dashed die-cut edge.
+/// empty one the plain Fill tip with its number, a draft the same with a dashed die-cut edge. Every
+/// slot is a button that opens the builder.
 /// The hub is the count in Fraunces over "of 20". Tips are decoration: each slot is a button that
 /// says what it holds.
 struct WheelRing: View {
     let tiles: [Tile]
     let slotCount: Int
     let filled: Int
-    var onSelect: ((Tile) -> Void)?
     /// The slot to ring in foil (`?hl`, from Swatched on).
     var highlighted: Int?
+    /// The slot the builder is open on: a plain ink ring.
+    var editing: Int?
+    /// A slot that was just saved and the serial of the save: one band of light crosses its tip.
+    var sweeping: (position: Int, serial: Int)?
+    var onSelect: ((Tile) -> Void)?
 
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
@@ -56,9 +61,15 @@ struct WheelRing: View {
                         .fill(AngularGradient(colors: Foil.colors, center: .center))
                         .frame(width: size.width + 6, height: size.height + 6)
                 }
+                if editing == tile.position {
+                    TipShape()
+                        .stroke(Color.ink, lineWidth: 2)
+                        .frame(width: size.width + 7, height: size.height + 7)
+                }
                 TipView(
                     tile.filled ? TipRecipe(tips: tile.layerTips) : nil, size: .ring, dimensions: size,
                     light: TipLight(lx: light.x, ly: light.y))
+                    .sweep(trigger: sweeping?.position == tile.position ? sweeping?.serial ?? 0 : 0)
                 if tile.hasDraft && !tile.filled {
                     TipShape()
                         .stroke(Color.ink2, style: StrokeStyle(lineWidth: 1.5, dash: [3, 3]))
@@ -80,7 +91,7 @@ struct WheelRing: View {
         .buttonStyle(RingSlotStyle())
         .offset(x: offset.x, y: offset.y)
         .accessibilityLabel(label(tile))
-        .accessibilityAddTraits(tile.filled ? [] : .isButton)
+        .accessibilityAddTraits(.isButton)
     }
 
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize

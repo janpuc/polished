@@ -23,8 +23,7 @@ private func make<Response>(_ method: String, _ path: String, _ payload: some En
     Request(method, path, body: try? APICoding.makeEncoder().encode(payload))
 }
 
-/// Every write endpoint the app uses (docs/NATIVE.md 3). The builder's stack writes arrive with
-/// the builder.
+/// Every write endpoint the app uses (docs/NATIVE.md 3).
 extension Request {
     // Bottles
     public static func addBottle(shadeID: Int, _ bottle: BottleRequest) -> Request<BottleCreated> {
@@ -88,6 +87,43 @@ extension Request {
 
     public static func takeTag(wheelID: Int, from otherID: Int) -> Request<Wheel> {
         make("POST", "/api/v1/wheels/\(wheelID)/slug/take", TakeTagRequest(fromWheelId: otherID))
+    }
+
+    // The builder: a slot's draft and the stack being built
+    public static func openDraft(wheelID: Int, position: Int) -> Request<StackSheet> {
+        Request<StackSheet>("POST", "/api/v1/wheels/\(wheelID)/slots/\(position)/draft")
+    }
+
+    public static func clearSlot(wheelID: Int, position: Int) -> Request<NoContent> {
+        Request<NoContent>("DELETE", "/api/v1/wheels/\(wheelID)/slots/\(position)")
+    }
+
+    public static func addLayer(stackID: Int, shadeID: Int) -> Request<StackSheet> {
+        make("POST", "/api/v1/stacks/\(stackID)/layers", LayerRequest(shadeId: shadeID))
+    }
+
+    public static func changeCoats(stackID: Int, layerID: Int, delta: Int) -> Request<StackSheet> {
+        make("PATCH", "/api/v1/stacks/\(stackID)/layers/\(layerID)", LayerPatch(coatsDelta: delta))
+    }
+
+    public static func moveLayer(stackID: Int, layerID: Int, direction: String) -> Request<StackSheet> {
+        make("PATCH", "/api/v1/stacks/\(stackID)/layers/\(layerID)", LayerPatch(move: direction))
+    }
+
+    public static func removeLayer(stackID: Int, layerID: Int) -> Request<StackSheet> {
+        Request<StackSheet>("DELETE", "/api/v1/stacks/\(stackID)/layers/\(layerID)")
+    }
+
+    public static func template(stackID: Int, _ template: TemplateRequest) -> Request<StackSheet> {
+        make("POST", "/api/v1/stacks/\(stackID)/template", template)
+    }
+
+    public static func saveStack(stackID: Int, _ stack: SaveStackRequest) -> Request<SlotResult> {
+        make("POST", "/api/v1/stacks/\(stackID)/save", stack)
+    }
+
+    public static func cancelStack(stackID: Int) -> Request<SlotResult> {
+        Request<SlotResult>("POST", "/api/v1/stacks/\(stackID)/cancel")
     }
 
     // Sync

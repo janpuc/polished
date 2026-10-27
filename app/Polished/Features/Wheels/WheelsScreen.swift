@@ -39,8 +39,8 @@ private struct WheelsSplit: View {
                 .navigationSplitViewColumnWidth(min: 320, ideal: 380, max: 420)
         } detail: {
             NavigationStack(path: $detailPath) {
-                if case .wheel(let slug)? = selection.wrappedValue {
-                    WheelScreen(slug: slug).id(slug)
+                if case .wheel(let slug, let highlight)? = selection.wrappedValue {
+                    WheelScreen(slug: slug, highlight: highlight).id(slug)
                 } else {
                     SplitPlaceholder(line: "Pick a wheel")
                 }

@@ -187,6 +187,7 @@ public final class WriteCoordinator {
 
     /// Called after a write went through: its stale snapshots go, the screens reload.
     public func didWrite(_ effect: WriteEffect) async {
+        guard !effect.isEmpty else { return }
         await cache?.invalidate(prefixes: effect.prefixes)
         revision += 1
     }

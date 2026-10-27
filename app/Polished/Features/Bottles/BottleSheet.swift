@@ -53,7 +53,7 @@ struct BottleSheet: View {
                     header
                 }
                 .listRowBackground(Color.clear)
-                .listRowInsets(EdgeInsets(top: 0, leading: 4, bottom: 0, trailing: 4))
+                .listRowInsets(EdgeInsets(top: 14, leading: 4, bottom: 6, trailing: 4))
 
                 Section("Level") {
                     VStack(alignment: .leading, spacing: 6) {
@@ -132,6 +132,8 @@ struct BottleSheet: View {
             .background(Color.board)
             .scrollDismissesKeyboard(.interactively)
             .navigationTitle(bottle == nil ? "Add bottle" : "Edit bottle")
+            // The shade is named in the bar too, so it is never lost under it when the form scrolls.
+            .navigationSubtitle(mode.shade.title)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 SheetBar(

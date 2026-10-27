@@ -99,6 +99,10 @@ public struct StackSheet: Codable, Sendable, Hashable {
     public var summary: String
     public var full: Bool
     public var tip: [Tip]
+    /// Only on the answer of opening a slot's draft: the draft was already there.
+    public var resumed: Bool?
+    /// Only on the answer of a template: `added`, `already`, `unavailable`, `copied` or `nothing_saved`.
+    public var result: String?
 }
 
 public struct CopySource: Codable, Sendable, Hashable, Identifiable {

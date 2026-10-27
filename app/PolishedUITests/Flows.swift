@@ -436,3 +436,167 @@ final class TipColourFlow: FlowCase {
         step("tip-back")
     }
 }
+
+// MARK: The builder (run 4)
+
+extension FlowCase {
+    /// A ring slot by its number (its label starts "Slot 11").
+    @MainActor
+    func slot(_ position: Int) -> XCUIElement {
+        app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Slot \(position),")).firstMatch
+    }
+
+    /// The builder for `position`, opened from the ring of the wheel the link names.
+    @MainActor
+    func openBuilder(slot position: Int) {
+        launch(open: "https://polished.janpuc.com/w/\(wheelSlug)")
+        waitFor(element("wheel-ring"), "the ring")
+        sleep(1)
+        waitFor(slot(position), "slot \(position)").tap()
+        waitFor(app.staticTexts["Slot \(position)"].firstMatch, "the builder")
+    }
+
+    /// Types into the builder's search field (a fresh simulator introduces slide-to-type first).
+    @MainActor
+    func typeInBuilder(_ text: String) {
+        let field = waitFor(app.textFields["builder-search"].firstMatch, "the builder's search field")
+        field.tap()
+        field.typeText(text)
+        let introduction = app.buttons["Continue"]
+        if introduction.waitForExistence(timeout: 1) { introduction.tap() }
+    }
+
+    @MainActor
+    func button(_ label: String) -> XCUIElement {
+        waitFor(app.buttons[label].firstMatch, label)
+    }
+
+    /// Leaves the builder open on the screen and keeps its draft: the inspector's Close, a sheet's drag.
+    @MainActor
+    func closeBuilderKeepingDraft() {
+        let close = element("builder-close")
+        if close.waitForExistence(timeout: 2) {
+            close.tap()
+        } else {
+            // The sheet comes down in two drags: .large to .medium, then away.
+            let window = app.windows.firstMatch
+            for drag in 0..<3 where element("builder-save").exists {
+                let top = window.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: drag == 0 ? 0.2 : 0.6))
+                top.press(forDuration: 0.1, thenDragTo: window.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.98)))
+                sleep(1)
+            }
+        }
+        waitUntilGone(element("builder-save"), "the builder closes")
+    }
+}
+
+/// Slot 11, empty: Over black, search "flak", add it, a second coat, move it up and down, Save swatch.
+final class BuilderFlow: FlowCase {
+    @MainActor
+    func testBuilder() throws {
+        openBuilder(slot: 11)
+        sleep(1)
+        step("opened")
+
+        button("Over black").tap()
+        waitFor(app.buttons["Remove One-Coat Black"].firstMatch, "One-Coat Black as the base")
+        step("over-black")
+
+        typeInBuilder("flak")
+        let add = waitFor(app.buttons["Add Flakie Holo Taco"].firstMatch, "Flakie Holo Taco in the results")
+        step("searching")
+        add.tap()
+        waitFor(app.buttons["Remove Flakie Holo Taco"].firstMatch, "Flakie Holo Taco as the top layer")
+        sleep(1)
+        step("added")
+
+        button("Add a coat of Flakie Holo Taco").tap()
+        waitForLabel(element("builder-summary"), containing: "Flakie Holo Taco ×2")
+        step("two-coats")
+
+        button("Move Flakie Holo Taco up").tap()
+        waitForLabel(element("builder-summary"), containing: "Flakie Holo Taco ×2 + One-Coat Black")
+        sleep(1)
+        step("moved-up")
+        button("Move Flakie Holo Taco down").tap()
+        waitForLabel(element("builder-summary"), containing: "One-Coat Black + Flakie Holo Taco ×2")
+        sleep(1)
+        step("moved-down")
+
+        button("Save swatch").tap()
+        waitUntilGone(element("builder-save"), "the builder closes")
+        step("saved")
+        let row = waitFor(element("swatch-row-11"), "the Swatches row of slot 11")
+        waitForLabel(row, containing: "One-Coat Black + Flakie Holo Taco ×2")
+        waitForLabel(slot(11), containing: "One-Coat Black + Flakie Holo Taco ×2")
+        sleep(2)
+        step("tile-filled")
+    }
+}
+
+/// Copy from… (a saved swatch's layers), then Same as last, then Cancel: slot 10 stays empty.
+final class BuilderCopyFlow: FlowCase {
+    @MainActor
+    func testCopy() throws {
+        openBuilder(slot: 10)
+        sleep(1)
+        button("Copy from…").tap()
+        waitFor(app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'copy-source-'")).firstMatch, "saved swatches to copy")
+        sleep(1)
+        step("copy-sources")
+        // The list is long: search it, as a person would.
+        let field = waitFor(app.searchFields.firstMatch, "the search field of the list")
+        field.tap()
+        field.typeText("flakie")
+        let source = app.buttons.matching(NSPredicate(format: "label CONTAINS 'Spirit Fingers' AND label CONTAINS 'Flakie'")).firstMatch
+        waitFor(source, "the Spirit Fingers + Flakie swatch")
+        step("copy-search")
+        source.tap()
+        waitForLabel(element("builder-summary"), containing: "Spirit Fingers")
+        sleep(1)
+        step("copied")
+
+        button("Same as last").tap()
+        waitForLabel(element("builder-summary"), containing: "Magnetic Taco")
+        sleep(1)
+        step("same-as-last")
+
+        element("builder-cancel").tap()
+        waitUntilGone(element("builder-save"), "the builder closes")
+        waitForLabel(slot(10), containing: "empty")
+        sleep(1)
+        step("discarded")
+    }
+}
+
+/// Start, close, open again: "Resumed your draft"; Cancel throws it away.
+final class BuilderResumeFlow: FlowCase {
+    @MainActor
+    func testResume() throws {
+        openBuilder(slot: 10)
+        button("Over black").tap()
+        waitFor(app.buttons["Remove One-Coat Black"].firstMatch, "One-Coat Black")
+        XCTAssertFalse(element("builder-resumed").exists, "a new draft is not a resumed one")
+        step("started")
+        closeBuilderKeepingDraft()
+        waitForLabel(slot(10), containing: "draft in progress")
+        sleep(1)
+        step("draft-on-the-ring")
+
+        slot(10).tap()
+        waitFor(element("builder-resumed"), "Resumed your draft")
+        waitForLabel(element("builder-summary"), containing: "One-Coat Black")
+        sleep(1)
+        step("resumed")
+
+        element("builder-cancel").tap()
+        waitUntilGone(element("builder-save"), "the builder closes")
+        waitForLabel(slot(10), containing: "empty")
+        step("cancelled")
+        slot(10).tap()
+        waitFor(app.staticTexts["Slot 10"].firstMatch, "the builder again")
+        sleep(1)
+        XCTAssertFalse(element("builder-resumed").exists, "Cancel threw the draft away")
+        step("fresh")
+    }
+}

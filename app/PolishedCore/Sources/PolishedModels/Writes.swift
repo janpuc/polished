@@ -251,3 +251,59 @@ public struct SyncStarted: Codable, Sendable, Hashable {
 public struct NoContent: Codable, Sendable, Hashable {
     public init() {}
 }
+
+// MARK: Stacks (the builder)
+
+/// `POST /stacks/{id}/layers`.
+public struct LayerRequest: Encodable, Sendable, Hashable {
+    public var shadeId: Int
+
+    public init(shadeId: Int) {
+        self.shadeId = shadeId
+    }
+}
+
+/// `PATCH /stacks/{id}/layers/{layer_id}`: exactly one of a coat more or less, or a move.
+public struct LayerPatch: Encodable, Sendable, Hashable {
+    public var coatsDelta: Int?
+    /// "up" is towards the base.
+    public var move: String?
+
+    public init(coatsDelta: Int? = nil, move: String? = nil) {
+        self.coatsDelta = coatsDelta
+        self.move = move
+    }
+}
+
+/// `POST /stacks/{id}/template`.
+public struct TemplateRequest: Encodable, Sendable, Hashable {
+    /// "over_black", "copy" or "last".
+    public var kind: String
+    public var sourceStackId: Int?
+
+    public init(kind: String, sourceStackId: Int? = nil) {
+        self.kind = kind
+        self.sourceStackId = sourceStackId
+    }
+}
+
+/// `POST /stacks/{id}/save`: an empty name or note is sent as an empty string; the date is the
+/// day the swatch was painted (the server defaults to today).
+public struct SaveStackRequest: Encodable, Sendable, Hashable {
+    public var name: String
+    public var note: String
+    public var paintedOn: String?
+
+    public init(name: String, note: String, paintedOn: String?) {
+        self.name = name
+        self.note = note
+        self.paintedOn = paintedOn
+    }
+}
+
+/// `POST /stacks/{id}/save` and `/cancel`: the slot as it is now.
+public struct SlotResult: Codable, Sendable, Hashable {
+    public var wheelId: Int
+    public var position: Int
+    public var tile: Tile
+}
