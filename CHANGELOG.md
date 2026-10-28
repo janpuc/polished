@@ -1,5 +1,30 @@
 # Changelog
 
+## [0.8.0](https://github.com/janpuc/polished/compare/v0.7.0...v0.8.0) (2026-10-28)
+
+
+### ⚠ BREAKING CHANGES
+
+* retire P codes (wipe stored codes, remove from forms, lookup and API), default 1 coat per layer, Matte Taco renders matte
+
+### Features
+
+* **app:** scan with VisionKit and typed lookup, learned codes, wheel tag screen with QR and NFC write/check, universal link handling, iPad sidebar folds for the builder ([e1eddba](https://github.com/janpuc/polished/commit/e1eddbab6106d55225c8fe047e9fa849b25397ff))
+* **app:** the layer builder (live composite tip, layers with coats and order, Over black, Copy from, Same as last, picker with scopes, save sweep), inspector on iPad, delete-wheel copy fix ([210262a](https://github.com/janpuc/polished/commit/210262a8f08722c009458183d3ef35c52496fae8))
+* **app:** writes (add and edit bottles, levels, wishlist heart, priority, I bought these, wheels create/rename/archive/delete, tag URL, tip colour, manual shade, I wore this), optimistic toggles, arrival moment, haptics ([9b31bce](https://github.com/janpuc/polished/commit/9b31bcebccd9dd56ab51c19e4ed54166a81aebbc))
+* **app:** writes, part 2 (screens wired to the write API, WriteCoordinator use, flows and scripts) ([fa1665b](https://github.com/janpuc/polished/commit/fa1665b3a846fae4990310253480be72dfba3702))
+* retire P codes (wipe stored codes, remove from forms, lookup and API), default 1 coat per layer, Matte Taco renders matte ([eb28c68](https://github.com/janpuc/polished/commit/eb28c6876add9fde2e26b20a07a0b953ea25d6d5))
+
+
+### Bug Fixes
+
+* **app:** NFC entitlement TAG (App Store Connect rejects NDEF), archive.sh --account, sign-in errors show their code ([2d25860](https://github.com/janpuc/polished/commit/2d25860b5b417c4e6d701dcb073ce392cef9d094))
+
+
+### Build & CI
+
+* **app:** TestFlight pipeline (archive, export, upload scripts, export options, build numbers, privacy manifest), scan permission states, iPad builder fold ([7459139](https://github.com/janpuc/polished/commit/74591390ce0959d34b8869a590540c80ae55baa7))
+
 ## [0.7.0](https://github.com/janpuc/polished/compare/v0.6.0...v0.7.0) (2026-10-27)
 
 
