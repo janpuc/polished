@@ -46,10 +46,11 @@ struct BuilderView: View {
     @State private var confirmsRemoval = false
     @State private var loadedFields = false
     @State private var showsScan = false
-    @State private var arranging = false
+    @State private var arrangement = ArrangeSession()
     @FocusState private var searchFocused: Bool
 
     private var model: BuilderModel { target.model }
+    private var arranging: Bool { arrangement.isArranging }
 
     var body: some View {
         NavigationStack {
@@ -65,7 +66,7 @@ struct BuilderView: View {
                     .padding(.horizontal, 16)
                     .padding(.bottom, 12)
                     .contentShape(Rectangle())
-                    .onTapGesture { if arranging { arranging = false } }
+                    .onTapGesture { if arranging { arrangement.done() } }
                     Divider()
                 }
                 ScrollViewReader { scroll in
@@ -89,12 +90,12 @@ struct BuilderView: View {
                         // A tap outside the layers ends arranging; the rows and controls keep their own taps.
                         .frame(maxWidth: .infinity, minHeight: 700, alignment: .top)
                         .contentShape(Rectangle())
-                        .onTapGesture { if arranging { arranging = false } }
+                        .onTapGesture { if arranging { arrangement.done() } }
                     }
                     .scrollDismissesKeyboard(.interactively)
                     .scrollDisabled(arranging)
                     .onScrollPhaseChange { _, phase in
-                        if phase == .interacting { detent?.wrappedValue = .large }
+                        if phase == .interacting, !arranging { detent?.wrappedValue = .large }
                     }
                 }
             }
@@ -123,8 +124,10 @@ struct BuilderView: View {
         .sensoryFeedback(.error, trigger: model.failures)
         .sensoryFeedback(.warning, trigger: model.warnings)
         .sensoryFeedback(.error, trigger: save.error)
-        .interactiveDismissDisabled(save.isRunning)
-        .onDisappear { arranging = false }
+        // While the rows jiggle the sheet stays where it is: no dismissing, no change of detent.
+        .interactiveDismissDisabled(save.isRunning || arranging)
+        .modifier(SheetDetents(detent: detent, pinned: arranging))
+        .onDisappear { arrangement.done() }
     }
 
     // MARK: Bar
@@ -187,7 +190,7 @@ struct BuilderView: View {
             ZStack {
                 // The composite is drawn again from the layers' recipes on every change and fades
                 // from the old one (docs/NATIVE.md 5.2).
-                TipView(recipe, size: .l, painting: .direct)
+                TipView(recipe, size: .l, live: true, painting: .direct)
                     .id(recipe)
                     .transition(.opacity)
             }
@@ -253,7 +256,7 @@ struct BuilderView: View {
                     .foregroundStyle(Color.ink2)
                     .padding(.vertical, 6)
             } else {
-                LayerStack(model: model, arranging: $arranging)
+                LayerStack(model: model, session: $arrangement)
             }
         }
         // A layer added or removed animates; a reorder is the hand's own (LayerStack settles it).
@@ -445,7 +448,7 @@ struct BuilderView: View {
 
     private func saveSwatch() async {
         searchFocused = false
-        arranging = false
+        arrangement.done()
         let trimmedName = name.trimmingCharacters(in: .whitespaces)
         let trimmedNote = note.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let result = await save.run({ try await model.save(name: trimmedName, note: trimmedNote, paintedOn: paintedOn) })
@@ -455,7 +458,7 @@ struct BuilderView: View {
 
     private func cancel() async {
         searchFocused = false
-        arranging = false
+        arrangement.done()
         if await save.run({ try await model.cancel() }) != nil {
             onFinish(.cancelled)
             return

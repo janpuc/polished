@@ -47,21 +47,27 @@ struct TipView: View {
     /// A slot of a ring has its own size (the ring's geometry decides it); the edge and the
     /// shadow thin out with the height.
     var dimensions: CGSize?
-    var light: TipLight = .static
+    /// The light to draw by; nil is the static light, or the tilt light when `live`.
+    var light: TipLight?
+    /// One of the few tips that follow the phone's tilt (docs/NATIVE.md 4.4): the heroes, the rack,
+    /// the builder head and the ring. Rows, pickers and mini rings stay static.
+    var live = false
     var painting: TipPainting = .cached
 
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(TipLightModel.self) private var tilt: TipLightModel?
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.tipSweep) private var sweep
 
     init(
-        _ recipe: TipRecipe?, size: TipSize, dimensions: CGSize? = nil, light: TipLight = .static,
-        painting: TipPainting = .cached
+        _ recipe: TipRecipe?, size: TipSize, dimensions: CGSize? = nil, light: TipLight? = nil,
+        live: Bool = false, painting: TipPainting = .cached
     ) {
         self.recipe = recipe
         self.size = size
         self.dimensions = dimensions
         self.light = light
+        self.live = live
         self.painting = painting
     }
 
@@ -69,7 +75,11 @@ struct TipView: View {
         let dimensions = dimensions ?? size.dimensions(regular: horizontalSizeClass == .regular)
         let dark = colorScheme == .dark
         let small = size == .s || dimensions.height < 40
-        face(dimensions)
+        // A matte top coat takes no light from the tilt: it stays as the static light paints it.
+        let matte = recipe.map { TipLightStrengths($0).gloss == 0 } ?? false
+        let shaded = live && !matte && tilt?.isShaded == true
+        let drawn = matte ? .static : light ?? (live ? tilt?.light : nil) ?? .static
+        face(dimensions, light: drawn, shaded: shaded)
             .frame(width: dimensions.width, height: dimensions.height)
             .background {
                 // Outside the clip and larger than the face, so they must not take part in layout.
@@ -78,6 +88,8 @@ struct TipView: View {
                     TipEdge(dimensions: dimensions, dark: dark, thin: small)
                 }
             }
+            .onAppear { if live { tilt?.viewAppeared() } }
+            .onDisappear { if live { tilt?.viewDisappeared() } }
             .accessibilityHidden(true)
     }
 
@@ -90,15 +102,24 @@ struct TipView: View {
     private static let liftPool = 0.08
     private static let liftBand = 0.09
 
-    private func face(_ dimensions: CGSize) -> some View {
-        ZStack {
+    private func face(_ dimensions: CGSize, light: TipLight, shaded: Bool) -> some View {
+        // With the shader lighting the paint, the canvas leaves the pool out so it is not drawn twice.
+        let pool = shaded ? 0.0 : 1.0
+        return ZStack {
             Color.fill
             if let recipe {
-                painted(recipe, dimensions)
+                if shaded {
+                    painted(recipe, dimensions)
+                        .layerEffect(
+                            Self.shader(TipLightStrengths(recipe), light: light, size: dimensions),
+                            maxSampleOffset: .zero)
+                } else {
+                    painted(recipe, dimensions)
+                }
             }
-            TipSurfaceLight(light: light, poolAlpha: Self.softPool, bandAlpha: Self.softBand, chrome: true)
+            TipSurfaceLight(light: light, poolAlpha: Self.softPool * pool, bandAlpha: Self.softBand, chrome: true)
                 .blendMode(.softLight)
-            TipSurfaceLight(light: light, poolAlpha: Self.liftPool, bandAlpha: Self.liftBand, chrome: false)
+            TipSurfaceLight(light: light, poolAlpha: Self.liftPool * pool, bandAlpha: Self.liftBand, chrome: false)
             if let sweep {
                 // One band of light crossing the nail on the 115 degree diagonal.
                 Rectangle()
@@ -111,6 +132,14 @@ struct TipView: View {
         }
         .compositingGroup()
         .clipShape(TipShape())
+    }
+
+    /// `TipLight.metal` for a recipe's strengths: the pool that follows the light, the holo band
+    /// and the gloss that multiplies the band.
+    private static func shader(_ strengths: TipLightStrengths, light: TipLight, size: CGSize) -> Shader {
+        ShaderLibrary.tipLight(
+            .float2(size), .float2(light.lx, light.ly),
+            .float(strengths.specular), .float(strengths.holo), .float(strengths.gloss))
     }
 
     @ViewBuilder
@@ -126,8 +155,8 @@ struct TipView: View {
     }
 
     /// The unpainted tip, for a state with no shade to show.
-    static func unpainted(size: TipSize, light: TipLight = .static) -> TipView {
-        TipView(nil, size: size, light: light)
+    static func unpainted(size: TipSize, light: TipLight? = nil, live: Bool = false) -> TipView {
+        TipView(nil, size: size, light: light, live: live)
     }
 }
 
@@ -194,7 +223,7 @@ private struct TipSurfaceLight: View {
             let w = size.width, h = size.height
 
             // The specular pool: an ellipse 60% by 40% of the tip around the light's place.
-            do {
+            if poolAlpha > 0 {
                 var pool = context
                 pool.clip(to: shape)
                 pool.translateBy(x: w * (0.5 + light.lx * 0.4), y: h * (0.5 + light.ly * 0.4))

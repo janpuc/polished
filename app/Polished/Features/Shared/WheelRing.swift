@@ -30,6 +30,7 @@ struct WheelRing: View {
 
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.accessibilityReduceMotion) private var systemReduceMotion
+    @Environment(TipLightModel.self) private var tilt: TipLightModel?
 
     private var reduceMotion: Bool { systemReduceMotion || LaunchOptions.current.reduceMotion }
 
@@ -60,7 +61,9 @@ struct WheelRing: View {
     private func slot(_ tile: Tile, _ geometry: RingGeometry) -> some View {
         let offset = geometry.offset(for: tile.position)
         let angle = geometry.angle(for: tile.position)
-        let light = geometry.light(for: tile.position, screen: (TipLight.static.lx, TipLight.static.ly))
+        // The tilt light, turned by the slot's angle: a tilt sends the highlight round the wheel.
+        let screen = tilt?.light ?? TipLight.static
+        let light = geometry.light(for: tile.position, screen: (screen.lx, screen.ly))
         let size = CGSize(width: geometry.slotWidth, height: geometry.slotHeight)
         let isEditing = editing == tile.position
         // The draft stands in for the slot once it is open.
@@ -83,7 +86,8 @@ struct WheelRing: View {
                 }
                 ZStack {
                     TipView(
-                        recipe, size: .ring, dimensions: size, light: TipLight(lx: light.x, ly: light.y))
+                        recipe, size: .ring, dimensions: size, light: TipLight(lx: light.x, ly: light.y),
+                        live: true)
                         .id(recipe)
                         .transition(.opacity)
                 }

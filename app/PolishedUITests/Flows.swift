@@ -812,6 +812,106 @@ final class BuilderReducedMotionFlow: FlowCase {
     }
 }
 
+/// Wiggle to reorder with a gesture that behaves like a finger (run 8): the press is held, the
+/// drag is slow and ends with a hold, the sheet stays at its middle detent and open, the scroll
+/// view does not move, and a plain slow drag on a row picks it up once the rows jiggle.
+final class BuilderWiggleFlow: FlowCase {
+    @MainActor
+    func testWiggleWithAFinger() throws {
+        openBuilder(slot: 11)
+        button("Over black").tap()
+        waitFor(layerRow("One-Coat Black"), "One-Coat Black")
+        typeInBuilder("flak")
+        app.buttons["Add Flakie Holo Taco"].firstMatch.tap()
+        waitFor(layerRow("Flakie Holo Taco"), "Flakie Holo Taco")
+        closeKeyboard()
+        sleep(1)
+        let headBefore = element("builder-summary").frame
+        let top = layerRow("Flakie Holo Taco")
+        let base = layerRow("One-Coat Black")
+        step("before")
+
+        // 1. A held press, then a slow drag over the other row, then a hold: a finger's gesture.
+        let grab = top.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+        let over = base.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.6))
+        grab.press(forDuration: 0.6, thenDragTo: over, withVelocity: .slow, thenHoldForDuration: 0.3)
+        waitFor(element("layers-done"), "Done while arranging")
+        waitForLabel(element("builder-summary"), containing: "Flakie Holo Taco + One-Coat Black")
+        assertSheetStayed(headBefore)
+        sleep(1)
+        step("held-and-dragged")
+
+        // 2. Rows jiggle: a plain slow drag, no long hold, picks a row up and moves it back.
+        let again = layerRow("One-Coat Black").coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+        let beyond = layerRow("Flakie Holo Taco").coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.4))
+        again.press(forDuration: 0.05, thenDragTo: beyond, withVelocity: .slow, thenHoldForDuration: 0.2)
+        waitForLabel(element("builder-summary"), containing: "One-Coat Black + Flakie Holo Taco")
+        assertSheetStayed(headBefore)
+        XCTAssertTrue(element("layers-done").exists, "still arranging after a drag")
+        step("plain-drag")
+
+        // 3. A slow hold-and-drag upwards, off the end of the stack, ends on the first place.
+        let last = layerRow("Flakie Holo Taco").coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+        let well = layerRow("One-Coat Black").coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: -0.9))
+        last.press(forDuration: 0.5, thenDragTo: well, withVelocity: .slow, thenHoldForDuration: 0.2)
+        waitForLabel(element("builder-summary"), containing: "Flakie Holo Taco + One-Coat Black")
+        assertSheetStayed(headBefore)
+
+        element("layers-done").tap()
+        waitUntilGone(element("layers-done"), "Done goes away")
+        XCTAssertTrue(element("builder-save").exists, "the builder is still open")
+        sleep(1)
+        step("done")
+
+        // 4. The Arrange button is the same mode without the long press.
+        element("layers-arrange").tap()
+        waitFor(element("layers-done"), "Done after Arrange")
+        let plain = layerRow("Flakie Holo Taco").coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+        plain.press(forDuration: 0.05, thenDragTo: layerRow("One-Coat Black").coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.6)), withVelocity: .slow, thenHoldForDuration: 0.2)
+        waitForLabel(element("builder-summary"), containing: "One-Coat Black + Flakie Holo Taco")
+        assertSheetStayed(headBefore)
+        element("layers-done").tap()
+        waitUntilGone(element("layers-done"), "Done goes away again")
+        step("arrange-button")
+    }
+
+    /// The sheet neither grew to its large detent nor started to go away, and the head is where it was.
+    @MainActor
+    func assertSheetStayed(_ head: CGRect) {
+        let now = element("builder-summary").frame
+        XCTAssertTrue(element("builder-save").exists, "the sheet is still open")
+        XCTAssertEqual(now.minY, head.minY, accuracy: 3, "the sheet kept its detent")
+    }
+}
+
+/// The tilt light's gallery (`-screen tilt`): the twelve parity recipes under three pinned lights
+/// (`-light lx,ly`), one screenshot each. The shader lights the holographic and the metallic tips
+/// differently under each light, and a matte tip comes out byte-identical.
+final class TiltGalleryFlow: FlowCase {
+    @MainActor
+    func testPinnedLights() throws {
+        let lights = ["-0.35,-0.55", "0.25,-0.15", "-0.95,-0.95"]
+        var matte: [Data] = []
+        var holographic: [Data] = []
+        var chrome: [Data] = []
+        for (index, light) in lights.enumerated() {
+            launch(extra: ["-screen", "tilt", "-light", light])
+            waitFor(element("tilt-matte_alone"), "the matte tip")
+            sleep(1)
+            matte.append(element("tilt-matte_alone").screenshot().pngRepresentation)
+            holographic.append(element("tilt-holographic_alone").screenshot().pngRepresentation)
+            chrome.append(element("tilt-chrome_alone").screenshot().pngRepresentation)
+            step("light-\(index + 1)")
+            app.terminate()
+        }
+        XCTAssertEqual(matte[0], matte[1], "a matte tip is the same under the second light")
+        XCTAssertEqual(matte[0], matte[2], "a matte tip is the same under the third light")
+        XCTAssertNotEqual(holographic[0], holographic[1], "the holographic tip follows the light")
+        XCTAssertNotEqual(holographic[1], holographic[2], "the holographic tip follows the light again")
+        XCTAssertNotEqual(chrome[0], chrome[2], "the chrome tip follows the light")
+    }
+}
+
 /// Copy from… (a saved swatch's layers), then Same as last, then Cancel: slot 10 stays empty.
 final class BuilderCopyFlow: FlowCase {
     @MainActor

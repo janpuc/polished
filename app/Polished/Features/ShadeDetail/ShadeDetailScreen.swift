@@ -270,7 +270,7 @@ struct DetailPlate: View {
 
     var body: some View {
         HStack(alignment: .center, spacing: 22) {
-            TipView(shade.recipe, size: .xl, painting: .direct)
+            TipView(shade.recipe, size: .xl, live: true, painting: .direct)
                 .arrival(of: shade.id)
                 .padding(.vertical, 10)
             VStack(alignment: .leading, spacing: 8) {

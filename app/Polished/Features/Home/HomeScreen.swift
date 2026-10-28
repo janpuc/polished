@@ -322,7 +322,7 @@ struct WearTodayHero: View {
     var body: some View {
         HStack(alignment: .center, spacing: 20) {
             NavigationLink(value: Route.shade(wear.shade.id)) {
-                TipView(wear.shade.recipe, size: .xl, painting: .direct)
+                TipView(wear.shade.recipe, size: .xl, live: true, painting: .direct)
                     .sweep(trigger: sweepTrigger)
                     .tipSource(wear.shade.id)
                     .padding(.vertical, 14)

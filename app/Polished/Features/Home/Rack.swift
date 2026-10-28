@@ -35,7 +35,7 @@ struct Rack: View {
                     ForEach(items) { item in
                         NavigationLink(value: Route.shade(item.id)) {
                             VStack(spacing: 0) {
-                                TipView(item.recipe, size: .l, painting: .direct)
+                                TipView(item.recipe, size: .l, live: true, painting: .direct)
                                     .tipSource(item.id)
                                 Text(item.name)
                                     .font(.footnote.weight(.semibold))

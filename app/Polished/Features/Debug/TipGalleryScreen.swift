@@ -152,4 +152,40 @@ struct ParityScreen: View {
         .environment(\.horizontalSizeClass, .compact)
     }
 }
+
+/// The twelve recipes of the parity screen, live, under the light pinned by `-light lx,ly`: the
+/// gallery of the tilt light (docs/NATIVE.md 4.4). The flow launches it with three lights and
+/// compares the cells; a matte tip must come out the same under each. Opened by `-screen tilt`.
+struct TiltScreen: View {
+    private let cases = GalleryFixtures.load()
+    @Environment(TipLightModel.self) private var tilt
+
+    var body: some View {
+        let columns = [GridItem(.adaptive(minimum: 96), spacing: 10, alignment: .top)]
+        ScrollView {
+            Text(String(format: "light %.2f, %.2f, %@", tilt.light.lx, tilt.light.ly, tilt.isShaded ? "shader" : "canvas"))
+                .font(.footnote.monospacedDigit())
+                .foregroundStyle(Color.ink2)
+                .accessibilityIdentifier("tilt-state")
+            LazyVGrid(columns: columns, spacing: 18) {
+                ForEach(ParityScreen.names, id: \.self) { name in
+                    if let tipCase = cases.first(where: { $0.name == name }) {
+                        VStack(spacing: 6) {
+                            TipView(tipCase.recipe, size: .l, live: true, painting: .direct)
+                            Text(name)
+                                .font(.system(size: 10))
+                                .foregroundStyle(Color.ink2)
+                        }
+                        .accessibilityElement(children: .ignore)
+                        .accessibilityLabel(name)
+                        .accessibilityIdentifier("tilt-\(name)")
+                    }
+                }
+            }
+            .padding(16)
+        }
+        .background(Color.board)
+        .environment(\.horizontalSizeClass, .compact)
+    }
+}
 #endif

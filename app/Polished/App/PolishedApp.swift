@@ -1,14 +1,32 @@
+import NailTips
 import PolishedStore
 import SwiftUI
 
 @main
 struct PolishedApp: App {
     @State private var model = AppModel()
+    @State private var tilt: TipLightModel
+    @Environment(\.scenePhase) private var scenePhase
+
+    init() {
+        let tilt = TipLightModel()
+        #if DEBUG
+        // `-light lx,ly` pins the tilt light for a screenshot. Read from the arguments: the defaults
+        // drop a value that starts with a minus sign, which most lights do.
+        let arguments = ProcessInfo.processInfo.arguments
+        let value = arguments.firstIndex(of: "-light").flatMap { arguments.indices.contains($0 + 1) ? arguments[$0 + 1] : nil }
+        let parts = value?.split(separator: ",").compactMap { Double($0) }
+        if let parts, parts.count == 2 { tilt.pin(TipLight(lx: parts[0], ly: parts[1])) }
+        #endif
+        _tilt = State(initialValue: tilt)
+    }
 
     var body: some Scene {
         WindowGroup {
             RootView()
                 .environment(model)
+                .environment(tilt)
+                .onChange(of: scenePhase, initial: true) { tilt.setScenePhase(scenePhase) }
         }
     }
 }
@@ -34,11 +52,12 @@ struct RootView: View {
     @ViewBuilder
     private var content: some View {
         #if DEBUG
-        // `-screen gallery` and `-screen parity` open a debug screen straight away (UI tests,
+        // `-screen gallery`, `-screen parity` and `-screen tilt` open a debug screen straight away (UI tests,
         // the screenshot passes).
         switch UserDefaults.standard.string(forKey: "screen") {
         case "gallery": NavigationStack { TipGalleryScreen() }
         case "parity": ParityScreen()
+        case "tilt": TiltScreen()
         default: shell
         }
         #else

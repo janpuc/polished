@@ -23,7 +23,6 @@ private struct BuilderPresentation: ViewModifier {
                         set: { if $0 == nil { target = nil } })
                 ) { target in
                     BuilderView(target: target, wheelName: wheelName, detent: $detent, onFinish: onFinish)
-                        .presentationDetents([.medium, .large], selection: $detent)
                         .presentationBackgroundInteraction(.enabled(upThrough: .medium))
                         .presentationDragIndicator(.visible)
                         .sensoryFeedback(.selection, trigger: detent)
@@ -52,5 +51,21 @@ extension View {
         _ target: Binding<BuilderTarget?>, wheelName: String, onFinish: @escaping (BuilderOutcome) -> Void
     ) -> some View {
         modifier(BuilderPresentation(target: target, wheelName: wheelName, onFinish: onFinish))
+    }
+}
+
+/// The sheet's detents (`.medium` and `.large`, the selection shared with the builder), or just the
+/// current one while the layers are being arranged: a finger dragging a row must not also drag the
+/// sheet. Nothing in an inspector, which has no detent.
+struct SheetDetents: ViewModifier {
+    let detent: Binding<PresentationDetent>?
+    let pinned: Bool
+
+    func body(content: Content) -> some View {
+        if let detent {
+            content.presentationDetents(pinned ? [detent.wrappedValue] : [.medium, .large], selection: detent)
+        } else {
+            content
+        }
     }
 }

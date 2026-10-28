@@ -5,30 +5,27 @@ import SwiftUI
 
 /// The layers of the swatch in painting order, base first: one compact row each on the 2 pt rail
 /// that runs through the tips (docs/NATIVE.md 5.2). A tap opens the row's popover (coats,
-/// Remove); a long press makes the rows jiggle and a drag reorders them, the rows it passes
-/// making room, until Done or a tap outside (`arranging`, owned by the builder so Save, Cancel
-/// and the sheet closing can end it).
+/// Remove); a long press, or the Arrange button, makes the rows jiggle and a drag reorders them,
+/// the rows it passes making room, until Done or a tap outside. The hand is `ArrangeGestures`
+/// (UIKit recognizers over the rows); what it did is `session`, which the builder owns so Save,
+/// Cancel and the sheet closing can end it.
 struct LayerStack: View {
     let model: BuilderModel
-    @Binding var arranging: Bool
+    @Binding var session: ArrangeSession
 
     static let rowHeight: CGFloat = 52
 
     @Environment(\.accessibilityReduceMotion) private var systemReduceMotion
-    @State private var drag: LayerDrag?
+    @State private var heldID: Int?
     @State private var popover: Int?
+    /// When a popover last went away: the tap that dismissed it must not also open the next.
+    @State private var popoverClosedAt = Date.distantPast
     @State private var pickups = 0
     @State private var crossings = 0
     @State private var drops = 0
 
     private var reduceMotion: Bool { systemReduceMotion || LaunchOptions.current.reduceMotion }
-
-    private struct LayerDrag: Equatable {
-        var id: Int
-        var from: Int
-        var translation: CGFloat
-        var target: Int
-    }
+    private var arranging: Bool { session.isArranging }
 
     var body: some View {
         let layers = model.layers
@@ -41,12 +38,12 @@ struct LayerStack: View {
                         row(layer, index: index, count: layers.count, time: time)
                     }
                 }
-                .coordinateSpace(.named("stack"))
             }
+            .overlay { hand(count: layers.count) }
             .groupCard()
         }
-        .onChange(of: layers.count) { if layers.count < 2 { arranging = false } }
-        .onChange(of: arranging) { if !arranging { drag = nil } }
+        .onChange(of: layers.count) { session.layerCountChanged(to: layers.count) }
+        .onChange(of: arranging) { if !arranging { heldID = nil } }
         .sensoryFeedback(.selection, trigger: pickups)
         .sensoryFeedback(.selection, trigger: crossings)
         .sensoryFeedback(.impact(weight: .medium), trigger: drops)
@@ -62,10 +59,16 @@ struct LayerStack: View {
                 .contentTransition(.opacity)
             Spacer(minLength: 0)
             if arranging {
-                Button("Done") { arranging = false }
+                Button("Done") { session.done() }
                     .buttonStyle(CompactPrimaryButtonStyle())
                     .accessibilityIdentifier("layers-done")
                     .transition(.opacity.combined(with: .scale(scale: 0.9, anchor: .trailing)))
+            } else {
+                // The same mode as the long press, for a hand that does not find it.
+                Button("Arrange") { begin() }
+                    .buttonStyle(CompactButtonStyle())
+                    .accessibilityIdentifier("layers-arrange")
+                    .transition(.opacity)
             }
         }
         .frame(minHeight: 36)
@@ -76,8 +79,8 @@ struct LayerStack: View {
     // MARK: Rows
 
     private func row(_ layer: Layer, index: Int, count: Int, time: TimeInterval) -> some View {
-        let lifted = drag?.id == layer.id
-        let reflow = drag.map {
+        let lifted = session.held != nil && heldID == layer.id
+        let reflow = session.held.map {
             lifted
                 ? 0
                 : BuilderArrangement.reflow(
@@ -88,10 +91,15 @@ struct LayerStack: View {
             showsHandle: arranging && reduceMotion, model: model,
             isPopoverPresented: Binding(
                 get: { popover == layer.id },
-                set: { if !$0, popover == layer.id { popover = nil } }),
+                set: {
+                    if !$0, popover == layer.id {
+                        popover = nil
+                        popoverClosedAt = .now
+                    }
+                }),
             removal: { popover = nil; model.remove(layer) }
         )
-        .offset(y: lifted ? drag?.translation ?? 0 : reflow)
+        .offset(y: lifted ? session.held?.translation ?? 0 : reflow)
         // The dragged row follows the finger 1:1: no animation reaches its offset while it is held.
         .transaction { if lifted { $0.animation = nil } }
         .rotationEffect(.degrees(jiggles(lifted) ? 1.5 * sin(2 * .pi * 7 * time + 1.3 * Double(index)) : 0))
@@ -100,15 +108,13 @@ struct LayerStack: View {
         .background(lifted ? Color.surface : Color.clear, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
         .shadow(color: Color.shadowInk.opacity(lifted ? 0.2 : 0), radius: 16, y: 8)
         .zIndex(lifted ? 1 : 0)
-        .onTapGesture { if !arranging { popover = layer.id } }
-        .simultaneousGesture(holdThenDrag(layer, index: index, count: count))
-        .simultaneousGesture(dragWhileArranging(layer, index: index, count: count), including: arranging ? .all : .none)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(spoken(layer))
         .accessibilityValue(arranging ? "Rearranging" : "")
         .accessibilityHint("Opens coats and remove")
         .accessibilityAddTraits(.isButton)
         .accessibilityIdentifier("layer-row-\(layer.id)")
+        .accessibilityAction { if session.opensPopover { popover = layer.id } }
         .accessibilityAdjustableAction { direction in
             model.changeCoats(of: layer, by: direction == .increment ? 1 : -1)
         }
@@ -125,70 +131,77 @@ struct LayerStack: View {
         return [layer.label, layer.title, coats].filter { !$0.isEmpty }.joined(separator: ", ")
     }
 
-    // MARK: Gestures
+    // MARK: Hand
 
-    /// A long press makes the rows jiggle and picks the row up; the finger then drags it.
-    private func holdThenDrag(_ layer: Layer, index: Int, count: Int) -> some Gesture {
-        LongPressGesture(minimumDuration: 0.35)
-            .sequenced(before: DragGesture(minimumDistance: 0, coordinateSpace: .named("stack")))
-            .onChanged { value in
-                guard case .second(true, let dragged) = value else { return }
-                if !arranging { arranging = true }
-                pickUp(layer, count: count)
-                if let dragged { follow(dragged.translation.height, count: count) }
-            }
-            .onEnded { value in
-                if case .second(true, _) = value { drop(layer) }
-            }
+    /// The recognizers over the rows. They are invisible to VoiceOver (the rows speak and act).
+    private func hand(count: Int) -> some View {
+        ArrangeGestures(
+            rowHeight: Self.rowHeight, rowCount: count, arranging: arranging, enabled: popover == nil,
+            onTap: { index in
+                let layers = model.layers
+                guard Date.now.timeIntervalSince(popoverClosedAt) > 0.5 else { return }
+                if session.opensPopover, layers.indices.contains(index) { popover = layers[index].id }
+            },
+            onHold: { index in
+                var event = ArrangeSession.Event.none
+                withAnimation(.snappy(duration: 0.2)) { event = session.hold(at: index, count: model.layers.count) }
+                pickedUp(event, at: index)
+            },
+            onDragBegan: { index in
+                var event = ArrangeSession.Event.none
+                withAnimation(.snappy(duration: 0.2)) { event = session.dragBegan(at: index, count: model.layers.count) }
+                pickedUp(event, at: index)
+            },
+            onDragMoved: { follow($0) },
+            onDragEnded: { drop() }
+        )
+        .accessibilityHidden(true)
     }
 
-    /// Once the rows jiggle, a plain drag on any of them picks it up.
-    private func dragWhileArranging(_ layer: Layer, index: Int, count: Int) -> some Gesture {
-        DragGesture(minimumDistance: 3, coordinateSpace: .named("stack"))
-            .onChanged { value in
-                pickUp(layer, count: count)
-                follow(value.translation.height, count: count)
-            }
-            .onEnded { _ in drop(layer) }
+    /// The Arrange button: the rows jiggle, none is held yet.
+    private func begin() {
+        if session.begin(count: model.layers.count) == .pickedUp { pickups += 1 }
     }
 
-    private func pickUp(_ layer: Layer, count: Int) {
-        guard drag == nil, let from = model.layers.firstIndex(where: { $0.id == layer.id }) else { return }
+    private func pickedUp(_ event: ArrangeSession.Event, at index: Int) {
+        guard event == .pickedUp else { return }
         pickups += 1
-        withAnimation(.snappy(duration: 0.2)) {
-            drag = LayerDrag(id: layer.id, from: from, translation: 0, target: from)
-        }
+        let layers = model.layers
+        heldID = session.held != nil && layers.indices.contains(index) ? layers[index].id : nil
     }
 
-    private func follow(_ translation: CGFloat, count: Int) {
-        guard var current = drag else { return }
+    private func follow(_ translation: CGFloat) {
+        guard let held = session.held else { return }
+        let count = model.layers.count
         let target = BuilderArrangement.target(
-            from: current.from, translation: translation, count: count, rowHeight: Self.rowHeight)
-        current.translation = translation
-        if target != current.target {
+            from: held.from, translation: translation, count: count, rowHeight: Self.rowHeight)
+        if target != held.target {
             crossings += 1
             // The rows it passes make room with a critically damped spring; the held row is not
             // animated (`transaction` above).
             withAnimation(.spring(response: 0.3, dampingFraction: 1)) {
-                current.target = target
-                drag = current
+                _ = session.dragMoved(translation: translation, count: count, rowHeight: Self.rowHeight)
             }
         } else {
-            drag = current
+            _ = session.dragMoved(translation: translation, count: count, rowHeight: Self.rowHeight)
         }
     }
 
     /// Settles the held row: the model gets one move per row crossed, in order, and the row
     /// springs from where the finger left it to its place.
-    private func drop(_ layer: Layer) {
-        guard let current = drag, current.id == layer.id else { return }
+    private func drop() {
+        let layers = model.layers
+        guard let held = session.held, let id = heldID else { return }
         drops += 1
         withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
-            for up in BuilderArrangement.moves(from: current.from, target: current.target) {
-                model.move(layer, up: up)
+            if case .dropped(let moves) = session.dragEnded(),
+                layers.indices.contains(held.from), layers[held.from].id == id
+            {
+                let layer = layers[held.from]
+                for up in moves { model.move(layer, up: up) }
             }
-            drag = nil
         }
+        heldID = nil
     }
 }
 
