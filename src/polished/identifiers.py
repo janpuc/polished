@@ -1,46 +1,32 @@
-"""Identifier lookup (DESIGN 7): printed-code normalisation, the resolution order and learned
-mappings. Takes a connection; routes never write SQL.
+"""Identifier lookup (DESIGN 7): the resolution order and learned barcode mappings. Takes a
+connection; routes never write SQL.
 
 Nothing is ever seeded from catalog data: `shade_identifier` holds only what the household
 taught the app, so a learned mapping wins by construction."""
 
-import re
 import sqlite3
 from dataclasses import dataclass
 
 from . import shades
 from .gtin import is_numeric, normalise_gtin
 
-_PRINTED = re.compile(r"[A-Z]{1,2}\d{1,5}")
-KINDS = ("gtin", "printed")
+KINDS = ("gtin",)
 # A number of this many digits is meant as a barcode, so one that fails the check is "invalid".
 BARCODE_DIGITS = range(8, 15)
-
-
-def normalise_printed(raw: str) -> str | None:
-    """Strip, uppercase, remove spaces; all digits gets the prefix `P`; the result must be one
-    or two letters and one to five digits. "259" and "p 259" are "P259"; "hello" is None."""
-    text = "".join(raw.split()).upper()
-    if text.isdigit():
-        text = "P" + text
-    return text if _PRINTED.fullmatch(text) else None
 
 
 def normalise(kind: str, raw: str) -> str | None:
     """The stored form of a code of `kind`, or None when it is not one."""
     if kind == "gtin":
         return normalise_gtin(raw)
-    if kind == "printed":
-        return normalise_printed(raw)
     return None
 
 
 @dataclass
 class Resolution:
-    """What `resolve` found. `outcome` is one of match, suggestion, unknown_code,
-    unknown_printed, invalid_code, results (DESIGN 7.2). `code` is the normalised gtin or P code,
-    `kind` says what the match came from (gtin, printed or sku), `identifier_id` is the learned
-    row a gtin match can delete ("This isn't it")."""
+    """What `resolve` found. `outcome` is one of match, unknown_code, invalid_code, results
+    (DESIGN 7.2). `code` is the normalised gtin or SKU, `kind` says what the match came from
+    (gtin or sku), `identifier_id` is the learned row a gtin match can delete ("This isn't it")."""
 
     outcome: str
     q: str
@@ -67,7 +53,7 @@ def find(conn: sqlite3.Connection, kind: str, value: str) -> sqlite3.Row | None:
 
 def resolve(conn: sqlite3.Connection, q: str, via: str = "typed") -> Resolution:
     """Scanner text or whatever was typed, in the order of DESIGN 7.2: a barcode, a number that
-    is not one, a P code, a SKU, then an ordinary name search."""
+    is not one, a SKU, then an ordinary name search."""
     q = q.strip()
     gtin = normalise_gtin(q)
     if gtin is not None:
@@ -90,19 +76,6 @@ def resolve(conn: sqlite3.Connection, q: str, via: str = "typed") -> Resolution:
         )
     if is_numeric(q) and len("".join(q.split())) in BARCODE_DIGITS:
         return Resolution("invalid_code", q, via)
-    printed = normalise_printed(q)
-    if printed is not None:
-        row = find(conn, "printed", printed)
-        if row is None:
-            return Resolution("unknown_printed", q, via, code=printed)
-        return Resolution(
-            "suggestion",
-            q,
-            via,
-            code=printed,
-            kind="printed",
-            shade=result_shade(conn, row["shade_id"]),
-        )
     sku = conn.execute("select id from shade where lower(sku) = lower(?) limit 1", (q,)).fetchone()
     if sku is not None:
         return Resolution(
@@ -139,16 +112,6 @@ def learn(conn: sqlite3.Connection, kind: str, raw: str, shade_id: int) -> Learn
     )
     row = find(conn, kind, value)
     return Learned(row["id"], kind, value, row["shade_id"], created=cursor.rowcount == 1)
-
-
-def learn_printed(
-    conn: sqlite3.Connection, shade_id: int, printed_code: str | None
-) -> Learned | None:
-    """The hook for a saved bottle: its P code, if it is one, is learned unless the code already
-    points somewhere. A code that does not look like a P number is left on the bottle alone."""
-    if not printed_code or normalise_printed(printed_code) is None:
-        return None
-    return learn(conn, "printed", printed_code, shade_id)
 
 
 def list_all(conn: sqlite3.Connection) -> list[dict]:

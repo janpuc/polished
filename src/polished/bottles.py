@@ -1,4 +1,4 @@
-"""Bottles: several per shade, each with a state, a printed P code and purchase details
+"""Bottles: several per shade, each with a state and purchase details
 (DESIGN 4.2). A shade is owned while one of its bottles is neither archived nor empty."""
 
 import calendar
@@ -7,7 +7,6 @@ import sqlite3
 from dataclasses import dataclass
 from datetime import date
 
-from .identifiers import normalise_printed
 from .tips import TIP_FIELDS
 
 STATES = ("full", "half", "low", "empty")
@@ -28,20 +27,10 @@ class BottleInput:
     """A validated add or edit form."""
 
     state: str = "full"
-    printed_code: str | None = None
     bought_on: str | None = None
     price_paid_cents: int | None = None
     opened_on: str | None = None
     notes: str | None = None
-
-
-def clean_printed_code(raw: str | None) -> str | None:
-    """ "259" and "p259" are stored as "P259". A value that does not look like a P number is
-    kept uppercase without spaces rather than refused: a bottle is never lost over its code."""
-    text = (raw or "").strip()
-    if not text:
-        return None
-    return normalise_printed(text) or "".join(text.split()).upper()
 
 
 def parse_price(raw: str) -> int | None:
@@ -68,7 +57,6 @@ def _parse_date(raw: str) -> str | None:
 
 def parse_input(
     state: str = "full",
-    printed_code: str = "",
     bought_on: str = "",
     price_paid: str = "",
     opened_on: str = "",
@@ -82,7 +70,6 @@ def parse_input(
         errors["state"] = "Pick full, half, low or empty."
     values = BottleInput(
         state=state if state in STATES else "full",
-        printed_code=clean_printed_code(printed_code),
         notes=notes.strip()[:NOTES_LIMIT] or None,
     )
     for name, raw in (("bought_on", bought_on), ("opened_on", opened_on)):
@@ -102,11 +89,10 @@ def parse_input(
 
 def add(conn: sqlite3.Connection, shade_id: int, values: BottleInput) -> int:
     cursor = conn.execute(
-        "insert into bottle (shade_id, printed_code, state, bought_on, price_paid_cents,"
-        " opened_on, notes) values (?, ?, ?, ?, ?, ?, ?)",
+        "insert into bottle (shade_id, state, bought_on, price_paid_cents,"
+        " opened_on, notes) values (?, ?, ?, ?, ?, ?)",
         (
             shade_id,
-            values.printed_code,
             values.state,
             values.bought_on,
             values.price_paid_cents,
@@ -119,11 +105,10 @@ def add(conn: sqlite3.Connection, shade_id: int, values: BottleInput) -> int:
 
 def update(conn: sqlite3.Connection, bottle_id: int, values: BottleInput) -> None:
     conn.execute(
-        "update bottle set printed_code = ?, state = ?, bought_on = ?, price_paid_cents = ?,"
+        "update bottle set state = ?, bought_on = ?, price_paid_cents = ?,"
         " opened_on = ?, notes = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now')"
         " where id = ?",
         (
-            values.printed_code,
             values.state,
             values.bought_on,
             values.price_paid_cents,

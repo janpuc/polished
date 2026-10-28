@@ -14,7 +14,7 @@ from zoneinfo import ZoneInfo
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from starlette.responses import Response
 
-from .. import bottles, identifiers, shades, wishlist
+from .. import bottles, shades, wishlist
 from ..db import get_conn, transaction
 from ..web import render, set_arrival
 
@@ -38,11 +38,6 @@ def actions_context(conn: sqlite3.Connection, shade_id: int) -> dict:
     return {"shade": shades.get_shade(conn, shade_id), "wish": wishlist.for_shade(conn, shade_id)}
 
 
-def form_code(code: str) -> str:
-    """The P prefix is left off a plain "P259" so the numeric keypad can edit it."""
-    return code[1:] if code[:1] == "P" and code[1:].isdigit() else code
-
-
 def form_values(bottle: dict | None, default_bought_on: str = "") -> dict[str, str]:
     """A bottle (or the new-bottle defaults) as the strings the form fields hold."""
     if bottle is None:
@@ -50,23 +45,11 @@ def form_values(bottle: dict | None, default_bought_on: str = "") -> dict[str, s
     cents = bottle["price_paid_cents"]
     return {
         "state": bottle["state"],
-        "printed_code": form_code(bottle["printed_code"] or ""),
         "bought_on": bottle["bought_on"] or "",
         "price_paid": f"{cents // 100}.{cents % 100:02d}" if cents is not None else "",
         "opened_on": bottle["opened_on"] or "",
         "notes": bottle["notes"] or "",
     }
-
-
-def _conflict_notice(
-    conn: sqlite3.Connection, learned: identifiers.Learned | None, shade_id: int
-) -> str | None:
-    """A P code that already points at another shade keeps that mapping (DESIGN 7.2); the bottle
-    is saved with the code anyway, and this is the sentence that says so."""
-    if learned is None or learned.shade_id == shade_id:
-        return None
-    other = shades.get_shade(conn, learned.shade_id)
-    return f"{learned.value} was {other['title']} before. The bottle is saved; the old match stays."
 
 
 def _require_shade(conn: sqlite3.Connection, shade_id: int) -> None:
@@ -140,17 +123,11 @@ def purchase_history(request: Request, conn: Conn):
 
 
 @router.get("/shades/{shade_id}/bottles/new")
-def new_bottle_sheet(
-    request: Request, conn: Conn, shade_id: int, ctx: str = "shade", printed_code: str = ""
-):
-    """`printed_code` pre-fills the P code field after a lookup (it is stored on save, not here)."""
+def new_bottle_sheet(request: Request, conn: Conn, shade_id: int, ctx: str = "shade"):
     shade = shades.get_shade(conn, shade_id)
     if shade is None:
         raise HTTPException(404, "No such shade")
     values = form_values(None, today(request))
-    code = bottles.clean_printed_code(printed_code)
-    if code:
-        values["printed_code"] = form_code(code)
     return _form(
         request,
         shade_id=shade_id,
@@ -167,7 +144,6 @@ def create_bottle(
     conn: Conn,
     shade_id: int,
     state: Annotated[str, Form()] = "full",
-    printed_code: Annotated[str, Form()] = "",
     bought_on: Annotated[str, Form()] = "",
     price_paid: Annotated[str, Form()] = "",
     opened_on: Annotated[str, Form()] = "",
@@ -180,7 +156,6 @@ def create_bottle(
     ctx = ctx if ctx in NEW_CONTEXTS else "shade"
     raw = {
         "state": state,
-        "printed_code": printed_code,
         "bought_on": bought_on,
         "price_paid": price_paid,
         "opened_on": opened_on,
@@ -200,13 +175,11 @@ def create_bottle(
         )
     with transaction(conn):
         bottle_id = bottles.add(conn, shade_id, values)
-        learned = identifiers.learn_printed(conn, shade_id, values.printed_code)
-    notice = _conflict_notice(conn, learned, shade_id)
     if ctx == "lookup":
         response = render(
             request,
             "_lookup_added.html",
-            {"bottle": bottles.get(conn, bottle_id), "shade": shade, "notice": notice},
+            {"bottle": bottles.get(conn, bottle_id), "shade": shade},
         )
     else:
         response = render(
@@ -216,7 +189,6 @@ def create_bottle(
                 "bottles": bottles.for_shade(conn, shade_id),
                 "ctx": "shade",
                 "oob_actions": True,
-                "notice": notice,
                 **actions_context(conn, shade_id),
             },
         )
@@ -244,7 +216,6 @@ def update_bottle(
     conn: Conn,
     bottle_id: int,
     state: Annotated[str, Form()] = "full",
-    printed_code: Annotated[str, Form()] = "",
     bought_on: Annotated[str, Form()] = "",
     price_paid: Annotated[str, Form()] = "",
     opened_on: Annotated[str, Form()] = "",
@@ -254,7 +225,6 @@ def update_bottle(
     bottle = _require_bottle(conn, bottle_id)
     raw = {
         "state": state,
-        "printed_code": printed_code,
         "bought_on": bought_on,
         "price_paid": price_paid,
         "opened_on": opened_on,

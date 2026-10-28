@@ -18,7 +18,7 @@ router = APIRouter()
 
 Conn = Annotated[sqlite3.Connection, Depends(get_conn)]
 
-# How a bottle's level reads after its P code: "P12, half left".
+# How a bottle's level reads: "half left".
 LEVEL_WORDS = {"full": "full", "half": "half left", "low": "running low"}
 
 
@@ -33,7 +33,7 @@ def facts_line(finishes: list[str], bottle: dict | None) -> str:
         parts.append(", ".join(f.replace("-", " ") for f in finishes))
     if bottle is not None:
         level = LEVEL_WORDS.get(bottle["state"], "")
-        parts.append(", ".join(p for p in (bottle["printed_code"], level) if p))
+        parts.append(level)
     text = ". ".join(p for p in parts if p)
     return text[:1].upper() + text[1:]
 

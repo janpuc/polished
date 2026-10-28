@@ -25,7 +25,7 @@
           <span class="row-body">
             <span class="row-title">{{ bottle.title }}</span>
             <span class="row-sub">
-              <span>{{ "Added" if bottle.dated_by_entry else "Bought" }} {{ bottle.date|day }}{% if bottle.printed_code %}, <span translate="no">{{ bottle.printed_code }}</span>{% endif %}{% if bottle.archived %}, archived{% elif bottle.state == 'empty' %}, empty{% endif %}</span>
+              <span>{{ "Added" if bottle.dated_by_entry else "Bought" }} {{ bottle.date|day }}{% if bottle.archived %}, archived{% elif bottle.state == 'empty' %}, empty{% endif %}</span>
               {% if bottle.price_paid_cents is not none %}<span class="price">{{ bottle.price_paid_cents|money }}</span>{% endif %}
             </span>
           </span>

@@ -1,7 +1,7 @@
 {
   "request": {
     "method": "DELETE",
-    "path": "/api/v1/identifiers/4"
+    "path": "/api/v1/identifiers/2"
   },
   "status": 204,
   "body": null

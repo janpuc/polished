@@ -3,10 +3,9 @@
 {% from "_icons.html" import icon with context %}
 {% from "_tip.html" import tip %}
 <section class="result result-added">
-  {% if notice %}<p class="notice">{{ notice }}</p>{% endif %}
   <div class="added-head is-arriving">
     {{ tip(shade, "l", false) }}
-    <p class="result-lead">Added {{ shade.title }}{% if bottle.printed_code %} with {{ bottle.printed_code }}{% endif %}.</p>
+    <p class="result-lead">Added {{ shade.title }}.</p>
   </div>
   <div class="actions">
     <a class="btn action-primary" href="/shades/{{ shade.id }}">Open the shade</a>

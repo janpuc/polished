@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter, Response
 
-from .. import bottles, identifiers, shades
+from .. import bottles, shades
 from ..db import transaction
 from . import rows, schemas
 from .errors import invalid, not_found
@@ -12,7 +12,7 @@ router = APIRouter(route_class=ApiRoute, tags=["bottles"])
 
 MAX_PRICE_CENTS = 999_999  # what the form's "9999.99" allows
 PRICE_MESSAGE = "Use an amount like 15.50."
-EDITABLE = ("state", "printed_code", "bought_on", "price_paid_cents", "opened_on", "notes")
+EDITABLE = ("state", "bought_on", "price_paid_cents", "opened_on", "notes")
 
 
 def price_text(cents: int | None) -> str:
@@ -34,7 +34,6 @@ def parse_fields(settings, fields: dict) -> tuple[bottles.BottleInput, dict[str,
         price, errors["price_paid_cents"] = "", PRICE_MESSAGE
     values, found = bottles.parse_input(
         state=fields["state"],
-        printed_code=fields["printed_code"] or "",
         bought_on=fields["bought_on"] or "",
         price_paid=price,
         opened_on=fields["opened_on"] or "",
@@ -121,24 +120,15 @@ def bottle_history(conn: Conn):
     responses={404: {"description": "`not_found`: no such shade."}},
 )
 def create_bottle(conn: Conn, settings: AppSettings, shade_id: int, body: schemas.BottleRequest):
-    """A P code on the bottle is learned (shade identifiers) in the same transaction. A code that
-    already meant another shade keeps that mapping; the bottle is saved all the same and
-    `learned.previous_shade` says which shade it was."""
+    """A `printed_code` in the body (sent by app builds from before P codes were retired) is
+    ignored."""
     shade_or_404(conn, shade_id)
     values, errors = parse_fields(settings, body.model_dump(include=set(EDITABLE)))
     if errors:
         raise invalid(errors)
     with transaction(conn):
         bottle_id = bottles.add(conn, shade_id, values)
-        learned = identifiers.learn_printed(conn, shade_id, values.printed_code)
-    result = None
-    if learned is not None and (learned.created or learned.shade_id != shade_id):
-        previous = None if learned.created else rows.rows_by_id(conn, [learned.shade_id])
-        result = schemas.LearnedCode(
-            code=learned.value,
-            previous_shade=previous[learned.shade_id] if previous else None,
-        )
-    return schemas.BottleCreated(bottle=rows.bottle(bottles.get(conn, bottle_id)), learned=result)
+    return schemas.BottleCreated(bottle=rows.bottle(bottles.get(conn, bottle_id)))
 
 
 @router.patch(
@@ -152,7 +142,7 @@ def create_bottle(conn: Conn, settings: AppSettings, shade_id: int, body: schema
 )
 def edit_bottle(conn: Conn, settings: AppSettings, bottle_id: int, body: schemas.BottlePatch):
     """Any subset of the fields, `archived` included; fields left out keep their value and `null`
-    clears an optional one. A P code is not learned here (as on the web's edit sheet)."""
+    clears an optional one. A `printed_code` in the body is ignored."""
     bottle = bottle_or_404(conn, bottle_id)
     sent = body.model_fields_set
     if "state" in sent and body.state is None:

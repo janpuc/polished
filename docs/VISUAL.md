@@ -91,7 +91,7 @@ Never below 22px, never on a row, button, label, chip, tab, meta line, summary o
 | Row name, headline, buttons | 17/22 | 600 | 0 |
 | Body | 17/22 | 400 | 0 |
 | Subhead (finishes, status, a bottle's first line, a date's words) | 15/20 | 400 | 0 |
-| Footnote (the P code, notes, "×2") | 13/18 | 400 | 0 |
+| Footnote (notes, "×2") | 13/18 | 400 | 0 |
 | Caption (tab labels, layer labels) | 12/16 | 500 | 0 |
 
 The greeting has the full width (the logo mark trails on the date's row), so "Good afternoon, Georgia" stays on
@@ -194,10 +194,9 @@ heart right after it when wished, the price at the trailing edge, and under them
 `--warn`, 600) with the finishes in `--ink-2`, and "×N" as a footnote under the price when owned. Hairlines
 start under the title, not under the tip. **Bottle rows** (`_bottle_card.html`) are plain rows of a group, a
 grid of `1fr auto auto`: the first line is the purchase ("Bought 21 Jul 2026, $15.50", 15/400 ink), then "Opened
-5 Oct 2026" and the notes; the **P code is the last and lightest fact**, a trailing 13/400 `--ink-3` figure after
-an 8px gap on the first line (no separator, and left out when the bottle has none); then the level arc and its
+5 Oct 2026" and the notes (the printed P code that used to trail the first line is retired); then the level arc and its
 word in a column as wide as "Empty", so the arcs line up down the list, then a chevron. The row opens the edit
-sheet, whose order is Level, Bought on, then "More details": Price paid, Opened on, P code, Notes. Wishlist
+sheet, whose order is Level, Bought on, then "More details": Price paid, Opened on, Notes. Wishlist
 rows, slot rows and the Wheels list follow the same grid: tip or ring, name, trailing facts.
 
 **Search marks.** The letters of a result that hit are wrapped in `<mark>`: a 12 percent ink wash, radius 3, no
@@ -227,8 +226,7 @@ shop" is a quiet `--ink-2` word in the subhead (and in rows, where the price wou
 SKU are absent.
 
 **Lookup.** The camera is first: a 4:3 viewfinder (radius 16) with a "Scan the barcode" button on an idle tile
-until the camera runs, a caption "Point at the barcode under the bottle", one field "Type the digits, a P code,
-or a name", "Take a photo instead" as a text action, the result, and a "Learned codes" row. A result is a
+until the camera runs, a caption "Point at the barcode under the bottle", one field "Type the digits or a name", "Take a photo instead" as a text action, the result, and a "Learned codes" row. A result is a
 group with the bottle photo (72 by 96) beside the shade's own `tip-l`, then the name, finishes and price.
 
 **Sheets** (`<dialog>`): opaque `--surface`, top radius 20, a 36 by 5 grabber (a drag handle on the phone,
@@ -292,8 +290,7 @@ and wants.
 Every tip has a contact shadow and an edge, in rows, the ring, the shade head, the builder and the empty states.
 A black shade keeps a silhouette in dark. The greeting is Fraunces on one line at 390 for a seven-letter name;
 no serif glyph is smaller than 22px or sits on a row, button, label, chip, tab, meta line or summary; no
-gradient text. The level arc is ink in both modes and the Low and Empty words are coloured. The P code is the
-last and lightest fact of a bottle row. A date field shows words and the native input behind it takes focus and
+gradient text. The level arc is ink in both modes and the Low and Empty words are coloured. A date field shows words and the native input behind it takes focus and
 opens the picker; a date after today is not accepted. A search marks the letters that hit and the no-results
 state shows the unpainted tip. No lilac or pink fill anywhere except the heart. One filled button per screen.
 The font is served from `/static/vendor/`, no request leaves the server except Shopify's image CDN. The Shades
@@ -380,8 +377,7 @@ Home is about 1430px tall on the phone with nine bottles (the spec's limit is tw
 **13.1 Wear today.** `#wear-slot` holds the hero (`_wear_hero.html`), the one block htmx swaps. The hero is a plate
 (`--velvet`: the surface by day, the darkest plum by night, so holo and glitter have contrast) with the shade's
 `tip-xl`, its name in Fraunces 28/31 (a link to the shade), one line of facts in `--ink-2` ("Holographic,
-metallic, shimmer. P12, half left": the finishes, then the code and the level of the bottle that would be
-worn) and two buttons. **I wore this** is the one filled action of Home (`POST /wear/{id}`); after it the same
+metallic, shimmer. half left": the finishes, then the level of the bottle that would be worn) and two buttons. **I wore this** is the one filled action of Home (`POST /wear/{id}`); after it the same
 place says "Worn today" with a check, nothing to press, and **Another** (secondary, `GET /wear/another?shown=`)
 stays. On the phone the tip and the name sit side by side and the buttons span under them; once the slot is
 440px wide (a container query, so the shell decides through the column) the buttons move beside the tip. The

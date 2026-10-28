@@ -55,7 +55,7 @@ def shown_shade(html: str) -> int:
 
 def test_i_wore_this_logs_the_day_and_returns_the_hero_saying_worn_today(seeded):
     client, conn, settings = seeded
-    own(client, conn, "thirst-trap", printed_code="259", state="half")
+    own(client, conn, "thirst-trap", state="half")
     shade = shade_id(conn, "thirst-trap")
     response = client.post(f"/wear/{shade}", headers=HX)
     assert response.status_code == 200 and "<html" not in response.text
@@ -113,23 +113,19 @@ def test_home_flips_the_hero_after_wearing_and_keeps_another(seeded):
 
 def test_the_hero_names_the_shade_its_finishes_and_the_bottle(seeded):
     client, conn, _ = seeded
-    own(client, conn, "thirst-trap", printed_code="259", state="half")
+    own(client, conn, "thirst-trap", state="half")
     page = hero(client.get("/").text)
     assert 'class="wear-name"><a href="/shades/' in page and "Thirst Trap" in page
-    assert re.search(r'class="wear-facts">[^<]*P259, half left<', page)
+    assert re.search(r'class="wear-facts">[^<]*half left<', page)
     assert 'class="tip tip-xl"' in page  # the shade's own tip, never a photo
     assert "cdn.shopify.com" not in page and "style=" not in page  # the CSP allows no style
 
 
 def test_facts_line_reads_finishes_then_the_bottle():
-    bottle = {"printed_code": "P12", "state": "half"}
-    assert (
-        facts_line(["holographic", "metallic"], bottle) == "Holographic, metallic. P12, half left"
-    )
-    assert facts_line([], {"printed_code": None, "state": "full"}) == "Full"
-    assert facts_line(["rose-gold"], {"printed_code": "P7", "state": "low"}) == (
-        "Rose gold. P7, running low"
-    )
+    bottle = {"state": "half"}
+    assert facts_line(["holographic", "metallic"], bottle) == "Holographic, metallic. half left"
+    assert facts_line([], {"state": "full"}) == "Full"
+    assert facts_line(["rose-gold"], {"state": "low"}) == "Rose gold. running low"
     assert facts_line(["jelly"], None) == "Jelly"
     assert facts_line([], None) == ""
 
@@ -229,7 +225,7 @@ def test_a_new_bottle_arrives_on_the_rack_once(seeded):
     own(client, conn, "thirst-trap")
     client.cookies.clear()
     created = client.post(
-        f"/shades/{shade_id(conn, 'peely-base')}/bottles", data={"printed_code": "5"}, headers=HX
+        f"/shades/{shade_id(conn, 'peely-base')}/bottles", data={"state": "full"}, headers=HX
     )
     bottle = conn.execute("select max(id) from bottle").fetchone()[0]
     assert f"{ARRIVED}={bottle};" in created.headers["set-cookie"]

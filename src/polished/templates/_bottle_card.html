@@ -1,15 +1,14 @@
 {% from "_icons.html" import icon with context %}
 {# One bottle as a plain row of a grouped list: when and for how much it was bought (the first
    line), when it was opened, its notes, the level as an ink arc and spelled out, and a chevron.
-   The P code trails the first line as the lightest fact and is left out when there is none. The
-   whole row opens the edit sheet (_bottle_form.html), where Archive lives. `ctx` is "shade" on
+   The whole row opens the edit sheet (_bottle_form.html), where Archive lives. `ctx` is "shade" on
    the shade page (the action bar follows the bottles) or "list" on /bottles. #}
 {% set paid %}{% if bottle.bought_on %}Bought {{ bottle.bought_on|day }}{% if bottle.price_paid_cents is not none %}, {{ bottle.price_paid_cents|money }}{% endif %}{% elif bottle.price_paid_cents is not none %}Paid {{ bottle.price_paid_cents|money }}{% endif %}{% endset %}
 {% set facts = (["Archived"] if bottle.archived else []) + ([paid|trim] if paid|trim else []) %}
 <article id="bottle-{{ bottle.id }}" class="bottle{% if bottle.archived %} is-archived{% endif %}">
   <button type="button" class="bottle-row" hx-get="/bottles/{{ bottle.id }}/edit?ctx={{ ctx }}" hx-target="#sheet-body" hx-swap="innerHTML">
     <span class="bottle-body">
-      <span class="bottle-line">{% if facts %}{{ facts|join(". ") }}{% elif not bottle.printed_code %}Added {{ bottle.created_at[:10]|day }}{% endif %}{% if bottle.printed_code %}<span class="code{% if not facts %} is-alone{% endif %}" translate="no">{{ bottle.printed_code }}</span>{% endif %}</span>
+      <span class="bottle-line">{% if facts %}{{ facts|join(". ") }}{% else %}Added {{ bottle.created_at[:10]|day }}{% endif %}</span>
       {% if bottle.opened_on %}<span class="bottle-line">Opened {{ bottle.opened_on|day }}</span>{% endif %}
       {% if bottle.notes %}<span class="bottle-foot bottle-notes">{{ bottle.notes }}</span>{% endif %}
     </span>

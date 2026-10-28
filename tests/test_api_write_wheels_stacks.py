@@ -286,14 +286,14 @@ def test_add_layers_with_the_default_coats(api):
     first = response.json()
     assert set(first) == set(sheet(api, stack_id))
     assert [(layer["title"], layer["coats"], layer["label"]) for layer in first["layers"]] == [
-        ("One-Coat Black", 2, "")
+        ("One-Coat Black", 1, "")
     ]
-    body = add_layer(api, stack_id, "Flakie Holo Taco").json()  # a topper: one coat
+    body = add_layer(api, stack_id, "Flakie Holo Taco").json()  # every shade starts at one coat
     assert [(layer["coats"], layer["label"]) for layer in body["layers"]] == [
-        (2, "Base"),
+        (1, "Base"),
         (1, "Top"),
     ]
-    assert body["summary"] == "One-Coat Black ×2 + Flakie Holo Taco"
+    assert body["summary"] == "One-Coat Black + Flakie Holo Taco"
     assert [t["id"] for t in body["tip"]] == [layer["shade_id"] for layer in body["layers"]]
     assert body == sheet(api, stack_id)
 
@@ -536,7 +536,7 @@ def test_save_fills_the_slot_and_answers_its_tile(api):
         None,
     )
     assert (tile["painted_on"], tile["note"]) == ("2026-10-25", "two coats")
-    assert tile["summary"] == "One-Coat Black ×2 + Flakie Holo Taco"
+    assert tile["summary"] == "One-Coat Black + Flakie Holo Taco"
     assert holos(api)["tiles"][4] == tile
     assert holos(api)["filled"] == 3
     assert api.rows("select name, status from stack where id = ?", stack_id) == [

@@ -5,12 +5,12 @@ import sqlite3
 from pathlib import Path
 
 import pytest
-from conftest import make_client, make_settings, oidc_settings
+from conftest import make_client, make_settings, migrations_below, oidc_settings
 from pydantic import ValidationError
 from starlette.testclient import TestClient
 from test_api_support import LOOPBACK, make_api
 
-from polished.migrate import MIGRATIONS, migrate
+from polished.migrate import migrate
 from polished.server import create_app
 
 pytest_plugins = ["test_api_support"]
@@ -195,15 +195,6 @@ def test_reset_route_does_not_exist_unless_enabled(tmp_path):
 # --- 008_api_tokens.sql --------------------------------------------------------------------
 
 
-def migrations_below(tmp_path: Path, version: int) -> Path:
-    directory = tmp_path / f"migrations-below-{version}"
-    directory.mkdir()
-    for path in MIGRATIONS.iterdir():
-        if path.name.endswith(".sql") and int(path.name[:3]) < version:
-            (directory / path.name).write_text(path.read_text())
-    return directory
-
-
 def test_008_adds_two_tables_and_leaves_the_data_alone(tmp_path):
     db = str(tmp_path / "live.db")
     assert migrate(db, migrations_below(tmp_path, 8))[-1] == "007_release_sheet.sql"
@@ -250,8 +241,9 @@ def test_009_adds_the_wear_log_and_leaves_the_data_alone(tmp_path):
     conn.commit()
     conn.close()
 
-    assert migrate(db) == ["009_wear.sql"]
-    assert migrate(db) == []  # idempotent
+    below_10 = migrations_below(tmp_path, 10)
+    assert migrate(db, below_10) == ["009_wear.sql"]
+    assert migrate(db, below_10) == []  # idempotent
 
     conn = sqlite3.connect(db, isolation_level=None)
     conn.execute("pragma foreign_keys = on")

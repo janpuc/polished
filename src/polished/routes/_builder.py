@@ -57,7 +57,7 @@ def default_scope(conn: sqlite3.Connection) -> str:
 
 
 def picker(conn: sqlite3.Connection, stack_id: int, q: str, scope: str) -> dict:
-    """The rows under the builder's search field. A P code or barcode that the resolver knows
+    """The rows under the builder's search field. A barcode that the resolver knows
     comes first as a suggestion (DESIGN 7.2); a name gives ordinary rows, owned shades first."""
     scope = scope if scope in shades.PICK_SCOPES else "owned"
     q = q.strip()
@@ -70,12 +70,12 @@ def picker(conn: sqlite3.Connection, stack_id: int, q: str, scope: str) -> dict:
         "result": None,
         "full": len(stacks.layers(conn, stack_id)) >= stacks.MAX_LAYERS,
     }
-    if q and (is_numeric(q) or identifiers.normalise_printed(q)):
+    if q and is_numeric(q):
         resolution = identifiers.resolve(conn, q)
-        if resolution.outcome in ("match", "suggestion"):
+        if resolution.outcome == "match":
             context["suggestion"] = resolution
             return context
-        if resolution.outcome in ("unknown_code", "unknown_printed", "invalid_code"):
+        if resolution.outcome in ("unknown_code", "invalid_code"):
             context["unknown_code"] = resolution
     if not q or shades.tokens(q):
         context["result"] = shades.pick(conn, q, scope)

@@ -1,4 +1,4 @@
-{# The rows under the builder's search field: a P code the resolver knows first (DESIGN 7.2), then
+{# The rows under the builder's search field: a barcode the resolver knows first (DESIGN 7.2), then
    shades, owned first. Tapping a row adds it as the next layer. `picker` is routes/_builder.py
    picker(). #}
 {% from "_icons.html" import icon with context %}
@@ -17,7 +17,7 @@
 {% endmacro %}
 {% if picker.suggestion %}
 {% set found = picker.suggestion %}
-<p class="pick-lead">{% if found.kind == 'gtin' %}Barcode {{ found.code }} is{% elif found.kind == 'printed' %}{{ found.code }} was this on a bottle you added before:{% else %}SKU {{ found.code }} is{% endif %}</p>
+<p class="pick-lead">{% if found.kind == 'gtin' %}Barcode {{ found.code }} is{% else %}SKU {{ found.code }} is{% endif %}</p>
 <ul class="list picker-list">{{ pick_row(found.shade) }}</ul>
 {% elif picker.unknown_code %}
 <p class="pick-lead">{% if picker.unknown_code.outcome == 'invalid_code' %}“{{ picker.q }}” is not a valid barcode number.{% else %}{{ picker.unknown_code.code }} is not on any bottle yet. Search by name instead.{% endif %}</p>

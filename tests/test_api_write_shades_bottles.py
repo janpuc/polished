@@ -6,7 +6,7 @@ from test_api_support import TODAY, assert_error
 pytest_plugins = ["test_api_support"]
 
 BOTTLE_KEYS = {
-    "id", "shade_id", "state", "printed_code", "bought_on", "price_paid_cents", "opened_on",
+    "id", "shade_id", "state", "bought_on", "price_paid_cents", "opened_on",
     "notes", "archived", "created_at", "updated_at",
 }  # fmt: skip
 
@@ -127,7 +127,6 @@ def test_add_a_bottle_with_everything(api):
         f"/api/v1/shades/{shade_id}/bottles",
         json={
             "state": "half",
-            "printed_code": "p 321",
             "bought_on": "2026-10-20",
             "price_paid_cents": 1550,
             "opened_on": TODAY,
@@ -136,15 +135,14 @@ def test_add_a_bottle_with_everything(api):
     )
     assert response.status_code == 201
     body = response.json()
-    assert set(body) == {"bottle", "learned"}
+    assert set(body) == {"bottle"}
     bottle = body["bottle"]
     assert set(bottle) == BOTTLE_KEYS
     assert bottle | {"id": 0, "created_at": "", "updated_at": ""} == {
-        "id": 0, "shade_id": shade_id, "state": "half", "printed_code": "P321",
+        "id": 0, "shade_id": shade_id, "state": "half",
         "bought_on": "2026-10-20", "price_paid_cents": 1550, "opened_on": TODAY,
         "notes": "from the pop-up", "archived": False, "created_at": "", "updated_at": "",
     }  # fmt: skip
-    assert body["learned"] == {"code": "P321", "previous_shade": None}
     assert api.get(f"/api/v1/shades/{shade_id}").json()["bottles"][0] == bottle
 
 
@@ -153,88 +151,27 @@ def test_add_a_bottle_with_nothing_but_the_defaults(api):
     response = api.client.post(f"/api/v1/shades/{shade_id}/bottles", json={})
     assert response.status_code == 201
     bottle = response.json()["bottle"]
-    assert (bottle["state"], bottle["printed_code"], bottle["bought_on"]) == ("full", None, None)
+    assert (bottle["state"], bottle["bought_on"]) == ("full", None)
     assert bottle["price_paid_cents"] is None and bottle["archived"] is False
-    assert response.json()["learned"] is None
     owned = api.get(f"/api/v1/shades/{shade_id}").json()["shade"]["owned_count"]
     assert owned == 1
 
 
-def test_a_known_p_code_for_the_same_shade_learns_nothing_new(api):
-    spirit = api.shade("Spirit Fingers")  # the household already taught P259 = Spirit Fingers
-    body = api.client.post(f"/api/v1/shades/{spirit}/bottles", json={"printed_code": "259"}).json()
-    assert body["bottle"]["printed_code"] == "P259"
-    assert body["learned"] is None
-
-
-def test_a_p_code_that_meant_another_shade_keeps_its_old_match(api):
-    thirst = api.shade("Thirst Trap")
-    body = api.client.post(f"/api/v1/shades/{thirst}/bottles", json={"printed_code": "P259"}).json()
-    assert body["bottle"]["printed_code"] == "P259"  # the bottle is saved with its code
-    assert body["learned"]["code"] == "P259"
-    assert body["learned"]["previous_shade"]["title"] == "Spirit Fingers"
-    mapping = api.rows("select shade_id from shade_identifier where value = 'P259'")
-    assert mapping == [{"shade_id": api.shade("Spirit Fingers")}]
-
-
-def test_a_code_that_is_not_a_p_number_is_kept_on_the_bottle_and_not_learned(api):
+def test_a_stray_printed_code_from_an_older_app_is_accepted_and_ignored(api):
+    """App builds from before P codes were retired still send the field: no 422, nothing stored,
+    nothing learned, and it is not in the answer."""
     shade_id = api.shade("Thirst Trap")
-    ids = api.count("shade_identifier")
-    body = api.client.post(
-        f"/api/v1/shades/{shade_id}/bottles", json={"printed_code": "batch 7"}
-    ).json()
-    assert body["bottle"]["printed_code"] == "BATCH7"
-    assert body["learned"] is None
-    assert api.count("shade_identifier") == ids
-
-
-@pytest.mark.parametrize(
-    ("field", "value", "message"),
-    [
-        ("state", "nearly", "Pick full, half, low or empty."),
-        ("bought_on", "last tuesday", "Use a date like 2026-10-25."),
-        ("opened_on", "2026-13-40", "Use a date like 2026-10-25."),
-        ("bought_on", "2026-10-27", "That date is in the future. Pick today or an earlier day."),
-        ("opened_on", "2099-01-01", "That date is in the future. Pick today or an earlier day."),
-        ("price_paid_cents", -5, "Use an amount like 15.50."),
-        ("price_paid_cents", 1_000_000, "Use an amount like 15.50."),
-        ("price_paid_cents", "15.50", "Use an amount like 15.50."),
-        ("bought_on", 20261020, "Use a date like 2026-10-25."),
-    ],
-)
-def test_add_a_bottle_validates_in_the_forms_words(api, field, value, message):
-    shade_id = api.shade("Thirst Trap")
-    before = api.count("bottle")
-    error = assert_error(
-        api.client.post(f"/api/v1/shades/{shade_id}/bottles", json={field: value}),
-        422,
-        "validation",
-        field,
-    )
-    assert error["message"] == message
-    assert api.count("bottle") == before
-
-
-def test_today_in_the_household_timezone_is_not_the_future(api):
-    # 16:30 UTC on the 26th: it is the 26th in Warsaw, and tomorrow is still the future.
-    shade_id = api.shade("Thirst Trap")
-    ok = api.client.post(f"/api/v1/shades/{shade_id}/bottles", json={"bought_on": TODAY})
-    assert ok.status_code == 201
-    late = api.client.post(f"/api/v1/shades/{shade_id}/bottles", json={"bought_on": "2026-10-27"})
-    assert late.status_code == 422
-
-
-def test_every_wrong_field_is_reported(api):
-    shade_id = api.shade("Thirst Trap")
-    error = assert_error(
-        api.client.post(
-            f"/api/v1/shades/{shade_id}/bottles",
-            json={"state": "x", "bought_on": "nope", "price_paid_cents": -1},
-        ),
-        422,
-        "validation",
-    )
-    assert set(error["fields"]) == {"state", "bought_on", "price_paid_cents"}
+    identifiers = api.count("shade_identifier")
+    for code in ("P259", "259", "batch 7", None, 12):
+        response = api.client.post(
+            f"/api/v1/shades/{shade_id}/bottles", json={"state": "half", "printed_code": code}
+        )
+        assert response.status_code == 201, code
+        body = response.json()
+        assert set(body) == {"bottle"} and set(body["bottle"]) == BOTTLE_KEYS
+        assert body["bottle"]["state"] == "half"
+    assert api.count("shade_identifier") == identifiers
+    assert "printed_code" not in api.rows("select * from bottle limit 1")[0]
 
 
 def test_add_a_bottle_to_an_unknown_shade_is_a_404(api):
@@ -245,13 +182,13 @@ def test_add_a_bottle_to_an_unknown_shade_is_a_404(api):
 
 
 def spirit_bottle(api) -> dict:
-    """The half-full Spirit Fingers bottle of the household (P259, bought 2026-07-21, $15.50)."""
+    """The half-full Spirit Fingers bottle of the household (bought 2026-07-21, $15.50)."""
     return api.get(f"/api/v1/shades/{api.shade('Spirit Fingers')}").json()["bottles"][-1]
 
 
 def test_patch_changes_only_what_is_sent(api):
     before = spirit_bottle(api)
-    assert before["printed_code"] == "P259" and before["state"] == "half"
+    assert before["state"] == "half"
     response = api.client.patch(f"/api/v1/bottles/{before['id']}", json={"state": "low"})
     assert response.status_code == 200
     after = response.json()
@@ -269,14 +206,13 @@ def test_patch_any_subset_including_clearing_with_null(api):
     changed = api.client.patch(
         url,
         json={
-            "printed_code": None,
             "price_paid_cents": None,
             "opened_on": None,
             "notes": "dried out",
             "bought_on": "2026-07-22",
         },
     ).json()
-    assert changed["printed_code"] is None and changed["price_paid_cents"] is None
+    assert changed["price_paid_cents"] is None
     assert changed["opened_on"] is None and changed["notes"] == "dried out"
     assert changed["bought_on"] == "2026-07-22" and changed["state"] == "half"
     assert api.client.patch(url, json={"price_paid_cents": 0}).json()["price_paid_cents"] == 0
@@ -349,10 +285,13 @@ def test_an_old_future_date_does_not_block_an_unrelated_edit(api):
     assert response.json()["state"] == "low"
 
 
-def test_patch_does_not_learn_a_p_code(api):
-    thirst = api.shade("Thirst Trap")
-    bottle = api.get(f"/api/v1/shades/{thirst}").json()["bottles"][0]
-    api.client.patch(f"/api/v1/bottles/{bottle['id']}", json={"printed_code": "777"})
+def test_patch_accepts_and_ignores_a_stray_printed_code(api):
+    bottle = spirit_bottle(api)
+    url = f"/api/v1/bottles/{bottle['id']}"
+    response = api.client.patch(url, json={"printed_code": "777", "state": "low"})
+    assert response.status_code == 200
+    assert response.json()["state"] == "low" and "printed_code" not in response.json()
+    assert api.client.patch(url, json={"printed_code": "777"}).status_code == 200
     assert api.count("shade_identifier", "value = 'P777'") == 0
 
 

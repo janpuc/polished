@@ -2,7 +2,6 @@
 {% set current = bottles|select("owned_bottle")|list %}
 {% set past = bottles|reject("owned_bottle")|list %}
 <div id="bottles" class="bottles">
-  {% if notice %}<p class="notice">{{ notice }}</p>{% endif %}
   {% if current %}
   <section class="bottles-section">
     <h2 class="section-title">Bottles</h2>

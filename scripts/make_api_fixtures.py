@@ -68,17 +68,17 @@ def add_household(conn) -> dict[str, int]:
     values = [
         (
             spirit,
-            BottleInput("half", "P259", "2026-07-21", 1550, "2026-10-05"),
+            BottleInput("half", "2026-07-21", 1550, "2026-10-05"),
             "2026-07-21T10:02:11Z",
         ),
-        (black, BottleInput("full", None, "2026-08-02", 1200), "2026-08-02T18:40:00Z"),
-        (flakie, BottleInput("full", None, "2026-10-01", 1650), "2026-10-01T08:15:30Z"),
+        (black, BottleInput("full", "2026-08-02", 1200), "2026-08-02T18:40:00Z"),
+        (flakie, BottleInput("full", "2026-10-01", 1650), "2026-10-01T08:15:30Z"),
         (
             shade("Thirst Trap"),
-            BottleInput("low", None, None, None, None, "A gift"),
+            BottleInput("low", None, None, None, "A gift"),
             "2026-10-12T20:00:00Z",
         ),
-        (spirit, BottleInput("full", None, "2025-12-24", None), "2025-12-24T09:00:00Z"),
+        (spirit, BottleInput("full", "2025-12-24", None), "2025-12-24T09:00:00Z"),
     ]
     bottle_ids = []
     for shade_id, bottle, stamp in values:
@@ -98,8 +98,6 @@ def add_household(conn) -> dict[str, int]:
         wishlist.update(conn, item, priority, note)
         pin("wishlist_item", item, added_on="2026-10-10")
 
-    printed = identifiers.learn_printed(conn, spirit, "P259")
-    pin("shade_identifier", printed.id, created_at="2026-07-21T10:02:30Z")
     learned = identifiers.learn(conn, "gtin", "810170284120", spirit)
     pin("shade_identifier", learned.id, created_at="2026-07-21T10:05:00Z")
     conn.execute(
@@ -113,10 +111,23 @@ def add_household(conn) -> dict[str, int]:
     pin("wheel", holos, slug=SLUG, created_at="2026-10-01T09:00:00Z")
     pin("wheel", toppers, slug="7b2vdc", created_at="2026-10-02T09:00:00Z")
 
-    def swatch(position: int, layers: list[int], painted_on: str, note: str | None = None) -> int:
-        stack_id = stacks.open_draft(conn, holos, position).stack_id
+    def add_layers(stack_id: int, layers: list[int], second_coat: int | None = None) -> None:
+        """Every layer starts at one coat; `second_coat` is a shade given another, so the
+        fixtures also show a "×2" summary."""
         for shade_id in layers:
-            stacks.append(conn, stack_id, shade_id)
+            layer_id = stacks.append(conn, stack_id, shade_id)
+            if shade_id == second_coat:
+                stacks.change_coats(conn, stack_id, layer_id, 1)
+
+    def swatch(
+        position: int,
+        layers: list[int],
+        painted_on: str,
+        note: str | None = None,
+        second_coat: int | None = None,
+    ) -> int:
+        stack_id = stacks.open_draft(conn, holos, position).stack_id
+        add_layers(stack_id, layers, second_coat)
         stacks.save(conn, stack_id, note=note or "", painted_on=painted_on)
         conn.execute(
             "update stack set updated_at = ?, created_at = ? where id = ?",
@@ -124,11 +135,10 @@ def add_household(conn) -> dict[str, int]:
         )
         return stack_id
 
-    saved = swatch(12, [black, flakie], "2026-10-20")
+    saved = swatch(12, [black, flakie], "2026-10-20", second_coat=black)
     swatch(13, [spirit], "2026-10-22", "Two coats, dried fast")
     draft = stacks.open_draft(conn, holos, 14).stack_id
-    stacks.append(conn, draft, black)
-    stacks.append(conn, draft, flakie)
+    add_layers(draft, [black, flakie], second_coat=black)
 
     manual = shades.create_manual(conn, "Gifted Mystery", "polish")
     conn.execute(
@@ -197,15 +207,15 @@ def record_writes(app, client, db, token, ids, record) -> None:
         f"/api/v1/shades/{thirst}/bottles",
         json={
             "state": "half",
-            "printed_code": "321",
             "bought_on": "2026-10-20",
             "price_paid_cents": 1550,
             "opened_on": "2026-10-24",
             "notes": "From the pop-up",
         },
     )
+    # An app build from before P codes were retired still sends the field; it is ignored.
     write(
-        "bottle_create_known_code",
+        "bottle_create_legacy_printed_code",
         "POST",
         f"/api/v1/shades/{thirst}/bottles",
         json={"state": "full", "printed_code": "P259"},
@@ -440,11 +450,10 @@ def main() -> None:
         get("stack_sheet", f"/api/v1/stacks/{ids['draft_stack']}")
         get("stack_copy_sources", "/api/v1/stacks/copy-sources")
         get("stack_pick", "/api/v1/stacks/pick?q=flak&scope=all")
-        get("stack_pick_suggestion", "/api/v1/stacks/pick?q=P259")
+        get("stack_pick_barcode", "/api/v1/stacks/pick?q=810170284120")
         get("lookup_match", "/api/v1/lookup?q=810170284120&via=scan")
-        get("lookup_suggestion", "/api/v1/lookup?q=259")
+        get("lookup_short_number", "/api/v1/lookup?q=259")
         get("lookup_unknown_code", "/api/v1/lookup?q=5901234123457&via=scan")
-        get("lookup_unknown_printed", "/api/v1/lookup?q=P999")
         get("lookup_invalid_code", "/api/v1/lookup?q=12345678&via=scan")
         get("lookup_results", "/api/v1/lookup?q=flakie")
         # Resolving a barcode counts as a use, with the real clock; put the numbers back.

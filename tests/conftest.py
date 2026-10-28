@@ -11,13 +11,23 @@ from fastapi.testclient import TestClient
 
 from polished.config import Settings
 from polished.db import connect
-from polished.migrate import migrate
+from polished.migrate import MIGRATIONS, migrate
 from polished.server import create_app
 
 LOCAL_URL = "http://localhost:8080"
 OIDC_URL = "https://polished.example.test"
 SECRET = "test-secret-test-secret-test-secret-0"
 FIXTURES = Path(__file__).parent / "fixtures"
+
+
+def migrations_below(tmp_path: Path, version: int) -> Path:
+    """A copy of the packaged migrations with a number under `version`, to build an older database."""
+    directory = tmp_path / f"migrations-below-{version}"
+    directory.mkdir()
+    for path in MIGRATIONS.iterdir():
+        if path.name.endswith(".sql") and int(path.name[:3]) < version:
+            (directory / path.name).write_text(path.read_text())
+    return directory
 
 
 @pytest.fixture(autouse=True)

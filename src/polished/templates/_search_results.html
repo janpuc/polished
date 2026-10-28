@@ -1,8 +1,5 @@
 {% from "_icons.html" import icon with context %}
 {% from "_tip.html" import unpainted %}
-{% if code_q %}
-<p class="more-link code-link"><a href="/lookup?q={{ code_q|urlencode }}">Look up “{{ code_q }}” as a code</a></p>
-{% endif %}
 {% if result is none %}{% elif not result.rows %}
 <div class="empty-state empty-compact">
   {{ unpainted("l") }}

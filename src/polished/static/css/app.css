@@ -1273,8 +1273,7 @@ mark {
   margin: 8px 0 0;
 }
 
-.more-link a,
-.code-link a {
+.more-link a {
   display: inline-flex;
   align-items: center;
   min-height: var(--tap);
@@ -2148,23 +2147,11 @@ mark {
   gap: 2px;
 }
 
-/* The first line is the purchase; the P code is the last and lightest fact, after a gap and
-   no separator. */
+/* The first line is the purchase. */
 .bottle-line {
   font-size: 0.9375rem;
   line-height: 1.25rem;
   font-variant-numeric: tabular-nums;
-}
-
-.bottle-line .code {
-  margin-left: 8px;
-  color: var(--ink-3);
-  font-size: 0.8125rem;
-  white-space: nowrap;
-}
-
-.bottle-line .code.is-alone {
-  margin-left: 0;
 }
 
 .bottle-foot {

@@ -25,12 +25,12 @@ def add(conn, handle, **values) -> int:
 
 
 def test_a_shade_can_have_several_bottles(catalog):
-    first = add(catalog, "thirst-trap", printed_code="P259")
-    second = add(catalog, "thirst-trap", printed_code="P260", state="half")
+    first = add(catalog, "thirst-trap", notes="first")
+    second = add(catalog, "thirst-trap", notes="second", state="half")
     shade = shade_id(catalog, "thirst-trap")
     assert first != second
     assert owned_count(catalog, shade) == 2
-    assert [b["printed_code"] for b in bottles.for_shade(catalog, shade)] == ["P260", "P259"]
+    assert [b["notes"] for b in bottles.for_shade(catalog, shade)] == ["second", "first"]
     assert shades.get_shade(catalog, shade)["owned_count"] == 2
 
 
@@ -62,24 +62,16 @@ def test_state_changes_and_rejects_an_unknown_state(catalog):
         catalog.execute("update bottle set state = 'mostly' where id = ?", (bottle,))
 
 
+def test_a_bottle_has_no_printed_code_column(catalog):
+    bottle = add(catalog, "thirst-trap")
+    assert "printed_code" not in bottles.get(catalog, bottle)
+
+
 def test_a_new_bottle_is_full_by_default(catalog):
     bottle = add(catalog, "thirst-trap")
     assert bottles.get(catalog, bottle)["state"] == "full"
     values, errors = bottles.parse_input()
     assert values.state == "full" and not errors
-
-
-@pytest.mark.parametrize(
-    ("typed", "stored"),
-    [("259", "P259"), ("p259", "P259"), (" p 259 ", "P259"), ("pp12", "PP12"), ("", None)],
-)
-def test_the_p_code_is_stored_uppercase_and_normalised(typed, stored):
-    assert bottles.clean_printed_code(typed) == stored
-
-
-def test_a_code_that_is_not_a_p_number_is_kept_uppercase_not_refused():
-    values, errors = bottles.parse_input(printed_code="ab-12 x")
-    assert values.printed_code == "AB-12X" and not errors
 
 
 @pytest.mark.parametrize(
@@ -104,14 +96,13 @@ def test_parse_input_reports_each_wrong_field():
     assert values.state == "full"
     values, errors = bottles.parse_input(
         state="low",
-        printed_code="259",
         bought_on="2026-10-25",
         price_paid="15.50",
         opened_on="2026-10-26",
         notes="  a gift  ",
     )
     assert not errors
-    assert values == BottleInput("low", "P259", "2026-10-25", 1550, "2026-10-26", "a gift")
+    assert values == BottleInput("low", "2026-10-25", 1550, "2026-10-26", "a gift")
 
 
 def test_a_date_after_today_is_refused_and_today_is_not():
@@ -124,13 +115,12 @@ def test_a_date_after_today_is_refused_and_today_is_not():
 
 
 def test_update_changes_every_field(catalog):
-    bottle = add(catalog, "thirst-trap", printed_code="P1")
-    values, _ = bottles.parse_input("half", "300", "2026-01-02", "10", "2026-01-03", "note")
+    bottle = add(catalog, "thirst-trap", notes="old")
+    values, _ = bottles.parse_input("half", "2026-01-02", "10", "2026-01-03", "note")
     bottles.update(catalog, bottle, values)
     row = bottles.get(catalog, bottle)
-    assert (row["state"], row["printed_code"], row["bought_on"], row["price_paid_cents"]) == (
+    assert (row["state"], row["bought_on"], row["price_paid_cents"]) == (
         "half",
-        "P300",
         "2026-01-02",
         1000,
     )

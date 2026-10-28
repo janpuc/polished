@@ -61,7 +61,7 @@ def test_the_viewfinder_comes_first_then_one_field_and_the_photo_fallback(seeded
         for marker in (
             'class="viewfinder"',
             "Point at the barcode under the bottle",
-            'placeholder="Type the digits, a P code, or a name"',
+            'placeholder="Type the digits or a name"',
             "Take a photo instead",
             'id="lookup-result"',
             "Learned codes",
@@ -101,11 +101,11 @@ def test_the_home_page_and_the_bottles_page_offer_scanning(seeded):
     assert 'href="/lookup?scan=1"' in client.get("/bottles").text
 
 
-def test_a_number_typed_in_the_home_search_offers_the_lookup(seeded):
+def test_the_home_search_has_no_look_up_as_a_code_link(seeded):
     client, _ = seeded
-    for q in ("259", "p259", UPC):
-        assert f'href="/lookup?q={q}"' in client.get("/search", params={"q": q}).text
-    assert "Look up" not in client.get("/search", params={"q": "spirit"}).text
+    for q in ("259", "p259", UPC, "spirit"):
+        page = client.get("/search", params={"q": q}).text
+        assert "Look up" not in page and "/lookup?q=" not in page
 
 
 # Resolving
@@ -141,13 +141,10 @@ def test_the_learn_typeahead_rows_save_the_barcode_in_one_tap(seeded):
     assert 'href="/shades/' not in rows.text
 
 
-def test_the_learn_typeahead_for_a_p_code_opens_the_add_bottle_sheet(seeded):
-    client, conn = seeded
-    shade = sid(conn, "Spirit Fingers")
-    rows = client.get(
-        "/search", params={"q": "spirit", "ctx": "learn", "kind": "printed", "value": "259"}
-    )
-    assert f'hx-get="/shades/{shade}/bottles/new?ctx=lookup&amp;printed_code=P259"' in rows.text
+def test_the_learn_typeahead_does_not_take_a_p_code(seeded):
+    client, _ = seeded
+    params = {"q": "spirit", "ctx": "learn", "kind": "printed", "value": "259"}
+    assert client.get("/search", params=params).status_code == 422
 
 
 def test_the_learn_typeahead_needs_a_valid_code_and_stack_is_not_built_yet(seeded):
@@ -216,19 +213,18 @@ def test_an_invalid_number_is_invalid_code_and_a_bad_scan_says_try_again(seeded)
     assert "Couldn’t read that reliably" in scanned.text
 
 
-def test_a_p_code_is_a_suggestion_never_a_match(seeded):
+def test_a_short_number_is_a_name_search_even_when_a_bottle_once_carried_it(seeded):
     client, conn = seeded
     shade = sid(conn, "Spirit Fingers")
-    unknown = client.get("/lookup/resolve", params={"q": "259"})
-    assert "P259 isn’t on any bottle yet" in unknown.text
-    client.post(f"/shades/{shade}/bottles", data={"printed_code": "259"})
-    suggestion = client.get("/lookup/resolve", params={"q": "259"})
-    assert "P259 was Spirit Fingers on a bottle you added before" in suggestion.text
-    assert "Yes, add a bottle" in suggestion.text and "Not that one?" in suggestion.text
-    assert "This isn’t it" not in suggestion.text
-    assert (
-        f'hx-get="/shades/{shade}/bottles/new?ctx=lookup&amp;printed_code=P259"' in suggestion.text
-    )
+    client.post(f"/shades/{shade}/bottles", data={"printed_code": "259"})  # a stale form
+    for typed in ("259", "p259", "P 259"):
+        page = client.get("/lookup/resolve", params={"q": typed}).text
+        assert "P259" not in page and "isn’t on any bottle yet" not in page, typed
+        assert "was Spirit Fingers" not in page and "Not that one?" not in page, typed
+        assert "New barcode" not in page and "valid barcode" not in page, typed
+    assert stored(conn) == []
+    # The same number in a page of its own, without JavaScript.
+    assert "P259" not in client.get("/lookup?q=259").text
 
 
 def test_a_sku_is_a_match_without_a_forget_button(seeded):
@@ -246,62 +242,41 @@ def test_a_name_gives_ordinary_rows_and_nothing_gives_nothing(seeded):
     assert client.get("/lookup/resolve", params={"q": ""}).text.strip() == ""
 
 
-# Adding a bottle after a lookup, and learning the P code
+# Adding a bottle after a lookup
 
 
-def test_the_sheet_after_a_lookup_prefills_the_p_code_and_targets_the_result(seeded):
+def test_the_sheet_after_a_lookup_targets_the_result_and_has_no_p_code(seeded):
     client, conn = seeded
     shade = sid(conn, "Spirit Fingers")
-    sheet = client.get(
+    sheet = client.get(f"/shades/{shade}/bottles/new", params={"ctx": "lookup"})
+    assert 'name="ctx" value="lookup"' in sheet.text and 'hx-target="#lookup-result"' in sheet.text
+    assert "printed_code" not in sheet.text
+    stale = client.get(
         f"/shades/{shade}/bottles/new", params={"ctx": "lookup", "printed_code": "p259"}
     )
-    assert 'name="ctx" value="lookup"' in sheet.text
-    assert 'value="259"' in sheet.text and 'hx-target="#lookup-result"' in sheet.text
+    assert "printed_code" not in stale.text and 'value="259"' not in stale.text
     plain = client.get(f"/shades/{shade}/bottles/new")
     assert 'hx-target="#bottles"' in plain.text and 'name="ctx" value="shade"' in plain.text
     odd = client.get(f"/shades/{shade}/bottles/new", params={"ctx": "elsewhere"})
     assert 'name="ctx" value="shade"' in odd.text
 
 
-def test_saving_a_bottle_from_the_lookup_learns_the_code_and_shows_what_was_added(seeded):
+def test_saving_a_bottle_from_the_lookup_shows_what_was_added_and_learns_nothing(seeded):
     client, conn = seeded
     shade = sid(conn, "Spirit Fingers")
-    response = client.post(
-        f"/shades/{shade}/bottles", data={"printed_code": "259", "ctx": "lookup"}
-    )
+    response = client.post(f"/shades/{shade}/bottles", data={"ctx": "lookup"})
     assert response.status_code == 200 and response.headers["hx-trigger"] == "sheetClose"
-    assert "Added Spirit Fingers with P259." in response.text and "data-scan-open" in response.text
-    assert stored(conn) == [("printed", "P259", shade)]
+    assert "Added Spirit Fingers." in response.text and "data-scan-open" in response.text
+    assert stored(conn) == []
     assert conn.execute("select count(*) from bottle").fetchone()[0] == 1
 
 
-def test_a_conflicting_p_code_saves_the_bottle_and_keeps_the_old_mapping(seeded):
-    client, conn = seeded
-    first, second = sid(conn, "Spirit Fingers"), sid(conn, "Other Shade")
-    client.post(f"/shades/{first}/bottles", data={"printed_code": "259"})
-    on_shade_page = client.post(f"/shades/{second}/bottles", data={"printed_code": "p259"})
-    assert "P259 was Spirit Fingers before" in on_shade_page.text
-    from_lookup = client.post(
-        f"/shades/{second}/bottles", data={"printed_code": "259", "ctx": "lookup"}
-    )
-    assert "P259 was Spirit Fingers before" in from_lookup.text
-    assert stored(conn) == [("printed", "P259", first)]
-    codes = [
-        r[0] for r in conn.execute("select printed_code from bottle where shade_id = ?", (second,))
-    ]
-    assert codes == ["P259", "P259"]
-
-
-def test_a_bottle_without_a_p_code_or_with_an_odd_one_learns_nothing(seeded):
+def test_an_invalid_bottle_from_the_lookup_saves_nothing(seeded):
     client, conn = seeded
     shade = sid(conn, "Spirit Fingers")
-    client.post(f"/shades/{shade}/bottles", data={})
-    client.post(f"/shades/{shade}/bottles", data={"printed_code": "no-code"})
-    assert stored(conn) == []
-    refused = client.post(
-        f"/shades/{shade}/bottles", data={"printed_code": "259", "price_paid": "x"}
-    )
+    refused = client.post(f"/shades/{shade}/bottles", data={"price_paid": "x", "ctx": "lookup"})
     assert refused.status_code == 422 and stored(conn) == []
+    assert conn.execute("select count(*) from bottle").fetchone()[0] == 0
 
 
 # The learned codes page
@@ -312,15 +287,13 @@ def test_the_identifiers_page_lists_and_removes_learned_codes(seeded):
     shade = sid(conn, "Spirit Fingers")
     assert "Nothing learned yet" in client.get("/identifiers").text
     learn(client, shade)
-    client.post(f"/shades/{shade}/bottles", data={"printed_code": "259"})
     page = client.get("/identifiers").text
-    assert GTIN in page and "P259" in page and "Spirit Fingers" in page
-    identifier = conn.execute("select id from shade_identifier where kind = 'printed'").fetchone()[
-        0
-    ]
+    assert GTIN in page and "Barcode" in page and "Spirit Fingers" in page
+    assert "P code" not in page and "P codes" not in page
+    identifier = conn.execute("select id from shade_identifier").fetchone()[0]
     removed = client.post(f"/identifiers/{identifier}/delete")
     assert removed.status_code == 200 and removed.text == ""
-    assert stored(conn) == [("gtin", GTIN, shade)]
+    assert stored(conn) == []
 
 
 # Static files and the gate

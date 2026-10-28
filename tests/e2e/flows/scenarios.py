@@ -103,7 +103,7 @@ def pick_layer(t: Trace, query: str, title: str) -> None:
     sheet.get_by_role(
         "radio", name="All"
     ).check()  # the picker starts on Owned once a bottle exists
-    box = sheet.get_by_role("searchbox", name="Search shades or a P code")
+    box = sheet.get_by_role("searchbox", name="Search shades")
     type_and_wait(t, box, query, "/search")
     sheet.get_by_role("button", name=f"Add {title}").click()
     expect(sheet.locator("#stack-summary")).to_contain_text(title)

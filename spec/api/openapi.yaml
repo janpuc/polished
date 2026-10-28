@@ -630,9 +630,8 @@ paths:
       - bottles
       summary: Add a bottle of a shade
       description: |-
-        A P code on the bottle is learned (shade identifiers) in the same transaction. A code that
-        already meant another shade keeps that mapping; the bottle is saved all the same and
-        `learned.previous_shade` says which shade it was.
+        A `printed_code` in the body (sent by app builds from before P codes were retired) is
+        ignored.
       operationId: create_bottle
       parameters:
       - name: shade_id
@@ -679,7 +678,7 @@ paths:
       summary: Change a bottle
       description: |-
         Any subset of the fields, `archived` included; fields left out keep their value and `null`
-        clears an optional one. A P code is not learned here (as on the web's edit sheet).
+        clears an optional one. A `printed_code` in the body is ignored.
       operationId: edit_bottle
       parameters:
       - name: bottle_id
@@ -1452,8 +1451,8 @@ paths:
       - stacks
       summary: The builder's shade picker
       description: |-
-        Shades matching `q`, owned ones first, narrowed by `scope`. A P code or barcode the
-        household has taught the app comes back as `suggestion` (and no items), as in the web's builder.
+        Shades matching `q`, owned ones first, narrowed by `scope`. A barcode the
+        household has taught the app comes back as the one item, as in the web's builder.
       operationId: stack_pick
       parameters:
       - name: q
@@ -1855,10 +1854,9 @@ paths:
     get:
       tags:
       - lookup
-      summary: Resolve a barcode, P code or name
-      description: |-
-        DESIGN 7.2 in one call: a barcode, a number that is not one, a P code, a SKU, then a name
-        search. A known barcode counts as used (as on the web).
+      summary: Resolve a barcode or a name
+      description: 'DESIGN 7.2 in one call: a barcode, a number that is not one, a SKU, then a name search.
+        A known barcode counts as used (as on the web).'
       operationId: lookup
       parameters:
       - name: q
@@ -2177,11 +2175,6 @@ components:
           - low
           - empty
           title: State
-        printed_code:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Printed Code
         bought_on:
           anyOf:
           - type: string
@@ -2216,7 +2209,6 @@ components:
       - id
       - shade_id
       - state
-      - printed_code
       - bought_on
       - price_paid_cents
       - opened_on
@@ -2229,16 +2221,9 @@ components:
       properties:
         bottle:
           $ref: '#/components/schemas/Bottle'
-        learned:
-          anyOf:
-          - $ref: '#/components/schemas/LearnedCode'
-          - type: 'null'
-          description: Set when the P code on the bottle was new, or already meant another shade; null
-            without a code, a code that is not a P number, or one already known for this shade.
       type: object
       required:
       - bottle
-      - learned
       title: BottleCreated
     BottleGroup:
       properties:
@@ -2278,11 +2263,6 @@ components:
           - empty
           - null
           title: State
-        printed_code:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Printed Code
         bought_on:
           anyOf:
           - type: string
@@ -2322,12 +2302,6 @@ components:
           - empty
           title: State
           default: full
-        printed_code:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Printed Code
-          description: '"259" and "p259" are stored as "P259".'
         bought_on:
           anyOf:
           - type: string
@@ -2750,9 +2724,7 @@ components:
           title: Id
         kind:
           type: string
-          enum:
-          - gtin
-          - printed
+          const: gtin
           title: Kind
         value:
           type: string
@@ -2787,9 +2759,7 @@ components:
           title: Id
         kind:
           type: string
-          enum:
-          - gtin
-          - printed
+          const: gtin
           title: Kind
         value:
           type: string
@@ -2827,7 +2797,6 @@ components:
           type: string
           enum:
           - gtin
-          - printed
           title: Kind
         value:
           type: string
@@ -2919,31 +2888,13 @@ components:
       required:
       - shade_id
       title: LayerRequest
-    LearnedCode:
-      properties:
-        code:
-          type: string
-          title: Code
-        previous_shade:
-          anyOf:
-          - $ref: '#/components/schemas/ShadeRow'
-          - type: 'null'
-          description: The shade the code already pointed at when that is not this one (the old match
-            stays); null when the code is new.
-      type: object
-      required:
-      - code
-      - previous_shade
-      title: LearnedCode
     Lookup:
       properties:
         outcome:
           type: string
           enum:
           - match
-          - suggestion
           - unknown_code
-          - unknown_printed
           - invalid_code
           - results
           title: Outcome
@@ -2952,13 +2903,12 @@ components:
           - type: string
           - type: 'null'
           title: Code
-          description: The normalised barcode or P code.
+          description: The normalised barcode or SKU.
         kind:
           anyOf:
           - type: string
             enum:
             - gtin
-            - printed
             - sku
           - type: 'null'
           title: Kind
@@ -3142,16 +3092,10 @@ components:
         total:
           type: integer
           title: Total
-        suggestion:
-          anyOf:
-          - $ref: '#/components/schemas/ShadeRow'
-          - type: 'null'
-          description: The shade a typed P code or barcode is known to be; show it first.
       type: object
       required:
       - items
       - total
-      - suggestion
       title: Pick
     RecentBottle:
       properties:

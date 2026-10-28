@@ -13,14 +13,14 @@
         "position": 13,
         "name": null,
         "painted_on": "2026-10-22",
-        "summary": "Spirit Fingers ×2",
+        "summary": "Spirit Fingers",
         "layers": [
           {
             "id": 3,
             "ord": 1,
             "shade_id": 13,
             "title": "Spirit Fingers",
-            "coats": 2,
+            "coats": 1,
             "label": "",
             "tip": {
               "id": 13,
@@ -31,11 +31,11 @@
               ],
               "topper": false,
               "clear": false,
-              "coats": 2,
+              "coats": 1,
               "colours": [
                 "orange"
               ],
-              "revision": "b3a96ed0f8"
+              "revision": "c25aa856e4"
             }
           }
         ]

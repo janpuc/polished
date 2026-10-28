@@ -74,6 +74,7 @@ Written down, not designed in detail.
   brand has: **brand + name + barcode**. Brand-specific oddities such as Holo Taco's printed P codes
   are dropped as an identifier (they don't exist elsewhere and would only confuse matching).
   Identification is "scan the barcode and you're done".
+  The P codes were wiped from the server and the web on 2026-10-28 (DESIGN 14 item 88); the app follows.
 - **Crowdsourced identification.** When a scanned barcode is unknown, the user labels it (brand,
   shade, maybe a photo or a colour) and that submission comes back to us. One report is a strong
   signal, not proof (people make mistakes), so submissions are weighed (several agreeing reports,

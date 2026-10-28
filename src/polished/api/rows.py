@@ -104,7 +104,6 @@ def bottle(row: dict) -> Bottle:
         id=row["id"],
         shade_id=row["shade_id"],
         state=row["state"],
-        printed_code=row["printed_code"],
         bought_on=row["bought_on"],
         price_paid_cents=row["price_paid_cents"],
         opened_on=row["opened_on"],

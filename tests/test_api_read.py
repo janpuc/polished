@@ -16,7 +16,7 @@ SHADE_ROW_KEYS = {
     "official_collection", "marks", "tip",
 }  # fmt: skip
 BOTTLE_KEYS = {
-    "id", "shade_id", "state", "printed_code", "bought_on", "price_paid_cents", "opened_on",
+    "id", "shade_id", "state", "bought_on", "price_paid_cents", "opened_on",
     "notes", "archived", "created_at", "updated_at",
 }  # fmt: skip
 WHEEL_KEYS = {
@@ -337,7 +337,6 @@ def test_shade_detail(api):
     assert body["tip_source"] == "sampled"
     assert [b["state"] for b in body["bottles"]] == ["full", "half"]  # newest first
     assert all(set(b) == BOTTLE_KEYS for b in body["bottles"])
-    assert body["bottles"][1]["printed_code"] == "P259"
     assert body["wishlist"] is None
     swatched = body["swatched_on"]
     assert len(swatched) == 1
@@ -550,20 +549,20 @@ def test_stack_copy_sources(api):
     assert api.get("/api/v1/stacks/copy-sources?q=nothing").json()["items"] == []
 
 
-def test_stack_pick_scopes_and_suggestion(api):
+def test_stack_pick_scopes_and_barcode(api):
     everything = api.get("/api/v1/stacks/pick?q=flak&scope=all").json()
-    assert set(everything) == {"items", "total", "suggestion"}
+    assert set(everything) == {"items", "total"}
     assert {r["title"] for r in everything["items"]} >= {"Flakie Holo Taco", "Silver Flake Taco"}
     assert everything["items"][0]["title"] == "Flakie Holo Taco"  # owned first
-    assert everything["suggestion"] is None
     owned = api.get("/api/v1/stacks/pick?q=flak&scope=owned").json()
     assert owned["items"][0]["title"] == "Flakie Holo Taco"
     assert all(r["owned_count"] > 0 for r in owned["items"])
     toppers = api.get("/api/v1/stacks/pick?scope=toppers").json()["items"]
     assert toppers and all(r["is_topper"] for r in toppers)
-    suggested = api.get("/api/v1/stacks/pick?q=259").json()
-    assert suggested["suggestion"]["title"] == "Spirit Fingers"
-    assert suggested["items"] == []
+    by_barcode = api.get("/api/v1/stacks/pick?q=810170284120").json()
+    assert [r["title"] for r in by_barcode["items"]] == ["Spirit Fingers"]
+    assert by_barcode["total"] == 1
+    assert api.get("/api/v1/stacks/pick?q=259").json() == {"items": [], "total": 0}  # a search
     assert api.get("/api/v1/stacks/pick?scope=bogus").status_code == 422
 
 
@@ -582,13 +581,14 @@ def test_lookup_outcomes(api):
     assert isinstance(match["shade"]["images"], list)
     assert isinstance(match["identifier_id"], int) and match["results"] is None
 
-    suggestion = lookup(api, "259")
-    assert (suggestion["outcome"], suggestion["kind"], suggestion["code"]) == (
-        "suggestion",
-        "printed",
-        "P259",
+    short = lookup(api, "259")  # not a barcode: an ordinary name search
+    assert (short["outcome"], short["kind"], short["code"], short["shade"]) == (
+        "results",
+        None,
+        None,
+        None,
     )
-    assert suggestion["shade"]["title"] == "Spirit Fingers" and suggestion["identifier_id"] is None
+    assert short["results"]["items"] == []
 
     unknown = lookup(api, "5901234123457", "scan")
     assert (unknown["outcome"], unknown["code"], unknown["shade"]) == (
@@ -596,7 +596,7 @@ def test_lookup_outcomes(api):
         "5901234123457",
         None,
     )
-    assert lookup(api, "P999")["outcome"] == "unknown_printed"
+    assert lookup(api, "P999")["outcome"] == "results"
     assert lookup(api, "12345678", "scan")["outcome"] == "invalid_code"
 
     results = lookup(api, "flakie")
@@ -632,10 +632,7 @@ def test_lookup_counts_a_scan_as_a_use(api):
 
 def test_identifiers(api):
     items = api.get("/api/v1/identifiers").json()["items"]
-    assert [(i["kind"], i["value"]) for i in items] == [
-        ("gtin", "0810170284120"),
-        ("printed", "P259"),
-    ]
+    assert [(i["kind"], i["value"]) for i in items] == [("gtin", "0810170284120")]
     first = items[0]
     assert set(first) == {"id", "kind", "value", "shade", "use_count", "created_at", "last_used_at"}
     assert (first["use_count"], first["shade"]["title"]) == (2, "Spirit Fingers")

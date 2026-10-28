@@ -75,11 +75,10 @@ def count(conn, table) -> int:
 # default coats and labels
 
 
-def test_default_coats_is_1_for_top_coats_base_coats_and_toppers_and_2_for_polish():
-    assert stacks.default_coats({"kind": "topcoat", "is_topper": 1}) == 1
-    assert stacks.default_coats({"kind": "basecoat", "is_topper": 0}) == 1
-    assert stacks.default_coats({"kind": "polish", "is_topper": 1}) == 1
-    assert stacks.default_coats({"kind": "polish", "is_topper": 0}) == 2
+def test_default_coats_is_1_for_every_shade():
+    for kind in ("topcoat", "basecoat", "polish"):
+        for is_topper in (0, 1):
+            assert stacks.default_coats({"kind": kind, "is_topper": is_topper}) == 1
 
 
 def test_labels_are_base_2nd_3rd_top_and_none_for_one_layer():
@@ -136,8 +135,8 @@ def test_opening_a_saved_slot_copies_its_layers_and_name_into_the_draft(
     # Editing the draft leaves the saved stack alone.
     first = stacks.layers(catalog, opened.stack_id)[0]["id"]
     stacks.change_coats(catalog, opened.stack_id, first, 1)
-    assert coats(catalog, opened.stack_id) == [3, 2]
-    assert coats(catalog, saved) == [2, 2]
+    assert coats(catalog, opened.stack_id) == [2, 1]
+    assert coats(catalog, saved) == [1, 1]
 
 
 def test_open_refuses_an_unknown_wheel_and_a_position_outside_the_wheel(catalog, wheel):
@@ -154,7 +153,7 @@ def test_sheet_describes_the_draft(catalog, wheel, draft, black, fingers):
     sheet = stacks.sheet(catalog, draft)
     assert (sheet["wheel_id"], sheet["position"], sheet["wheel_name"]) == (wheel, 12, "Holos")
     assert sheet["wheel_slug"] == wheels.get(catalog, wheel)["slug"]
-    assert sheet["summary"] == "One-Coat Black ×2 + Spirit Fingers ×2"
+    assert sheet["summary"] == "One-Coat Black + Spirit Fingers"
     assert [layer["label"] for layer in sheet["layers"]] == ["Base", "Top"]
     assert sheet["full"] is False
 
@@ -167,7 +166,7 @@ def test_append_adds_on_top_with_default_coats(catalog, draft, black, fingers, f
     stacks.append(catalog, draft, flakie)
     stacks.append(catalog, draft, black)
     assert titles(catalog, draft) == ["Spirit Fingers", "Flakie Holo Taco", "One-Coat Black"]
-    assert coats(catalog, draft) == [2, 1, 2]  # polish 2, topper 1, polish 2
+    assert coats(catalog, draft) == [1, 1, 1]  # every shade starts at one coat
     assert ords(catalog, draft) == [1, 2, 3]
 
 
@@ -207,12 +206,14 @@ def test_move_up_and_down_swap_neighbours_through_a_temporary_ord(
     catalog, draft, black, fingers, flakie
 ):
     a, b, c = three_layers(catalog, draft, black, fingers, flakie)
+    for _ in range(2):
+        stacks.change_coats(catalog, draft, b, 1)
     assert stacks.move(catalog, draft, c, "up") is True
     assert titles(catalog, draft) == ["One-Coat Black", "Flakie Holo Taco", "Spirit Fingers"]
     assert stacks.move(catalog, draft, a, "down") is True
     assert titles(catalog, draft) == ["Flakie Holo Taco", "One-Coat Black", "Spirit Fingers"]
     assert ords(catalog, draft) == [1, 2, 3]
-    assert coats(catalog, draft) == [1, 2, 2]  # coats travel with their layer
+    assert coats(catalog, draft) == [1, 1, 3]  # coats travel with their layer
     assert b and stacks.layers(catalog, draft)[2]["id"] == b
 
 
@@ -230,7 +231,7 @@ def test_move_rejects_an_unknown_direction(catalog, draft, black):
 
 
 def test_coats_change_by_one_and_clamp_to_1_through_5(catalog, draft, fingers):
-    layer = stacks.append(catalog, draft, fingers)  # 2 coats
+    layer = stacks.append(catalog, draft, fingers)  # 1 coat
     assert stacks.change_coats(catalog, draft, layer, -1) == 1
     assert stacks.change_coats(catalog, draft, layer, -1) == 1
     for expected in (2, 3, 4, 5, 5, 5):
@@ -274,7 +275,7 @@ def test_over_black_inserts_the_base_with_one_coat_and_shifts_the_rest(
     stacks.append(catalog, draft, flakie)
     assert stacks.over_black(catalog, draft, "one-coat-black") == "added"
     assert titles(catalog, draft) == ["One-Coat Black", "Spirit Fingers", "Flakie Holo Taco"]
-    assert coats(catalog, draft) == [1, 2, 1]
+    assert coats(catalog, draft) == [1, 1, 1]
     assert ords(catalog, draft) == [1, 2, 3]
 
 
@@ -379,7 +380,7 @@ def test_copy_sources_lists_saved_stacks_newest_first_and_filters_by_shade_name(
         5,
         "Top only",
     )
-    assert found[1]["summary"] == "One-Coat Black ×2 + Spirit Fingers ×2"
+    assert found[1]["summary"] == "One-Coat Black + Spirit Fingers"
     assert [s["stack_id"] for s in stacks.copy_sources(catalog, "SPIRIT")] == [first]
     assert [s["stack_id"] for s in stacks.copy_sources(catalog, "flakie holo")] == [second]
     assert stacks.copy_sources(catalog, "nothing like it") == []
@@ -538,7 +539,7 @@ def test_a_saved_stack_is_not_a_draft(catalog, wheel, black, fingers):
         with pytest.raises(stacks.NotADraft):
             call()
     assert titles(catalog, saved) == ["One-Coat Black"]
-    assert coats(catalog, saved) == [2]
+    assert coats(catalog, saved) == [1]
 
 
 def test_an_unknown_or_unattached_stack_is_not_a_draft(catalog, black):

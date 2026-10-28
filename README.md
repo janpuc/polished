@@ -6,7 +6,7 @@ file, with Pocket ID sign-in.
 
 Status: the v1 feature set is built and not yet deployed. It covers the daily Holo Taco catalog
 sync, browse and search, bottles with their level and purchase history, the wishlist with a Holo
-Taco checkout link and "I bought these", barcode and P-code lookup, swatch wheels with NFC/QR tags,
+Taco checkout link and "I bought these", barcode lookup, swatch wheels with NFC/QR tags,
 the layer builder, and painted-nail tips drawn from each shade's sampled colour and finish. It
 installs to a phone's home screen. The brief is in [`docs/BRIEF.md`](docs/BRIEF.md), the design in
 [`docs/DESIGN.md`](docs/DESIGN.md), the look in [`docs/VISUAL.md`](docs/VISUAL.md) and the build
@@ -91,15 +91,16 @@ still run on their own.
 **Shared fixtures** (`spec/`): the native app's tests read files this repo generates, so both
 sides check the same contract. `spec/api/` holds the OpenAPI document and recorded responses
 (`scripts/make_api_spec.py`, `scripts/make_api_fixtures.py`); `spec/tips/` the nail-tip paint plan
-of about fifty recipes and the random generator's vectors, and `spec/identifiers/` the barcode and
-P-code normalisation vectors (`uv run python scripts/make_tip_fixtures.py`). `pytest -q` fails when
+of about fifty recipes and the random generator's vectors, and `spec/identifiers/` the barcode
+normalisation vectors (`uv run python scripts/make_tip_fixtures.py`). `pytest -q` fails when
 a file differs from what the code produces now; run the script and commit the result.
 
 ## Scanning
 
 `/lookup` reads a bottle's barcode with the phone camera (zxing-wasm, in the page, no cloud) or
-from a photo, and resolves a typed barcode, P code or name. A barcode is learned once (scan, pick
-the shade) and then matches; a P code is only ever a suggestion. Catalog barcodes are not used.
+from a photo, and resolves a typed barcode or name. A barcode is learned once (scan, pick
+the shade) and then matches. Catalog barcodes are not used. Holo Taco's printed P numbers are not an identifier
+(retired 2026-10-28): digits that are not a barcode are just a name search.
 The camera needs https (or `localhost`); on a plain-http address the page says so and "Take a photo instead"
 and the typed field still work.
 

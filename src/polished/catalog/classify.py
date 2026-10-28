@@ -3,6 +3,7 @@
 import unicodedata
 from dataclasses import dataclass
 
+from .overrides import override_kind
 from .parse import SHADE_KINDS
 
 GIFT_TYPE = "Birthday Gift"
@@ -37,4 +38,4 @@ def classify(product: dict) -> Classification:
         return Classification("skipped")
     if any("bundle" in tag for tag in product["tags"]):
         return Classification("bundle")
-    return Classification("shade", kind=SHADE_KINDS[product_type])
+    return Classification("shade", kind=override_kind(handle, SHADE_KINDS[product_type]))

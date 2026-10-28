@@ -78,7 +78,6 @@ class Bottle(BaseModel):
     id: int
     shade_id: int
     state: Literal["full", "half", "low", "empty"]
-    printed_code: str | None
     bought_on: str | None
     price_paid_cents: int | None
     opened_on: str | None
@@ -369,11 +368,9 @@ class LookupResults(BaseModel):
 
 
 class Lookup(BaseModel):
-    outcome: Literal[
-        "match", "suggestion", "unknown_code", "unknown_printed", "invalid_code", "results"
-    ]
-    code: str | None = Field(description="The normalised barcode or P code.")
-    kind: Literal["gtin", "printed", "sku"] | None
+    outcome: Literal["match", "unknown_code", "invalid_code", "results"]
+    code: str | None = Field(description="The normalised barcode or SKU.")
+    kind: Literal["gtin", "sku"] | None
     shade: LookupShade | None
     identifier_id: int | None = Field(description="The learned code a match came from.")
     results: LookupResults | None
@@ -381,7 +378,7 @@ class Lookup(BaseModel):
 
 class Identifier(BaseModel):
     id: int
-    kind: Literal["gtin", "printed"]
+    kind: Literal["gtin"]
     value: str
     shade: ShadeRow
     use_count: int
@@ -437,9 +434,6 @@ class CopySources(BaseModel):
 class Pick(BaseModel):
     items: list[ShadeRow]
     total: int
-    suggestion: ShadeRow | None = Field(
-        description="The shade a typed P code or barcode is known to be; show it first."
-    )
 
 
 # --- sync ----------------------------------------------------------------------------------
@@ -484,7 +478,6 @@ class TipColourRequest(BaseModel):
 
 class BottleRequest(BaseModel):
     state: str = one_of("full", "half", "low", "empty", default="full")
-    printed_code: str | None = Field(None, description='"259" and "p259" are stored as "P259".')
     bought_on: str | None = Field(None, description="YYYY-MM-DD, not in the future.")
     price_paid_cents: int | None = None
     opened_on: str | None = Field(None, description="YYYY-MM-DD, not in the future.")
@@ -495,7 +488,6 @@ class BottlePatch(BaseModel):
     """Any subset of the bottle's fields; null clears the optional ones."""
 
     state: str | None = one_of("full", "half", "low", "empty", default=None)
-    printed_code: str | None = None
     bought_on: str | None = None
     price_paid_cents: int | None = None
     opened_on: str | None = None
@@ -503,20 +495,8 @@ class BottlePatch(BaseModel):
     archived: bool | None = None
 
 
-class LearnedCode(BaseModel):
-    code: str
-    previous_shade: ShadeRow | None = Field(
-        description="The shade the code already pointed at when that is not this one (the old "
-        "match stays); null when the code is new."
-    )
-
-
 class BottleCreated(BaseModel):
     bottle: Bottle
-    learned: LearnedCode | None = Field(
-        description="Set when the P code on the bottle was new, or already meant another shade; "
-        "null without a code, a code that is not a P number, or one already known for this shade."
-    )
 
 
 class WishlistAdd(BaseModel):
@@ -544,14 +524,14 @@ class Bought(BaseModel):
 
 
 class IdentifierRequest(BaseModel):
-    kind: str = one_of("gtin", "printed")
+    kind: str = one_of("gtin")
     value: str = Field(max_length=100)
     shade_id: int
 
 
 class IdentifierBrief(BaseModel):
     id: int
-    kind: Literal["gtin", "printed"]
+    kind: Literal["gtin"]
     value: str
     shade_id: int
 

@@ -81,11 +81,8 @@ class OpenedDraft:
 
 
 def default_coats(shade) -> int:
-    """1 for top coats, base coats and toppers, 2 for other polish. `shade` needs kind and
-    is_topper."""
-    if shade["kind"] in ("topcoat", "basecoat") or shade["is_topper"]:
-        return 1
-    return 2
+    """One coat for every shade; `−` and `+` change it (DESIGN 10, 14 item 89)."""
+    return 1
 
 
 def layer_labels(count: int) -> list[str]:

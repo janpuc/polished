@@ -62,15 +62,16 @@ def stack_pick(
     q: str = "",
     scope: Annotated[Literal["owned", "toppers", "all"], Query()] = "owned",
 ):
-    """Shades matching `q`, owned ones first, narrowed by `scope`. A P code or barcode the
-    household has taught the app comes back as `suggestion` (and no items), as in the web's builder."""
+    """Shades matching `q`, owned ones first, narrowed by `scope`. A barcode the
+    household has taught the app comes back as the one item, as in the web's builder."""
     picker = _builder.picker(conn, 0, q, scope)
     result: shades.ShadePage | None = picker["result"]
     suggestion = picker["suggestion"]
+    if suggestion:
+        return schemas.Pick(items=[rows.shade_row(conn, suggestion.shade)], total=1)
     return schemas.Pick(
         items=rows.shade_rows(conn, result.rows) if result else [],
         total=result.total if result else 0,
-        suggestion=rows.shade_row(conn, suggestion.shade) if suggestion else None,
     )
 
 

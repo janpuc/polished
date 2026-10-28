@@ -11,7 +11,7 @@
   "status": 201,
   "body": {
     "identifier": {
-      "id": 4,
+      "id": 2,
       "kind": "gtin",
       "value": "5901234123457",
       "shade_id": 1

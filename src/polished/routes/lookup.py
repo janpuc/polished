@@ -54,7 +54,7 @@ def learn_identifier(
     """One tap on a shade in the picker: remember the code, then show the shade with
     "+ Add bottle". A code that is already known keeps its shade and says so."""
     if kind not in identifiers.KINDS:
-        raise HTTPException(422, "kind must be gtin or printed")
+        raise HTTPException(422, "kind must be gtin")
     if conn.execute("select 1 from shade where id = ?", (shade_id,)).fetchone() is None:
         raise HTTPException(404, "No such shade")
     try:

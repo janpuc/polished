@@ -1,6 +1,7 @@
 import sqlite3
 
 import pytest
+from conftest import migrations_below
 
 from polished.migrate import MIGRATIONS, migrate
 
@@ -39,6 +40,8 @@ def test_migrations_apply_once_and_a_second_run_applies_nothing(tmp_path):
         "007_release_sheet.sql",
         "008_api_tokens.sql",
         "009_wear.sql",
+        "010_wipe_printed_codes.sql",
+        "011_matte_taco_finish.sql",
     ]
     assert migrate(db) == []
     conn = sqlite3.connect(db)
@@ -52,6 +55,8 @@ def test_migrations_apply_once_and_a_second_run_applies_nothing(tmp_path):
         (7, "007_release_sheet.sql"),
         (8, "008_api_tokens.sql"),
         (9, "009_wear.sql"),
+        (10, "010_wipe_printed_codes.sql"),
+        (11, "011_matte_taco_finish.sql"),
     ]
     conn.close()
 
@@ -113,6 +118,8 @@ def test_package_ships_the_migrations():
         "007_release_sheet.sql",
         "008_api_tokens.sql",
         "009_wear.sql",
+        "010_wipe_printed_codes.sql",
+        "011_matte_taco_finish.sql",
     ]
 
 
@@ -143,9 +150,12 @@ def test_002_inventory_applies_on_top_of_a_synced_001_database(tmp_path):
         "007_release_sheet.sql",
         "008_api_tokens.sql",
         "009_wear.sql",
+        "010_wipe_printed_codes.sql",
+        "011_matte_taco_finish.sql",
     ]
     assert names(db, "table") >= {"bottle", "wishlist_item"}
-    assert names(db, "index") >= {"bottle_shade", "bottle_printed_code"}
+    assert names(db, "index") >= {"bottle_shade"}
+    assert "bottle_printed_code" not in names(db, "index")
     assert "shade_status" in names(db, "view")
     assert conn.execute("select count(*) from shade").fetchone()[0] == shades
     status = conn.execute("select * from shade_status").fetchall()
@@ -294,6 +304,9 @@ def populated_006_database(tmp_path):
         "insert into shade_identifier (kind, value, shade_id) values ('gtin', '0810170284120', 2)"
     )
     conn.execute(
+        "insert into shade_identifier (kind, value, shade_id) values ('printed', 'P259', 1)"
+    )
+    conn.execute(
         "insert into product (id, shopify_product_id, variant_id, handle, title, product_type,"
         " role, available, tags_json, raw_json, content_hash, last_seen)"
         " values (9, 109, 209, 'gift', 'Gift', 'Birthday Gift', 'alias', 1, '[]', '{}', 'x', 'now')"
@@ -329,7 +342,7 @@ def test_007_rebuilds_shade_and_leaves_everything_that_points_at_it_alone(tmp_pa
     before = dump_tables(conn)
     before_status = [tuple(r) for r in conn.execute("select * from shade_status order by 1")]
 
-    assert migrate(db) == [
+    assert migrate(db, migrations_below(tmp_path, 10)) == [
         "007_release_sheet.sql",
         "008_api_tokens.sql",
         "009_wear.sql",
@@ -374,7 +387,7 @@ def test_007_rebuilds_shade_and_leaves_everything_that_points_at_it_alone(tmp_pa
 
 def test_007_keeps_the_cascades_and_the_checks_working(tmp_path):
     db, conn = populated_006_database(tmp_path)
-    migrate(db)
+    migrate(db, migrations_below(tmp_path, 10))
     # source accepts the new word and still refuses others
     conn.execute(
         "insert into shade (source, kind, title, search_text) values ('sheet', 'polish', 'S', 's')"
@@ -425,7 +438,7 @@ def test_007_runs_against_a_foreign_keys_on_environment_without_cascading(tmp_pa
         return c
 
     monkeypatch.setattr("polished.migrate.sqlite3.connect", connect_with_keys_on)
-    migrate(db)
+    migrate(db, migrations_below(tmp_path, 10))
     assert dump_tables(conn) == before
     conn.close()
 
@@ -447,4 +460,89 @@ def test_a_migration_that_breaks_a_foreign_key_is_rolled_back(tmp_path):
     conn = sqlite3.connect(db)
     assert conn.execute("select count(*) from parent").fetchone() == (1,)
     assert conn.execute("select max(version) from schema_version").fetchone() == (1,)
+    conn.close()
+
+
+def test_010_wipes_the_printed_codes_and_leaves_the_rest_of_a_populated_database_alone(tmp_path):
+    db, conn = populated_006_database(tmp_path)
+    migrate(db, migrations_below(tmp_path, 10))
+    counts = {
+        table: conn.execute(f"select count(*) from {table}").fetchone()[0]
+        for table in ("shade", "bottle", "wishlist_item", "stack", "stack_layer", "shade_tag")
+    }
+    assert conn.execute("select printed_code from bottle where shade_id = 1").fetchone()[0] == "P1"
+    assert conn.execute("select count(*) from shade_identifier").fetchone()[0] == 2
+    bottles = [
+        tuple(r)
+        for r in conn.execute("select id, shade_id, state, archived, notes from bottle order by id")
+    ]
+
+    below_11 = migrations_below(tmp_path, 11)
+    assert migrate(db, below_11) == ["010_wipe_printed_codes.sql"]
+    assert migrate(db, below_11) == []  # idempotent
+
+    assert [tuple(r) for r in conn.execute("select kind, value from shade_identifier")] == [
+        ("gtin", "0810170284120")
+    ]
+    columns = [r["name"] for r in conn.execute("pragma table_info(bottle)")]
+    assert "printed_code" not in columns
+    assert "bottle_printed_code" not in names(db, "index")
+    assert {"bottle_shade"} <= names(db, "index")
+    for table, count in counts.items():
+        assert conn.execute(f"select count(*) from {table}").fetchone()[0] == count, table
+    assert [
+        tuple(r)
+        for r in conn.execute("select id, shade_id, state, archived, notes from bottle order by id")
+    ] == bottles
+    assert "shade_status" in names(db, "view")
+    status = conn.execute("select * from shade_status where shade_id = 1").fetchone()
+    assert (status["owned_count"], status["bottle_count"]) == (1, 1)
+    assert conn.execute("pragma foreign_key_check").fetchall() == []
+    assert conn.execute("pragma integrity_check").fetchone()[0] == "ok"
+    conn.close()
+
+
+def test_011_gives_matte_taco_its_finish_and_kind_and_leaves_the_rest_alone(tmp_path):
+    db = str(tmp_path / "live.db")
+    assert migrate(db, migrations_below(tmp_path, 11))[-1] == "010_wipe_printed_codes.sql"
+    conn = sqlite3.connect(db)
+    for shade_id, handle, title in (
+        (1, "matte-taco", "Matte Taco"),
+        (2, "glossy-taco", "Glossy Taco"),
+    ):
+        conn.execute(
+            "insert into shade (id, kind, title, handle, search_text, is_topper)"
+            " values (?, ?, ?, ?, ?, 1)",
+            (shade_id, "polish" if shade_id == 1 else "topcoat", title, handle, title.lower()),
+        )
+        conn.execute("insert into shade_tag values (?, 'color', 'clear')", (shade_id,))
+    conn.execute("insert into bottle (shade_id) values (1)")
+    conn.commit()
+    conn.close()
+
+    assert migrate(db) == ["011_matte_taco_finish.sql"]
+    assert migrate(db) == []
+
+    conn = sqlite3.connect(db)
+    assert conn.execute(
+        "select kind, is_topper, search_text from shade where id = 1"
+    ).fetchone() == (
+        "topcoat",
+        1,
+        "matte taco matte",
+    )
+
+    def tags(shade_id):
+        return sorted(
+            conn.execute("select ns, value from shade_tag where shade_id = ?", (shade_id,))
+        )
+
+    assert tags(1) == [("color", "clear"), ("finish", "matte")]
+    assert tags(2) == [("color", "clear")]  # Glossy Taco needs nothing: gloss is the default
+    assert conn.execute("select kind, search_text from shade where id = 2").fetchone() == (
+        "topcoat",
+        "glossy taco",
+    )
+    assert conn.execute("select count(*) from bottle").fetchone() == (1,)
+    assert conn.execute("pragma foreign_key_check").fetchall() == []
     conn.close()

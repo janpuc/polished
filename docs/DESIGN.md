@@ -14,9 +14,9 @@ over any other, in painting order) on swatch wheels that open from an NFC tag or
 
 - Catalog sync from holotaco.com: shades, availability, price, retirement.
 - Shade browse, search and filters (finish, colour, collection, kind, status, owned).
-- Bottles: several per shade, state, printed P code, purchase details.
+- Bottles: several per shade, state, purchase details.
 - Wishlist: priority, total, a Shopify cart permalink.
-- Identifier lookup: barcode scan (zxing-wasm), typed P code, learned mappings.
+- Identifier lookup: barcode scan (zxing-wasm), typed barcode or name, learned barcode mappings.
 - Layer stacks: bottom-sheet builder, templates "over black" and "copy from".
 - Swatch wheels (20 slots by default), one URL per wheel for an NFC tag or QR sticker.
 - Pocket ID OIDC login, PWA shell.
@@ -138,7 +138,7 @@ search.py            ranked, typo-tolerant name search and the <mark> spans of r
 bottles.py           bottle CRUD, owned rules
 wishlist.py          wishlist CRUD, totals, cart permalink
 gtin.py              normalise_gtin(), check digit
-identifiers.py       resolve(), learn(), learn_printed(), printed-code normalisation, learned-code list
+identifiers.py       resolve(), learn(), learned-code list
 stacks.py            draft/commit, layers, templates, summary(), default_coats()
 wheels.py            wheel CRUD and delete, slug generation, slot grid, tag URL, QR
 tips.py              nail tips as SVG: ops(layers) the paint plan, svg(ops), render(layers), TipRandom, TIP_FIELDS, revision() for URLs and ETags (9, 17.8)
@@ -293,7 +293,7 @@ create table sync_run (
 create table bottle (
   id               integer primary key,
   shade_id         integer not null references shade (id),
-  printed_code     text,                                      -- the P number as printed, normalised ("P259")
+  printed_code     text,                                      -- dropped by 010
   state            text not null default 'full' check (state in ('full', 'half', 'low', 'empty')),
   bought_on        text,
   price_paid_cents integer,
@@ -304,7 +304,7 @@ create table bottle (
   updated_at       text not null default (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
 );
 create index bottle_shade on bottle (shade_id);
-create index bottle_printed_code on bottle (printed_code);
+create index bottle_printed_code on bottle (printed_code);          -- dropped by 010
 
 create table wishlist_item (
   id       integer primary key,
@@ -324,6 +324,9 @@ select s.id as shade_id,
 from shade s;
 ```
 
+`printed_code` and its index are history: `010_wipe_printed_codes.sql` (4.5) removed them. Holo Taco's
+printed P numbers are retired as an identifier (14, item 88).
+
 ### 4.3 `003_identifiers.sql` and `004_wheels_stacks.sql` (stages 5 and 6)
 
 ```sql
@@ -331,8 +334,8 @@ from shade s;
 
 create table shade_identifier (
   id           integer primary key,
-  kind         text not null check (kind in ('gtin', 'printed')),
-  value        text not null,                                 -- gtin: 13 digits; printed: "P259"
+  kind         text not null check (kind in ('gtin', 'printed')),   -- only 'gtin' is written since 010
+  value        text not null,                                 -- gtin: 13 digits
   shade_id     integer not null references shade (id) on delete cascade,
   source       text not null default 'learned',               -- v1 writes only 'learned'
   use_count    integer not null default 0,
@@ -448,6 +451,28 @@ v3  mani(id, worn_on, removed_on, stack_id, draft_stack_id, photo_path, note)
 Until `shade_observation` exists, price, availability and sale state are the latest values on
 `shade`; there is no history, which is acceptable because nothing in v1 reads history.
 
+### 4.5 `010_wipe_printed_codes.sql`
+
+```sql
+delete from shade_identifier where kind = 'printed';
+drop index bottle_printed_code;
+alter table bottle drop column printed_code;
+```
+
+`ALTER TABLE ... DROP COLUMN` needs SQLite 3.35; `python:3.12-slim` (Debian) ships 3.40 or newer, and
+the column was only indexed (no view, trigger or foreign key names it), so the index goes first. The
+learned P codes and the P number of every bottle are deleted for good; bottles, wishlist, wheels and
+stacks are untouched. `shade_identifier` keeps its `check (kind in ('gtin', 'printed'))`: narrowing it
+would rebuild a table other tables point at, and no code writes `printed` any more. `/healthz`
+reports `schema` 10 (11 after 4.6).
+
+### 4.6 `011_matte_taco_finish.sql`
+
+Backfills the one shade that needed a curated finish (14, item 90): a `finish:matte` tag for the
+`matte-taco` shop shade, and `kind = 'topcoat'`, `is_topper = 1`. It only inserts one tag and updates one
+row, so bottles, wishlist and stacks are untouched. Later syncs apply the same override themselves
+(`catalog/overrides.py`, 5.2). `/healthz` reports `schema` 11.
+
 ## 5. Catalog sync
 
 ### 5.1 When and how
@@ -517,6 +542,8 @@ failed page leaves the database untouched.
    `retired`, `retiring`, `is_topper` (kind `topcoat`, or kind `polish` and tag `toppers` or `color:clear`:
    known false positives `sticky-base` and `pink-smoothing-base`, harmless in a layer picker). `retired` is then
    set to the tag **or** the release sheet's flag (`refresh_retired`, 5.6), so a changed product cannot undo the sheet.
+   The curated finish and kind overrides of `catalog/overrides.py` (Matte Taco, 14 item 90) are applied in this
+   step and again for every shade after the loop, changed or not.
 5. **Resolve aliases** for `role = alias` products with no `shade_alias` row: target handle
    (stripped suffix, or the manual map) looked up among `shade.handle`. Found → insert the
    alias row. Not found → leave unresolved, counted in `unresolved_aliases`, retried next sync.
@@ -736,8 +763,7 @@ reports a UPC-A either way) both become `0810170284120`, and `795203598` is reje
 scan is "couldn't read that reliably, try again" and is never learned.
 
 Whitespace is removed anywhere in the value (a code typed in groups still reads), and only ASCII
-digits count. `normalise_printed(raw) -> str | None`: strip, uppercase, remove spaces; all digits gets the
-prefix `P`; the result must match `^[A-Z]{1,2}\d{1,5}$`.
+digits count. There is no normaliser for Holo Taco's printed P numbers: they are retired (14, item 88).
 
 ### 7.2 Resolution order (`identifiers.resolve(conn, q, via)`)
 
@@ -750,24 +776,17 @@ Input is the scanner's decoded text or whatever was typed into the search field.
      picker (`/search?ctx=learn`). Choosing a shade `POST /identifiers` → saved, then the
      add-bottle form opens.
 2. `q` looks like a number but fails the GTIN check (8 to 14 digits) → result `invalid_code`.
-3. `normalise_printed(q)` succeeds (`259`, `p259`) → look up `shade_identifier(kind='printed')`.
-   - **Found:** result `suggestion`: "P259 was Spirit Fingers on a bottle you added before"
-     with a confirm button and, underneath, ordinary name search results. A P code is a
-     suggestion, never an auto-match, because it is unknown whether P numbers are per shade or
-     per batch (BRIEF open question 1).
-   - **Not found:** result `unknown_printed`: pick the shade; the P code is attached to the
-     bottle being added and learned when the bottle is saved.
-4. `q` equals a `shade.sku` (case-insensitive, `HL-00169-NP`) → result `match` (a catalog fact).
-5. Otherwise → ordinary name search (section 6) as `results`.
+3. `q` equals a `shade.sku` (case-insensitive, `HL-00169-NP`) → result `match` (a catalog fact).
+4. Otherwise → ordinary name search (section 6) as `results`. Typed digits that are not a barcode
+   (`259`) are just such a search.
 
-**Learning:** `POST /identifiers` stores a gtin mapping. Saving a bottle with a P code stores
-`printed → shade` if absent. If the code already points at a different shade the old mapping is
-kept, the bottle is saved with the code, and the form shows "P259 was Spirit Fingers before"; the
-`/identifiers` page lists every learned mapping and deletes wrong ones. Learned mappings are the
-only rows in `shade_identifier`, so "learned wins" holds by construction.
+**Learning:** `POST /identifiers` stores a gtin mapping (`kind` is `gtin`; anything else is a 422). The
+`/identifiers` page lists every learned barcode and deletes wrong ones. Learned mappings are the only
+rows in `shade_identifier`, so "learned wins" holds by construction. The outcomes are `match`,
+`unknown_code`, `invalid_code` and `results`; `suggestion` and `unknown_printed` are gone.
 
-Typing `259` into the global search runs the same resolver, so the scan-free path costs
-nothing.
+Typing a barcode into the global search offers no shortcut to this resolver; the lookup page is where it
+runs.
 
 ### 7.3 Scanner island (`static/js/scanner.js`)
 
@@ -789,8 +808,7 @@ nothing.
   idle tile with the one `[data-scan-open]` button ("Scan the barcode"); `/lookup?scan=1` (what the
   Scan buttons on home and `/bottles` link to) opens the camera at load. Esc and Close end it. When
   the camera cannot start (no secure context, denied, none, busy) a note on the page says which, and
-  names the photo action and the typed field. Below sit the one field ("Type the digits, a P code, or
-  a name"), "Take a photo instead", the result area and the "Learned codes" row.
+  names the photo action and the typed field. Below sit the one field ("Type the digits or a name"), "Take a photo instead", the result area and the "Learned codes" row.
 - On accept it vibrates where supported, flashes the guide, stops the camera at once, and calls
   `htmx.ajax('GET', '/lookup/resolve?q=<digits>&via=scan', '#lookup-result')`.
 - CSP: `script-src 'self' 'wasm-unsafe-eval'`.
@@ -963,8 +981,8 @@ Jan's "x + y + z", `×N` only when N is greater than 1. Each layer chip shows th
 thumbnail (a colour dot from `shade_colour` joins in v2). Maximum 8 layers, 1 to 5 coats each,
 the same shade may appear twice, any shade over any shade.
 
-**Default coats** (`stacks.default_coats(shade)`): 1 for `topcoat`, `basecoat` or `is_topper`
-shades, 2 for other polish. "Over black" inserts One-Coat Black with 1 coat.
+**Default coats** (`stacks.default_coats(shade)`): 1 for every shade (it was 2 for polish until
+2026-10-28, 14 item 89); `−` and `+` change it. "Over black" inserts One-Coat Black with 1 coat.
 
 **Draft lifecycle.** Every edit is a server round trip against a draft `stack` row; the client
 keeps nothing, so a dropped connection or a backgrounded tab loses nothing.
@@ -988,7 +1006,7 @@ keeps nothing, so a dropped connection or a backgrounded tab loses nothing.
    2nd   [img] Spirit Fingers       −  2  +   ↑ ↓  ×
    Top   [img] Flakie Holo Taco     −  1  +   ↑ ↓  ×
    [ Over black ]  [ Copy from… ]  [ Same as last ]
-   [ search shades, or a P code        ] [scan]
+   [ search shades                     ] [scan]
    (Owned) (Toppers) (All)
    results: owned first, then wishlist, then catalog ...
    Name (optional) [        ]   Note [        ]
@@ -1002,9 +1020,10 @@ keeps nothing, so a dropped connection or a backgrounded tab loses nothing.
    resets the results to the empty query (owned shades first). `sheet.js` refocuses the field on
    `htmx:afterSwap`; on iOS the keyboard may close after a tap (focus outside a user gesture),
    which costs one extra tap and is checked on the real phone in stage 7.
-4. **Search field** accepts a name, a P code (`259`) or the scan button: `GET /search?ctx=stack
-   &stack_id=…&q=…&filter=owned|toppers|all`, debounced 200 ms. P-code input uses the resolver
-   of section 7 and shows a `suggestion` row first.
+4. **Search field** accepts a name or a barcode: `GET /search?ctx=stack
+   &stack_id=…&q=…&filter=owned|toppers|all`, debounced 200 ms. A barcode the household taught the app
+   uses the resolver of section 7 and shows that shade first; digits that are not a barcode are a
+   name search.
 5. **Coats:** `−` / `+` post `delta=-1|+1`, clamped to 1..5 (`−` is disabled at 1; removal is
    `×`). **Reorder:** `↑` / `↓` post `dir=up|down`; the first row has no `↑`, the last no `↓`;
    the swap parks one layer on `ord = count + 1` as a temporary value because `(stack_id, ord)` is unique and `ord >= 1`. No
@@ -1122,7 +1141,7 @@ builds it.
 | POST | `/wear/{shade_id}` | "I wore this": logs the shade as worn today in the household's date (one row per shade per day, `wear.record`; 404 for an unknown shade). htmx gets the hero saying "Worn today"; without htmx a 303 to `/`. Origin-checked like every web POST | partial / redirect | 3 |
 | GET | `/wear/another` | A different owned shade than `shown` for the hero (`wear.pick_another`), with `is-arriving` so its tip gets the one sweep; as a page it redirects to `/?another=1&shown=` | partial | 3 |
 | GET | `/more` | Add a shade by hand, Catalog sync, Learned codes, and Sign out under "Signed in as …" | full page | 2b |
-| GET | `/search` | Typeahead rows. Params `q`, `ctx` (`home`, `stack`, `learn`), `filter` (`owned/toppers/all`), `stack_id`, `kind`+`value` for `learn` (422 without a valid code). Row action depends on `ctx`; `home` in stage 3, `learn` in 5, `stack` in 7. Always rows only (the page that asked is on screen), nothing for an empty query. `home` adds a "Look up “259” as a code" link when `q` is all digits or a P code. Ranked and typo-tolerant (section 6); rows mark the matched words with `<mark>` | partial | 3 |
+| GET | `/search` | Typeahead rows. Params `q`, `ctx` (`home`, `stack`, `learn`), `filter` (`owned/toppers/all`), `stack_id`, `kind`+`value` for `learn` (422 without a valid code). Row action depends on `ctx`; `home` in stage 3, `learn` in 5, `stack` in 7. Always rows only (the page that asked is on screen), nothing for an empty query. Ranked and typo-tolerant (section 6); rows mark the matched words with `<mark>` | partial | 3 |
 | GET | `/shades` | Browse list with filters (section 6). A search with words that needed typo tolerance says "N matches, closest first" in the count line (N above one); the first result row is `aria-current` (the cursor of `keys.js`); rows whose names are all but the same as another row of the page carry the official collection, else the release year, as a hint. The filters' `change` trigger listens on `.filter-panel` only, so a change event of the search field does not fire a second, history-pushing request | full page; P = rows + Load more | 3 |
 | GET | `/shades/{id}` | Detail: images, tags, price/status, product link; stage 4 adds bottles and wishlist, stage 6 "Swatched on". `?panel=1` renders the same content without the base chrome (title bar with a close button, the shade's name as an `h2`) for the right-hand `#panel` of the wide shells | full page; `?panel=1` fragment | 3 |
 | GET | `/shades/new` | Manual shade form (gifted non-catalog bottle) | full page / P | 4 |
@@ -1138,8 +1157,8 @@ builds it.
 |---|---|---|---|---|
 | GET | `/bottles` | My bottles grouped by shade; filters `state`, `archived` | full page / P | 4 |
 | GET | `/bottles/history` | Purchase history: years, months, rows; Collection / History switch | full page | history |
-| GET | `/shades/{id}/bottles/new` | Add-bottle form (P code field, state, date, price, notes) | P (sheet) | 4 |
-| POST | `/shades/{id}/bottles` | Create; learns the P code (stage 5) | P `#bottles`, `HX-Trigger: sheetClose` | 4 |
+| GET | `/shades/{id}/bottles/new` | Add-bottle form (state, date, price, notes) | P (sheet) | 4 |
+| POST | `/shades/{id}/bottles` | Create | P `#bottles`, `HX-Trigger: sheetClose` | 4 |
 | GET | `/bottles/{id}/edit` | Edit form | P (sheet) | 4 |
 | POST | `/bottles/{id}` | Update | P bottle card, `HX-Trigger: sheetClose` | 4 |
 | POST | `/bottles/{id}/state` | Set full / half / low / empty | P bottle card | 4 |
@@ -1183,15 +1202,14 @@ carry the shade page's action bar as an out-of-band copy when `ctx=shade`, becau
 | Method | Path | Purpose | Response | Stage |
 |---|---|---|---|---|
 | GET | `/lookup` | Viewfinder, one text field, "Take a photo instead", result area, Learned codes; `?q=` resolves without JavaScript, `?scan=1` opens the camera | full page | 5 |
-| GET | `/lookup/resolve` | `q`, `via=scan/typed` → `match`, `suggestion`, `unknown_code`, `unknown_printed`, `invalid_code`, `results` (section 7.2) | partial | 5 |
-| POST | `/identifiers` | Learn `kind` (`gtin`/`printed`), `value`, `shade_id`; a known code keeps its shade and says so | P "Saved" + the match with "+ Add bottle" | 5 |
+| GET | `/lookup/resolve` | `q`, `via=scan/typed` → `match`, `unknown_code`, `invalid_code`, `results` (section 7.2) | partial | 5 |
+| POST | `/identifiers` | Learn `kind` (`gtin`), `value`, `shade_id`; a known code keeps its shade and says so | P "Saved" + the match with "+ Add bottle" | 5 |
 | GET | `/identifiers` | Learned mappings | full page | 5 |
 | POST | `/identifiers/{id}/delete` | Delete a mapping; `ctx=lookup` ("This isn't it") turns the result back into "New barcode" | P (empty, or the result) | 5 |
 
 `/lookup/resolve`, `POST /identifiers` and its delete answer with their fragment whether or not
-`HX-Request` is set (deviation 24). The add-bottle sheet takes `?ctx=lookup&printed_code=P259`
-(pre-filled code; the form then posts `ctx=lookup` and the result area shows "Added …" with
-"Scan another").
+`HX-Request` is set (deviation 24). The add-bottle sheet takes `?ctx=lookup` (the form then posts `ctx=lookup` and the
+result area shows "Added …" with "Scan another"). A `printed_code` in a query or a form is ignored.
 
 ### 13.5 Wheels and stacks
 
@@ -1301,7 +1319,7 @@ carry the shade page's action bar as an out-of-band copy when `ctx=shade`, becau
 25. **A 422 is swapped by htmx** (stage 4). `htmx-config` gets a `responseHandling` list that is
     htmx's default plus `422`, because a bottle form with a bad price or date comes back with its
     messages and `HX-Retarget: #sheet-body` (deviation 16 still holds for 409 and 429).
-26. **The P code is normalised on save, and a code that does not look like one is kept** (stage 4).
+26. **The P code is normalised on save, and a code that does not look like one is kept** (stage 4). **Retired by 88.**
     PLAN.md says "stored uppercase, normalised later"; the acceptance check and the quick-entry UX
     need `259` to be stored as `P259` now. `identifiers.normalise_printed` (7.1) exists with only
     that function; stage 5 adds `resolve()` and `learn()`. A value that fails the 7.1 pattern
@@ -1346,16 +1364,16 @@ carry the shade page's action bar as an out-of-band copy when `ctx=shade`, becau
     itself (section 7.2 said the form opens): the saved shade and its button are on screen, one tap
     away, and nothing else happens uninvited. The add-bottle sheet started from the lookup posts
     `ctx=lookup` and its result replaces the lookup result.
-35. **The P-code learning hook is in the `create_bottle` route** (`identifiers.learn_printed`, in
+35. **Retired by 88.** **The P-code learning hook is in the `create_bottle` route** (`identifiers.learn_printed`, in
     one transaction with the insert), not in `bottles.add`, and runs on create only, not on edit.
     A conflict (the code points at another shade) keeps the old mapping and saves the bottle; the
     notice "P259 was Spirit Fingers before" is shown above the bottles on the shade page, or in the
     "Added" block on the lookup page, because the sheet has already closed by then. A code that
     does not look like a P number is kept on the bottle and not learned.
-36. **The home search is not the resolver.** It stays a name search and, for a query that is all
+36. **The home search is not the resolver.** (The "Look up as a code" link is retired, 88.) It stays a name search and, for a query that is all
     digits or looks like a P code, adds a link "Look up “259” as a code" to `/lookup?q=259`, where
     the resolver runs. Typing a number into the lookup field resolves it as 7.2 says.
-37. **A P-code suggestion shows a picker, not ordinary name results** (section 7.2 said "underneath,
+37. **Retired by 88.** **A P-code suggestion shows a picker, not ordinary name results** (section 7.2 said "underneath,
     ordinary name search results"): the query is the code, which a name search would never match,
     so "Not that one? Pick the shade" is the same typeahead as `unknown_printed` (`ctx=learn`,
     `kind=printed`; a row opens the add-bottle sheet with the code). A typed name still gives rows.
@@ -1377,7 +1395,7 @@ carry the shade page's action bar as an out-of-band copy when `ctx=shade`, becau
     a 390 pt screen). (Superseded by the swatch-book overhaul: no webfont, the UI is SF Pro through `system-ui`;
     see docs/advice/fable-swatch-book-2026-10-25.md until VISUAL.md is rewritten.)
 42. **Presentation copy changed, behaviour did not.** Middle dots, spaced dashes and `+` prefixes
-    are gone from copy ("Added Spirit Fingers with P259.", "New barcode 0810170284120. Which shade
+    are gone from copy ("Added Spirit Fingers.", "New barcode 0810170284120. Which shade
     is it?"); "owned ×2" is the pill "Owned ×2"; the heart toggle is an icon with `aria-pressed` and
     the label "Wishlist" in both states (the old "♥ On wishlist" does not fit a third of the row); the
     wishlist summary is a sentence ("8 shades, $120.00. 3 are in stock now for $44.50."); the home
@@ -1450,7 +1468,7 @@ carry the shade page's action bar as an out-of-band copy when `ctx=shade`, becau
     stay in the scrolling part. The sheet is `div.builder`, not a form, because the search form and the save form sit side by side in it.
 62. **No scan button in the builder.** VISUAL 6 draws a camera in the search field; the lookup flow
     ends in "Add bottle", not in a layer, so a link there would leave the builder with nowhere to
-    return to. A P code typed into the field is resolved (section 7.2) and shows as a suggestion row.
+    return to. A barcode typed into the field is resolved (section 7.2) and shows as a row; a P code is no longer one (88).
 63. **Layer rows are more compact than VISUAL 6 draws them:** the mini tip spans the name line and the
     controls line (44pt tall), so a row is about 80pt and three layers leave room for the results on
     390x844. A layer with more than one coat also says "2 coats" at the trailing edge of its name. Up and
@@ -1505,7 +1523,7 @@ carry the shade page's action bar as an out-of-band copy when `ctx=shade`, becau
 72. **Bottle card:** the four-segment level control left the card; it shows one pill ("Half ›") that opens the
     edit sheet, which holds the segmented control. The `Edit` text button went (the pill is the way in); the
     title is the P code, else "Bought 12 Mar 2026", else "Bottle", and "No P code." moves to the caption with
-    the price ("Paid $13.00."). `POST /bottles/<id>/state` stays, unused by the card. **Superseded by 81.**
+    the price ("Paid $13.00."). `POST /bottles/<id>/state` stays, unused by the card. **Superseded by 81.** (The P code is retired, 88.)
 73. **Owned pill on the shade page** lives in the subhead after the price (`_owned_pill.html`, a span that
     bottle fragments replace out of band), the shade-page button is always "Add bottle", and "In stock" is
     not shown (silence is in stock, as in the rows).
@@ -1568,7 +1586,7 @@ carry the shade page's action bar as an out-of-band copy when `ctx=shade`, becau
 81. **Run 2a: Bottles, Wishlist and the builder sheet** (advice section 3; the screens only, Home, Wheels,
     shade detail and lookup are run 2b). Where it departs from the advice or the brief:
     - **Bottle rows** are plain rows of one grouped list per shade (`_bottle_card.html`, still the one
-      partial the shade page uses): P code or "No P code" in `--ink-2`, a footnote "Bought 21 Jul 2026,
+      partial the shade page uses): a footnote "Bought 21 Jul 2026,
       $15.50" (or "Paid $15.50"; "Archived." leads it for an archived bottle), then "Opened ..." and the
       notes. The whole row is the button that opens the edit sheet; the pill, the red-free "Archive" text
       and the "Bought 18 May 2026" title are gone (72 is superseded).
@@ -1757,10 +1775,9 @@ carry the shade page's action bar as an out-of-band copy when `ctx=shade`, becau
       Safari is unmeasured.
     - **The level arc** replaces `_level_glyph.html` everywhere (bottle rows, the edit sheet's segments). It is
       ink in both modes; Low and Empty keep their word colour.
-    - **Bottle rows and the edit sheet** follow 4.3: the first line is the purchase, the P code trails it at 13px
-      `--ink-3`, and the sheet reads Level, Bought on, then More details (Price paid, Opened on, P code, Notes). A
-      bottle with no purchase facts and no code reads "Added <date>" so its row is not empty (the spec omits "No P
-      code" and says nothing for this case); a bottle with a code and no purchase facts shows the code alone.
+    - **Bottle rows and the edit sheet** follow 4.3: the first line is the purchase, and the sheet reads Level, Bought on, then More details (Price paid, Opened on,
+      Notes; the P code field is retired, 88). A bottle with no purchase facts reads "Added <date>" so its row is not
+      empty.
     - **The date field** is the spec's overlay over a transparent native input, with words, the presets and `max`
       = today. It is on every date input: Bought on and Opened on (bottle sheet), Bought on (the bought sheet) and
       Swatched on (the builder). The server refuses a date after today in the household's time zone for all four
@@ -1891,6 +1908,45 @@ carry the shade page's action bar as an out-of-band copy when `ctx=shade`, becau
       are unverified here (all are Safari 17.2 to 18.2 features with the fallbacks above); the sweep and the
       arrival were checked in Chromium with the animations paused at 330ms.
 
+88. **P codes retired, 2026-10-28** (Jan: "we need to wipe the P codes"; ROADMAP "Requests noted 2026-10-27").
+    Holo Taco's printed P numbers are no identifier here: a bottle is identified by brand, name and barcode.
+    - **Data:** migration 010 (4.5) deletes every `printed` learned code and drops `bottle.printed_code` and its
+      index. There is no way back; the live database is backed up before the deploy.
+    - **Domain and web:** no P code field in the add and edit sheets, none on bottle rows, the history, the wear
+      hero's facts ("Half left"), shade rows or lookup results. The resolver has no `printed` step: digits are a
+      barcode when they pass the GTIN check, an invalid barcode when 8 to 14 of them do not, otherwise a name
+      search (`259` finds nothing special). The outcomes `suggestion` and `unknown_printed`, the builder
+      picker's P-code row, the home search's "Look up “259” as a code" link and the learned-code conflict notice
+      are gone. The placeholders read "Search shades" and "Type the digits or a name"; the learned codes page lists
+      barcodes only. A stale form that still posts `printed_code` is ignored.
+    - **API:** `Bottle` has no `printed_code`; `POST /shades/{id}/bottles` answers `{bottle}` (no `learned`);
+      `Lookup.outcome` loses `suggestion` and `unknown_printed` and `kind` loses `printed`; `GET /stacks/pick` has
+      no `suggestion` (a known barcode comes back as the one item); `POST /identifiers` takes `kind: gtin` only (a
+      422 otherwise) and `Identifier.kind` is `gtin`. The bottle create and patch bodies **accept and ignore** a
+      `printed_code`, so a TestFlight build from before this change keeps working until it is updated.
+    - **Spec and fixtures:** `spec/identifiers/printed.json` and its generator are deleted; `openapi.yaml` and
+      `spec/api/fixtures/` are regenerated (`bottle_create_legacy_printed_code`, `lookup_short_number` and
+      `stack_pick_barcode` replace the P-code fixtures).
+    - **Kept as it was:** the `check (kind in ('gtin', 'printed'))` on `shade_identifier` (4.5), and the history
+      above (deviations 26, 35 to 37, 62, 72, 81) which describes what was built then.
+
+89. **One coat by default, 2026-10-28** (Jan, on the phone: "2 layers as default is not that great").
+    `stacks.default_coats` returns 1 for every shade, so a layer added in the web builder or by
+    `POST /api/v1/stacks/{id}/layers` starts at one coat and `−`/`+` change it; "Over black" was already 1. Layers
+    already saved keep their coats. `scripts/make_api_fixtures.py` still gives one layer of two stacks a second coat
+    so the fixtures show a "×2" summary.
+90. **Matte Taco is matte, 2026-10-28** (Jan: adding Matte Taco on top of a stack kept the gloss). The shop lists
+    `matte-taco` as a "Nail Polish" with only `color:clear`: no `finish:matte` tag, so `tips._finish` never saw
+    "matte" (research/p2.json; `glossy-taco` is a "Top Coat" and gloss is the default, so it needs nothing). A
+    small curated table in `catalog/overrides.py` (`FINISH_OVERRIDES = {"matte-taco": ("matte",)}`,
+    `KIND_OVERRIDES = {"matte-taco": "topcoat"}`) is applied when the shade is written (`classify` for the kind,
+    `_upsert_shade` for the tag) and again by `apply_overrides` on every sync, because an unchanged product is not
+    rewritten and would otherwise lose it. Migration 011 (4.6) backfills the stored row. The tag is a real
+    `shade_tag`, so the web tip, the API `Tip.finishes` (`"matte"`) and the native renderer all see it. Add a
+    handle to the two tables for the next shop mislabel.
+    - Test: `tests/test_overrides.py` (sync, re-sync of an unchanged product, a stack ending in Matte Taco has no
+      gloss op, the API tip lists `matte`) and `test_011_...` in `tests/test_migrate.py`.
+
 ## 15. Home-ops manifests
 
 Prepared as files under `deploy/home-ops/` in this repo (stage 8) for Jan to copy into
@@ -1928,10 +1984,9 @@ checkpoints make a torn copy unlikely but not impossible; if a restore ever fail
 ## 16. Risks and open questions
 
 - **Barcode scanning on iPhone:** zxing-wasm reading a small printed bottle barcode under phone
-  lighting is unproven, which is why name search and P-code entry ship first and the still-photo
+  lighting is unproven, which is why name search ships first and the still-photo
   fallback exists. Stage 5 ends with a check on the main user's or Jan's phone.
-- **P codes:** per-shade or per-batch is unknown (one Spirit Fingers bottle). They stay a
-  per-bottle field and a suggestion.
+- **P codes:** retired (14, item 88); there is nothing to decide.
 - **Safari versus PWA double login** and the keyboard behaviour of the bottom sheet are
   checked on the real phone (stages 3, 7).
 - **Cart permalink** is untested against holotaco.com.
@@ -2008,8 +2063,10 @@ The iPhone and iPad app (docs/NATIVE.md) talks to a JSON API under `/api/v1`, in
 
 **17.5 Universal links.** `GET /.well-known/apple-app-site-association` is public JSON, registered only when `POLISHED_APPLE_TEAM_ID` is set: applinks for `<team>.com.janpuc.polished` on `/w/*` and `/shades/*` (`/shades/new` excluded), and `webcredentials` for the same app ID.
 
-**17.6 Writes.** Every write of NATIVE.md §3 lives under `src/polished/api/` and calls the domain modules; no rule is restated. Bodies are JSON, a PATCH changes only the keys it sends, money is cents, dates may not pass today in the household timezone, and errors carry the web's sentences (`field`, and `fields` when several are wrong). Stack refusals map as in the web: NotADraft 409, StackFull and EmptyStack 422, the not-found kinds 404. Multi-row writes (`/wishlist/bought`, save, wheel delete, bottle create with its learned P code) are single transactions. A write without a Bearer token is a 401 and changes nothing.
+**17.6 Writes.** Every write of NATIVE.md §3 lives under `src/polished/api/` and calls the domain modules; no rule is restated. Bodies are JSON, a PATCH changes only the keys it sends, money is cents, dates may not pass today in the household timezone, and errors carry the web's sentences (`field`, and `fields` when several are wrong). Stack refusals map as in the web: NotADraft 409, StackFull and EmptyStack 422, the not-found kinds 404. Multi-row writes (`/wishlist/bought`, save, wheel delete, bottle create) are single transactions. A write without a Bearer token is a 401 and changes nothing.
 
 **17.7 Wear.** `wear(shade_id, worn_on, created_at)`, unique per shade per day (migration 009), written by `POST /api/v1/wear/{shade_id}` and, for the web, `POST /wear/{shade_id}` (`routes/wear.py`), in the household's local date. `src/polished/wear.py` holds the rules (framework-free, shared by the API and the web's Home, which call it directly and not through the API): the candidates are shades with a bottle that is neither archived nor empty; today's pick is drawn by a generator seeded with the date, weighted by wearings of the previous 30 days (a recent wearing counts for between 0.1 and 1); the shade already worn today is shown instead; "Another" is a random draw excluding the shown shade, with the same weights counting today too. A sheet-shade merge moves wearings to the shop shade.
 
-**17.8 Shared fixtures.** The tip drawing is split in `tips.py` into `ops(layers)`, a flat list of paint operations (rect with a solid, linear or radial fill, dots, star, polygon, path with an optional blur or a gradient fill, rotated ellipse), and `svg(ops)`, today's markup; `render()` is `svg(ops(layers))`. The random numbers of a tip come from `TipRandom`, SplitMix64 seeded with the shade id (CPython's `random.Random` is not portable), so the app can reproduce them bit for bit. `scripts/make_tip_fixtures.py` records `spec/tips/cases.json` (`{source, cases:[{name, layers, ops}]}`, numbers rounded to 3 decimals, colours lowercase), `spec/tips/random.json` (first values of `random()` and `below(1000)` for five seeds), `spec/identifiers/gtin.json` and `printed.json` (inputs with the output of `normalise_gtin` / `normalise_printed`, rejects as null) and `tests/fixtures/tip_svg_sha1.json` (the sha1 of `render()` for every case, so a change of drawing cannot slip by: it fails until `DRAWING_VERSION` is bumped and the file regenerated). `tests/test_tips_spec.py` fails when any file differs from what the code makes now and checks the ops, the generator and the vectors against them. `DRAWING_VERSION` goes into `revision()`, which is the tip image URL's `?v=` and the API's `Tip.revision`; `revision()` hashes sorted tuples, never a frozenset's repr, so it is the same after every restart (a test runs it under four `PYTHONHASHSEED` values). Dust, glitter and flake positions moved once with `TipRandom` (`DRAWING_VERSION` 3).
+**17.8 Shared fixtures.** The tip drawing is split in `tips.py` into `ops(layers)`, a flat list of paint operations (rect with a solid, linear or radial fill, dots, star, polygon, path with an optional blur or a gradient fill, rotated ellipse), and `svg(ops)`, today's markup; `render()` is `svg(ops(layers))`. The random numbers of a tip come from `TipRandom`, SplitMix64 seeded with the shade id (CPython's `random.Random` is not portable), so the app can reproduce them bit for bit. `scripts/make_tip_fixtures.py` records `spec/tips/cases.json` (`{source, cases:[{name, layers, ops}]}`, numbers rounded to 3 decimals, colours lowercase), `spec/tips/random.json` (first values of `random()` and `below(1000)` for five seeds), `spec/identifiers/gtin.json` (inputs with the output of `normalise_gtin`, rejects as null) and `tests/fixtures/tip_svg_sha1.json` (the sha1 of `render()` for every case, so a change of drawing cannot slip by: it fails until `DRAWING_VERSION` is bumped and the file regenerated). `tests/test_tips_spec.py` fails when any file differs from what the code makes now and checks the ops, the generator and the vectors against them. `DRAWING_VERSION` goes into `revision()`, which is the tip image URL's `?v=` and the API's `Tip.revision`; `revision()` hashes sorted tuples, never a frozenset's repr, so it is the same after every restart (a test runs it under four `PYTHONHASHSEED` values). Dust, glitter and flake positions moved once with `TipRandom` (`DRAWING_VERSION` 3).
+
+**17.9 P codes retired (2026-10-28, 14 item 88).** `printed_code` is gone from every `Bottle`, and `POST /shades/{id}/bottles` answers `{bottle}` without `learned`. The lookup outcomes are `match`, `unknown_code`, `invalid_code` and `results` (`kind` is `gtin` or `sku`); `GET /stacks/pick` answers `{items, total}` and a known barcode is its one item; `kind` of an identifier is `gtin` and `POST /identifiers` refuses any other with a 422. Bottle create and patch bodies still **accept and ignore** a `printed_code` (and any other unknown key, which pydantic drops), so the TestFlight build from before the change keeps working: the field is not stored, not learned and not echoed. Responses only lost keys; nothing was renamed.

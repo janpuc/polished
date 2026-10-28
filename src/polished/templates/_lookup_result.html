@@ -6,36 +6,20 @@
 <section class="result result-match">
   {% if saved %}<p class="notice">Saved. {{ r.code }} is now {{ shade.title }}.</p>
   {% elif kept_other %}<p class="notice">{{ r.code }} already points at {{ shade.title }}, so that stays.</p>{% endif %}
-  <p class="result-lead">{% if r.kind == 'gtin' %}Barcode {{ r.code }}{% elif r.kind == 'printed' %}{{ r.code }}{% else %}SKU {{ r.code }}{% endif %} is</p>
+  <p class="result-lead">{% if r.kind == 'gtin' %}Barcode {{ r.code }}{% else %}SKU {{ r.code }}{% endif %} is</p>
   {% include "_result_card.html" %}
   <div class="actions">
-    <button type="button" class="btn action-primary" hx-get="/shades/{{ shade.id }}/bottles/new?ctx=lookup{% if r.kind == 'printed' %}&amp;printed_code={{ r.code|urlencode }}{% endif %}" hx-target="#sheet-body" hx-swap="innerHTML">{{ icon("plus") }}Add bottle</button>
+    <button type="button" class="btn action-primary" hx-get="/shades/{{ shade.id }}/bottles/new?ctx=lookup" hx-target="#sheet-body" hx-swap="innerHTML">{{ icon("plus") }}Add bottle</button>
     {% if r.identifier_id %}
     <button type="button" class="btn btn-secondary action-wish" hx-post="/identifiers/{{ r.identifier_id }}/delete" hx-vals='{"ctx": "lookup"}' hx-target="#lookup-result" hx-swap="innerHTML" hx-confirm="Forget that {{ r.code }} is {{ shade.title }}?">This isn’t it</button>
     {% endif %}
   </div>
-</section>
-{% elif r.outcome == 'suggestion' %}
-<section class="result result-suggestion">
-  <p class="result-lead">{{ r.code }} was {{ shade.title }} on a bottle you added before. A P code can differ between batches, so check the bottle.</p>
-  {% include "_result_card.html" %}
-  <div class="actions">
-    <button type="button" class="btn action-primary" hx-get="/shades/{{ shade.id }}/bottles/new?ctx=lookup&amp;printed_code={{ r.code|urlencode }}" hx-target="#sheet-body" hx-swap="innerHTML">Yes, add a bottle</button>
-  </div>
-  <h2 class="section-title">Not that one? Pick the shade</h2>
-  {% with kind = 'printed', value = r.code %}{% include "_learn_picker.html" %}{% endwith %}
 </section>
 {% elif r.outcome == 'unknown_code' %}
 <section class="result result-unknown">
   <p class="result-lead">New barcode {{ r.code }}. Which shade is it?</p>
   <p class="lede">Pick it once and the next scan finds it.</p>
   {% with kind = 'gtin', value = r.code %}{% include "_learn_picker.html" %}{% endwith %}
-</section>
-{% elif r.outcome == 'unknown_printed' %}
-<section class="result result-unknown">
-  <p class="result-lead">{{ r.code }} isn’t on any bottle yet. Which shade is it?</p>
-  <p class="lede">Pick the shade and the P code goes on the bottle you add.</p>
-  {% with kind = 'printed', value = r.code %}{% include "_learn_picker.html" %}{% endwith %}
 </section>
 {% elif r.outcome == 'invalid_code' %}
 <section class="result result-invalid" role="alert">

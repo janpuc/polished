@@ -4,28 +4,7 @@ from shade_data import made_from, seed, shade_id
 
 from polished import identifiers
 from polished.db import connect
-from polished.identifiers import normalise_printed
 from polished.migrate import migrate
-
-
-@pytest.mark.parametrize(
-    ("raw", "expected"),
-    [
-        ("259", "P259"),
-        ("p259", "P259"),
-        (" P 259 ", "P259"),
-        ("pp12", "PP12"),
-        ("12345", "P12345"),
-        ("123456", None),
-        ("hello", None),
-        ("P", None),
-        ("", None),
-        ("P25-9", None),
-    ],
-)
-def test_normalise_printed(raw, expected):
-    assert normalise_printed(raw) == expected
-
 
 # resolve(), learn() and the learned codes (stage 5)
 
@@ -68,32 +47,25 @@ def test_a_learned_gtin_is_a_match_and_counts_its_use(db):
     assert identifiers.resolve(db, SPIRIT_UPC).outcome == "match"  # either spelling finds it
 
 
-def test_a_learned_printed_code_is_only_a_suggestion(db):
-    shade = sid(db, "Spirit Fingers")
-    identifiers.learn(db, "printed", "259", shade)
+def test_a_short_number_is_a_name_search_not_a_code(db):
     for typed in ("259", "p259", " P 259 "):
         result = identifiers.resolve(db, typed)
-        assert (result.outcome, result.code, result.shade["id"]) == ("suggestion", "P259", shade)
-
-
-def test_an_unknown_printed_code_asks_for_the_shade(db):
-    result = identifiers.resolve(db, "259")
-    assert (result.outcome, result.code) == ("unknown_printed", "P259")
+        assert (result.outcome, result.code, result.kind) == ("results", None, None)
+        assert result.results is not None and result.results.rows == []
 
 
 def test_a_number_that_fails_the_barcode_check_is_invalid_code(db):
     for typed in ("12345678901", "795203598", "810170284121", "123456789012345"[:14]):
         assert identifiers.resolve(db, typed).outcome == "invalid_code", typed
-    # Too long or too short for a barcode, and not a P code: an ordinary search.
+    # Too long or too short for a barcode: an ordinary search.
     assert identifiers.resolve(db, "123456").outcome == "results"
     assert identifiers.resolve(db, "1234567").outcome == "results"
 
 
-def test_the_steps_run_in_order_gtin_then_number_then_printed_then_sku_then_name(db):
+def test_the_steps_run_in_order_gtin_then_number_then_sku_then_name(db):
     shade = sid(db, "Spirit Fingers")
     other = sid(db, "Other Shade")
-    # A barcode that is also learned as a printed code cannot happen (different shapes), but a
-    # learned gtin beats a name search that would also find the shade.
+    # A learned gtin beats a name search that would also find the shade.
     identifiers.learn(db, "gtin", SPIRIT_UPC, other)
     assert identifiers.resolve(db, SPIRIT_UPC).shade["id"] == other
     # The SKU is a catalog fact; it is only consulted after the code steps.
@@ -112,20 +84,12 @@ def test_an_empty_query_has_no_results(db):
     assert result.outcome == "results" and result.results is None
 
 
-def test_a_conflicting_printed_code_keeps_the_old_mapping(db):
+def test_a_conflicting_gtin_keeps_the_old_mapping(db):
     first, second = sid(db, "Spirit Fingers"), sid(db, "Other Shade")
-    identifiers.learn(db, "printed", "259", first)
-    again = identifiers.learn(db, "printed", "P259", second)
+    identifiers.learn(db, "gtin", SPIRIT_UPC, first)
+    again = identifiers.learn(db, "gtin", SPIRIT_GTIN, second)
     assert (again.created, again.shade_id) == (False, first)
-    assert identifiers.resolve(db, "259").shade["id"] == first
-    assert db.execute("select count(*) from shade_identifier").fetchone()[0] == 1
-
-
-def test_learn_printed_skips_a_code_that_is_not_a_p_number(db):
-    shade = sid(db, "Spirit Fingers")
-    assert identifiers.learn_printed(db, shade, None) is None
-    assert identifiers.learn_printed(db, shade, "NO-CODE") is None
-    assert identifiers.learn_printed(db, shade, "P259").created is True
+    assert identifiers.resolve(db, SPIRIT_UPC).shade["id"] == first
     assert db.execute("select count(*) from shade_identifier").fetchone()[0] == 1
 
 
@@ -134,7 +98,7 @@ def test_learning_a_value_that_is_not_a_code_raises(db):
     with pytest.raises(ValueError):
         identifiers.learn(db, "gtin", "795203598", shade)
     with pytest.raises(ValueError):
-        identifiers.learn(db, "printed", "hello", shade)
+        identifiers.learn(db, "printed", "P259", shade)
     with pytest.raises(ValueError):
         identifiers.learn(db, "sku", "HL-1", shade)
 

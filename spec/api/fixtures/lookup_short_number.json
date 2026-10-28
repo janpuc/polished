@@ -1,15 +1,18 @@
 {
   "request": {
     "method": "GET",
-    "path": "/api/v1/lookup?q=P999"
+    "path": "/api/v1/lookup?q=259"
   },
   "status": 200,
   "body": {
-    "outcome": "unknown_printed",
-    "code": "P999",
+    "outcome": "results",
+    "code": null,
     "kind": null,
     "shade": null,
     "identifier_id": null,
-    "results": null
+    "results": {
+      "items": [],
+      "total": 0
+    }
   }
 }

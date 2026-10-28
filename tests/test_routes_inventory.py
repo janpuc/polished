@@ -42,22 +42,31 @@ def titles_in(html: str) -> list[str]:
 # Adding a bottle
 
 
-def test_add_bottle_stores_the_normalised_p_code_and_returns_the_bottles_partial(seeded):
+def test_add_bottle_stores_the_bottle_and_returns_the_bottles_partial(seeded):
+    client, conn = seeded
+    shade = sid(conn, "thirst-trap")
+    response = add_bottle(client, shade, state="half")
+    assert response.status_code == 200
+    assert "<html" not in response.text
+    assert 'id="bottles"' in response.text
+    assert response.headers["hx-trigger"] == "sheetClose"
+    row = conn.execute("select * from bottle").fetchone()
+    assert (row["shade_id"], row["state"]) == (shade, "half")
+
+
+def test_a_stray_printed_code_field_from_a_stale_form_is_ignored(seeded):
     client, conn = seeded
     shade = sid(conn, "thirst-trap")
     response = add_bottle(client, shade, state="half", printed_code="259")
-    assert response.status_code == 200
-    assert "<html" not in response.text
-    assert "P259" in response.text and 'id="bottles"' in response.text
-    assert response.headers["hx-trigger"] == "sheetClose"
-    row = conn.execute("select * from bottle").fetchone()
-    assert (row["shade_id"], row["state"], row["printed_code"]) == (shade, "half", "P259")
+    assert response.status_code == 200 and "P259" not in response.text
+    assert "printed_code" not in dict(conn.execute("select * from bottle").fetchone())
+    assert conn.execute("select count(*) from shade_identifier").fetchone()[0] == 0
 
 
 def test_add_bottle_answers_the_same_with_htmx_and_updates_the_action_bar_out_of_band(seeded):
     client, conn = seeded
     shade = sid(conn, "thirst-trap")
-    response = client.post(f"/shades/{shade}/bottles", data={"printed_code": "p7"}, headers=HX)
+    response = client.post(f"/shades/{shade}/bottles", data={"state": "low"}, headers=HX)
     assert 'hx-swap-oob="true"' in response.text and 'id="shade-actions"' in response.text
     assert "Add bottle" in response.text and "Owned ×1" in response.text
     assert response.headers["hx-trigger"] == "sheetClose"
@@ -71,12 +80,12 @@ def test_the_new_bottle_defaults_are_full_and_bought_today(seeded):
     assert "<html" not in sheet.text
     assert re.search(r'value="full" checked', sheet.text)
     assert f'name="bought_on" type="date" value="{today}"' in sheet.text
-    assert 'name="printed_code"' in sheet.text and 'inputmode="numeric"' in sheet.text
+    assert "printed_code" not in sheet.text and "P code" not in sheet.text
     assert "Thirst Trap" in sheet.text
 
     add_bottle(client, shade)  # only the defaults
     row = conn.execute("select * from bottle").fetchone()
-    assert (row["state"], row["printed_code"], row["bought_on"]) == ("full", None, None)
+    assert (row["state"], row["bought_on"]) == ("full", None)
 
 
 def test_the_bottle_sheet_has_date_fields_with_words_presets_and_a_max_of_today(seeded):
@@ -90,9 +99,9 @@ def test_the_bottle_sheet_has_date_fields_with_words_presets_and_a_max_of_today(
     assert '<span class="date-main">Not opened</span>' in sheet
     assert "Today</button>" in sheet and "Yesterday</button>" in sheet
     assert "Don’t know</button>" in sheet and "Not opened</button>" in sheet
-    # The order: Level, Bought on, then the details with the P code among them.
+    # The order: Level, Bought on, then the details.
     assert sheet.index("Level") < sheet.index("Bought on") < sheet.index("More details")
-    assert sheet.index("More details") < sheet.index('id="printed_code"')
+    assert sheet.index("More details") < sheet.index('id="price_paid"')
 
 
 def test_a_date_in_the_future_is_refused_by_the_server(seeded):
@@ -132,12 +141,12 @@ def test_the_greeting_follows_the_hour_and_names_the_household_member(seeded):
 def test_a_wrong_field_returns_the_form_for_the_sheet_and_stores_nothing(seeded):
     client, conn = seeded
     shade = sid(conn, "thirst-trap")
-    response = add_bottle(client, shade, price_paid="lots", printed_code="259")
+    response = add_bottle(client, shade, price_paid="lots", notes="kept")
     assert response.status_code == 422
     assert response.headers["hx-retarget"] == "#sheet-body"
     assert response.headers["hx-reswap"] == "innerHTML"
     assert "Use an amount like 15.50." in response.text
-    assert 'value="259"' in response.text and 'value="lots"' in response.text
+    assert ">kept</textarea>" in response.text and 'value="lots"' in response.text
     assert "hx-trigger" not in response.headers
     assert conn.execute("select count(*) from bottle").fetchone()[0] == 0
 
@@ -162,10 +171,10 @@ def make_bottle(client, conn, handle="thirst-trap", **data) -> int:
 
 def test_a_state_change_is_one_post_and_returns_the_card(seeded):
     client, conn = seeded
-    bottle = make_bottle(client, conn, printed_code="259")
+    bottle = make_bottle(client, conn, bought_on="2026-07-21")
     response = client.post(f"/bottles/{bottle}/state", data={"state": "low"}, headers=HX)
     assert response.status_code == 200 and "<html" not in response.text
-    assert f'id="bottle-{bottle}"' in response.text and "P259" in response.text
+    assert f'id="bottle-{bottle}"' in response.text and "Bought 21 Jul 2026" in response.text
     assert re.findall(r'class="level level-(\w+)"', response.text) == ["low"]
     assert '<i class="level-arc"></i>Low</span>' in response.text
     assert f'hx-get="/bottles/{bottle}/edit?ctx=shade"' in response.text
@@ -212,14 +221,12 @@ def test_state_archive_and_delete_without_origin_are_403(seeded):
     assert conn.execute("select state, archived from bottle").fetchone()[:] == ("full", 0)
 
 
-def test_the_edit_sheet_shows_the_bottle_without_the_p_prefix(seeded):
+def test_the_edit_sheet_shows_the_bottle(seeded):
     client, conn = seeded
-    bottle = make_bottle(
-        client, conn, printed_code="259", price_paid="15.50", notes="gift", state="half"
-    )
+    bottle = make_bottle(client, conn, price_paid="15.50", notes="gift", state="half")
     sheet = client.get(f"/bottles/{bottle}/edit?ctx=list", headers=HX)
     assert "<html" not in sheet.text
-    assert 'name="printed_code" value="259"' in sheet.text
+    assert "printed_code" not in sheet.text
     assert 'value="15.50"' in sheet.text and ">gift</textarea>" in sheet.text
     assert re.search(r'value="half" checked', sheet.text)
     assert 'name="ctx" value="list"' in sheet.text
@@ -228,18 +235,18 @@ def test_the_edit_sheet_shows_the_bottle_without_the_p_prefix(seeded):
 
 def test_updating_a_bottle_returns_its_card_and_closes_the_sheet(seeded):
     client, conn = seeded
-    bottle = make_bottle(client, conn, printed_code="259")
+    bottle = make_bottle(client, conn)
     response = client.post(
         f"/bottles/{bottle}",
         data={"state": "low", "printed_code": "p300", "price_paid": "12,5", "ctx": "list"},
     )
     assert response.status_code == 200 and response.headers["hx-trigger"] == "sheetClose"
-    assert "P300" in response.text and "$12.50" in response.text
+    assert "$12.50" in response.text and "P300" not in response.text
     row = conn.execute("select * from bottle").fetchone()
-    assert (row["state"], row["printed_code"], row["price_paid_cents"]) == ("low", "P300", 1250)
+    assert (row["state"], row["price_paid_cents"]) == ("low", 1250)
     bad = client.post(f"/bottles/{bottle}", data={"bought_on": "soon"})
     assert bad.status_code == 422 and bad.headers["hx-retarget"] == "#sheet-body"
-    assert conn.execute("select printed_code from bottle").fetchone()[0] == "P300"
+    assert conn.execute("select price_paid_cents from bottle").fetchone()[0] == 1250
 
 
 def test_archive_and_restore(seeded):
@@ -275,18 +282,16 @@ def test_archiving_from_the_list_swaps_the_row_away_and_closes_the_sheet(seeded)
     assert f'id="bottle-{bottle}"' in client.get("/bottles").text
 
 
-def test_a_bottle_row_leads_with_the_purchase_and_ends_with_the_code_and_an_ink_level(seeded):
+def test_a_bottle_row_leads_with_the_purchase_and_ends_with_an_ink_level(seeded):
     client, conn = seeded
     shade = sid(conn, "thirst-trap")
     conn.execute("update shade set swatch_override_hex = '#c02060' where id = ?", (shade,))
     conn.commit()
-    coded = make_bottle(
-        client, conn, printed_code="188", bought_on="2026-07-21", price_paid="15.50", state="half"
-    )
+    coded = make_bottle(client, conn, bought_on="2026-07-21", price_paid="15.50", state="half")
     plain = make_bottle(client, conn, bought_on="2026-05-18")
     page = client.get("/bottles").text
-    assert 'Bought 21 Jul 2026, $15.50<span class="code" translate="no">P188</span></span>' in page
-    assert "Bought 18 May 2026</span>" in page and "No P code" not in page
+    assert "Bought 21 Jul 2026, $15.50</span>" in page
+    assert "Bought 18 May 2026</span>" in page and "P code" not in page
     assert "#c02060" not in page  # the level is ink, never the shade's colour
     assert "Archive</" not in page and " style=" not in page  # Archive is in the edit sheet now
     assert f'hx-get="/bottles/{coded}/edit?ctx=list"' in page
@@ -313,7 +318,7 @@ def test_delete_removes_the_card_closes_the_sheet_and_updates_the_action_bar(see
 
 def test_bottles_page_is_a_full_page_or_a_fragment_and_filters(seeded):
     client, conn = seeded
-    make_bottle(client, conn, "thirst-trap", state="half", printed_code="1")
+    make_bottle(client, conn, "thirst-trap", state="half")
     make_bottle(client, conn, "peely-base", state="full")
     gone = make_bottle(client, conn, "rest-in-peach", state="low")
     client.post(f"/bottles/{gone}/archive", data={"archived": "1"})
@@ -381,7 +386,7 @@ def test_home_shows_counts_and_recent_bottles(seeded):
     html = client.get("/").text
     assert "Collection" not in html and "All 0 bottles" not in html  # nothing to count yet
     assert "Nothing to wear yet" in html and 'href="/lookup?scan=1"' in html
-    make_bottle(client, conn, "thirst-trap", printed_code="259")
+    make_bottle(client, conn, "thirst-trap")
     make_bottle(client, conn, "thirst-trap")
     make_bottle(client, conn, "peely-base", state="half")
     client.post(f"/shades/{sid(conn, 'rest-in-peach')}/wishlist")
@@ -873,7 +878,7 @@ def test_history_and_bought_routes_need_a_login_when_oidc_is_on(oidc_client):
 def test_lists_of_shades_show_the_painted_tip_never_a_bottle_photo(seeded):
     client, conn = seeded
     shade = sid(conn, "thirst-trap")
-    add_bottle(client, shade, state="half", printed_code="259", bought_on="2026-08-02")
+    add_bottle(client, shade, state="half", bought_on="2026-08-02")
     client.post(f"/shades/{sid(conn, 'last-stock')}/wishlist")
     for url in ("/", "/bottles", "/bottles/history", "/wishlist"):
         html = client.get(url).text

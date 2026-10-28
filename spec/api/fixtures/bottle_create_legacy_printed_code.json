@@ -1,0 +1,25 @@
+{
+  "request": {
+    "method": "POST",
+    "path": "/api/v1/shades/1/bottles",
+    "body": {
+      "state": "full",
+      "printed_code": "P259"
+    }
+  },
+  "status": 201,
+  "body": {
+    "bottle": {
+      "id": 8,
+      "shade_id": 1,
+      "state": "full",
+      "bought_on": null,
+      "price_paid_cents": null,
+      "opened_on": null,
+      "notes": null,
+      "archived": false,
+      "created_at": "2026-10-26T16:30:00Z",
+      "updated_at": "2026-10-26T16:30:00Z"
+    }
+  }
+}

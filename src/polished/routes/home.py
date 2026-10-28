@@ -9,7 +9,6 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
 from .. import bottles, identifiers, shades, wheels, wishlist
 from ..db import get_conn
-from ..gtin import is_numeric
 from ..web import clear_arrival, pop_arrival, render
 from . import _builder as builder
 from . import wear as wear_routes
@@ -85,7 +84,7 @@ def search(
 ):
     """Rows only, for every request: the page that asked is already on screen. `ctx` decides
     what tapping a row does: `home` opens the shade, `learn` teaches it the code in `kind` and
-    `value` (a gtin or a P code, DESIGN 7.2), `stack` adds it as a layer of the draft `stack_id`
+    `value` (a barcode, DESIGN 7.2), `stack` adds it as a layer of the draft `stack_id`
     (DESIGN 10), narrowed by `filter` (owned, toppers or all)."""
     if ctx == "stack":
         if stack_id is None:
@@ -96,15 +95,7 @@ def search(
     if ctx == "learn":
         code = identifiers.normalise(kind, value)
         if code is None:
-            raise HTTPException(422, "learn needs a kind (gtin or printed) and a valid value")
+            raise HTTPException(422, "learn needs a kind (gtin) and a valid value")
     result = shades.search(conn, q) if shades.tokens(q) else None
     context = {"result": result, "q": q.strip(), "ctx": ctx, "kind": kind, "value": code}
-    # A number or a P code typed into the home search is offered to the resolver (DESIGN 7.2).
-    stripped = q.strip()
-    if (
-        ctx == "home"
-        and stripped
-        and (is_numeric(stripped) or identifiers.normalise_printed(stripped))
-    ):
-        context["code_q"] = stripped
     return render(request, "_search_results.html", context)

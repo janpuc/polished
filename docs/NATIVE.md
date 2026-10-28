@@ -43,7 +43,7 @@ app/
     Polished.entitlements, Polished-Debug.entitlements, Info.plist
   PolishedWidgets/                  WidgetKit extension ("Wear today")
   PolishedCore/                     Swift package, no UIKit above the renderer
-    Sources/PolishedModels/         Codable DTOs, enums, labels, GTIN + printed-code normalisation
+    Sources/PolishedModels/         Codable DTOs, enums, labels, GTIN normalisation
     Sources/PolishedAPI/            PolishedAPI protocol, LiveAPI (URLSession), FixtureAPI (previews, widget tests)
     Sources/PolishedStore/          SwiftData cache + Session (Keychain) + write coordinator
     Sources/NailTips/               TipRandom, TipPainter (ops), TipCanvas (drawing), TipShape, TipLight (shader glue)
@@ -53,7 +53,7 @@ app/
   Scripts/                          flows.sh, report.py, archive-upload.sh, bump-build.sh
 spec/
   tips/cases.json, tips/random.json   renderer conformance (both engines)
-  identifiers/gtin.json, printed.json normalisation vectors
+  identifiers/gtin.json normalisation vectors
   api/openapi.yaml                    the /api/v1 contract
   api/fixtures/*.json                 recorded responses from the seeded e2e database
 ```
@@ -124,7 +124,9 @@ Built by a separate worker (runs S1 and S2 in section 8). Written as the contrac
 
 **Errors.** `{"error": {"code": "<snake_case>", "message": "<her words>", "field": "<optional>", "fields": {"<field>": "<message>"} (optional), "retry_after_s": 61 (cooldown)}}` with the status: 400 `bad_request`, 401 `unauthorized`, 403 `forbidden`, 404 `not_found`, 409 `not_a_draft` | `sync_running`, 422 `validation` (`field` set, `message` as the web shows it: "Use an amount like 15.50."; when several inputs are wrong `fields` lists every one and `field`/`message` are the first), `stack_full`, `empty_stack`, `same_wheel`, 429 `cooldown` (`retry_after_s`, also the `Retry-After` header), 5xx `server_error`.
 
-**Writes (S2).** Bodies are JSON; a PATCH changes only the keys it sends (`null` clears an optional one). Money is `*_cents` (an integer, 0 to 999999). Dates are `YYYY-MM-DD` and may not be after today in the household's time zone (`/me` → `server.timezone`); "today" is also the default for `bought_on` of `bought` and `painted_on` of `save`. Creates answer 201 (`POST /shades`, `/shades/{id}/bottles`, `/wheels`, and `/identifiers` when the code is new, 200 when it was known); deletes of a bottle, wishlist item, identifier and slot answer 204; every other write answers 200 with the changed resource, `POST /sync/run` 202. Repeating is safe where it means the same thing: `PUT /shades/{id}/wishlist` keeps the existing item, `PUT …/tip-colour`, `POST /wear/{id}` (one row per shade per day), `POST …/slots/{pos}/draft` (`resumed: true`), `DELETE …/slots/{pos}` and `PATCH` with the same values. The multi-row writes (`/wishlist/bought`, `/stacks/{id}/save`, bottle create with its learned P code, wheel delete, template, move) run in one transaction: if anything is wrong or fails, nothing changed. Auth: a write without a Bearer token is a 401 and changes nothing, cookie or not.
+**Writes (S2).** Bodies are JSON; a PATCH changes only the keys it sends (`null` clears an optional one). Money is `*_cents` (an integer, 0 to 999999). Dates are `YYYY-MM-DD` and may not be after today in the household's time zone (`/me` → `server.timezone`); "today" is also the default for `bought_on` of `bought` and `painted_on` of `save`. Creates answer 201 (`POST /shades`, `/shades/{id}/bottles`, `/wheels`, and `/identifiers` when the code is new, 200 when it was known); deletes of a bottle, wishlist item, identifier and slot answer 204; every other write answers 200 with the changed resource, `POST /sync/run` 202. Repeating is safe where it means the same thing: `PUT /shades/{id}/wishlist` keeps the existing item, `PUT …/tip-colour`, `POST /wear/{id}` (one row per shade per day), `POST …/slots/{pos}/draft` (`resumed: true`), `DELETE …/slots/{pos}` and `PATCH` with the same values. The multi-row writes (`/wishlist/bought`, `/stacks/{id}/save`, bottle create, wheel delete, template, move) run in one transaction: if anything is wrong or fails, nothing changed. Auth: a write without a Bearer token is a 401 and changes nothing, cookie or not.
+
+**P codes (retired 2026-10-28, DESIGN 14 item 88).** Holo Taco's printed P numbers are no longer an identifier. `Bottle` has no `printed_code`; the bottle create answer is `{bottle}` (no `learned`); the lookup outcomes are `match`, `unknown_code`, `invalid_code` and `results` (`kind` is `gtin`, `sku` or null); `GET /stacks/pick` has no `suggestion`; an identifier's `kind` is `gtin` only. Request bodies of bottle create and patch still **accept and ignore** `printed_code`, so a build that sends it gets no 422. The build log in section 8 describes the app before this change.
 
 **Shared shapes.**
 ```jsonc
@@ -137,7 +139,7 @@ ShadeRow {"id": 12, "title": "Spirit Fingers", "kind": "polish", "source": "holo
           "released_on": "2021-06-18", "official_collection": "Rainbow Reflective",
           "marks": [[0,6],[7,14]], "tip": Tip}
           // marks: Unicode-scalar offsets into title (Python str indices); Swift indexes title.unicodeScalars
-Bottle   {"id": 3, "shade_id": 12, "state": "half", "printed_code": "P259", "bought_on": "2026-07-21",
+Bottle   {"id": 3, "shade_id": 12, "state": "half", "bought_on": "2026-07-21",
           "price_paid_cents": 1550, "opened_on": "2026-10-05", "notes": null, "archived": false,
           "created_at": "2026-07-21T10:02:11Z", "updated_at": "…"}
 Layer    {"id": 7, "ord": 1, "shade_id": 44, "title": "One-Coat Black", "coats": 1, "label": "Base", "tip": Tip}
@@ -169,16 +171,16 @@ Wheel    {"id": 2, "slug": "k3m9xq", "name": "Holos", "slot_count": 20, "archive
 | PUT | `/api/v1/shades/{id}/tip-colour` | `{hex:"#rrggbb"}` or `{hex:null}` → detail; 422 `validation` |
 | GET | `/api/v1/bottles` | `?state&archived` → `{groups:[{shade: ShadeRow, bottles:[Bottle]}]}` |
 | GET | `/api/v1/bottles/history` | `{years:[{year, count, total_cents, unpriced, months:[{month, label, count, total_cents, unpriced, rows:[{bottle: Bottle, shade: ShadeRow, dated_by_entry}]}]}]}` |
-| POST | `/api/v1/shades/{id}/bottles` | `{state, printed_code, bought_on, price_paid_cents, opened_on, notes}` (all optional, `state` defaults to `full`) → `{bottle, learned:{code, previous_shade: ShadeRow \| null} \| null}` (201); `learned` is set when the P code was new (`previous_shade` null) or already meant another shade (the old match stays, `previous_shade` is that shade), null otherwise; 422 per field |
-| PATCH | `/api/v1/bottles/{id}` | any subset of the same fields plus `archived` → Bottle |
+| POST | `/api/v1/shades/{id}/bottles` | `{state, bought_on, price_paid_cents, opened_on, notes}` (all optional, `state` defaults to `full`; a `printed_code` is accepted and ignored, see "P codes" above the table) → `{bottle}` (201); 422 per field |
+| PATCH | `/api/v1/bottles/{id}` | any subset of the same fields plus `archived` → Bottle (a `printed_code` is accepted and ignored) |
 | DELETE | `/api/v1/bottles/{id}` | 204 |
 | GET | `/api/v1/wishlist` | `?max_priority=3` → `{items:[{id, shade: ShadeRow, priority, note, added_on, buyable}], summary:{count, total_cents, buyable_count, buyable_cents}, cart:{url \| null, total_cents, count, skipped, names:[…]}}` |
 | PUT | `/api/v1/shades/{id}/wishlist` | `{priority:2}` → the item (existing item kept) |
 | PATCH | `/api/v1/wishlist/{item_id}` | `{priority, note}` → the whole wishlist body |
 | DELETE | `/api/v1/wishlist/{item_id}` | 204 |
 | POST | `/api/v1/wishlist/bought` | `{items:[{id, price_cents \| null}], bought_on}` → `{bottles:[Bottle], wishlist: <body>}`; 404 unknown item, 422 |
-| GET | `/api/v1/lookup` | `?q&via=scan \| typed` → `{outcome: match \| suggestion \| unknown_code \| unknown_printed \| invalid_code \| results, code, kind, shade: ShadeRow+images \| null, identifier_id, results:{items, total} \| null}` |
-| POST | `/api/v1/identifiers` | `{kind, value, shade_id}` → `{identifier:{id, kind, value, shade_id}, created: bool, shade: ShadeRow}`; 201 when new, 200 when the code was known (it keeps its shade, `shade` is that one) |
+| GET | `/api/v1/lookup` | `?q&via=scan \| typed` → `{outcome: match \| unknown_code \| invalid_code \| results, code, kind: gtin \| sku \| null, shade: ShadeRow+images \| null, identifier_id, results:{items, total} \| null}` |
+| POST | `/api/v1/identifiers` | `{kind: "gtin", value, shade_id}` (any other `kind` is a 422) → `{identifier:{id, kind, value, shade_id}, created: bool, shade: ShadeRow}`; 201 when new, 200 when the code was known (it keeps its shade, `shade` is that one) |
 | GET | `/api/v1/identifiers` | `{items:[{id, kind, value, shade: ShadeRow, use_count, created_at, last_used_at}]}` |
 | DELETE | `/api/v1/identifiers/{id}` | 204 |
 | GET | `/api/v1/wheels` | `?archived` → `{items:[Wheel+{tiles:[Tile]}]}` (tiles included: the list draws mini rings) |
@@ -196,7 +198,7 @@ Wheel    {"id": 2, "slug": "k3m9xq", "name": "Holos", "slot_count": 20, "archive
 | DELETE | `/api/v1/stacks/{id}/layers/{layer_id}` | → Sheet |
 | POST | `/api/v1/stacks/{id}/template` | `{kind:"over_black"}` → Sheet + `{result: added \| already \| unavailable}` (200; 422 `stack_full`); `{kind:"copy", source_stack_id}` → Sheet + `result: copied` (404 when the source is not a saved stack); `{kind:"last"}` → Sheet + `result: copied \| nothing_saved` |
 | GET | `/api/v1/stacks/copy-sources` | `?q` → `{items:[{stack_id, wheel_name, wheel_slug, position, name, painted_on, summary, layers}]}` |
-| GET | `/api/v1/stacks/pick` | `?q&scope=owned \| toppers \| all` → `{items:[ShadeRow], total, suggestion: ShadeRow \| null}` (the P-code suggestion row first) |
+| GET | `/api/v1/stacks/pick` | `?q&scope=owned \| toppers \| all` → `{items:[ShadeRow], total}` (a barcode the household taught the app comes back as the one item; digits that are not a barcode are a name search) |
 | POST | `/api/v1/stacks/{id}/save` | `{name, note, painted_on}` → `{wheel_id, position, tile: Tile}`; 422 `empty_stack`, or `validation` on `painted_on` (not a date, or in the future) |
 | POST | `/api/v1/stacks/{id}/cancel` | → `{wheel_id, position, tile: Tile}` |
 | GET | `/api/v1/sync` | `{running: bool, last:{started_at, finished_at, status, trigger, counts…}, runs:[…10], cooldown_until}` |
@@ -287,7 +289,7 @@ Rules: never branch on the device model; read `horizontalSizeClass` and the cont
 | Wheels | title + `+` (sheet: name, slot count stepper 1–40), cards with mini rings, archived in a collapsed section | 2 or 4 column grid; detail column holds the wheel |
 | Wheel | ring, Swatches list, foot: Tag and QR, Rename, Archive, Delete (red) | ring + builder side by side (`ArrangementView` on Duo, `HStack` elsewhere) |
 | Builder | sheet, detents `.medium` + `.large`, opens at `.large`, background interaction up through `.medium` | inspector 360–400 pt (iPad), fold pane (Duo) |
-| Scan | full-screen cover: VisionKit view, framing guide, torch, Close, a text field "Type the digits, a P code, or a name" under it, result card, Learned codes link | centred 480 pt viewfinder, result beside from 1000 pt |
+| Scan | full-screen cover: VisionKit view, framing guide, torch, Close, a text field "Type the digits or a name" under it, result card, Learned codes link | centred 480 pt viewfinder, result beside from 1000 pt |
 | Tag | QR 216 pt on `Surface` radius 20, the address with Copy, **Write to sticker** (filled; hidden on iPad and under "Designed for iPad"), Check the sticker, Move the tag (New tag URL, Take the tag of…), last written date | same, "Write it from your iPhone" lede when NFC is unavailable |
 | Settings | (More on compact: the Home mark and the sidebar foot) Signed in as, Server, Devices, Catalog sync (status, Sync now), Learned codes, Add a shade by hand, Sign out, version | a sheet `presentationSizing(.form)` |
 | Sign-in | the mark, "Polished", one filled button "Sign in with Pocket ID", the server name in `Ink3`, errors inline | centred 420 pt |
@@ -303,7 +305,7 @@ Wear today
 ┌──────────────────────────────────────────────────────┐
 │ ▐▓▓▓▌  Acid Drip                                     │   ← tip-xl, live light; Fraunces 28
 │ ▐▓▓▓▌  Holographic, metallic, shimmer                │
-│ ▐▓▓▓▌  P12, half left                                │
+│ ▐▓▓▓▌  Half left                                     │
 │ [ I wore this          ]   Another                   │   ← one filled action
 └──────────────────────────────────────────────────────┘
 Recently added                             All 9 bottles ›
@@ -343,7 +345,7 @@ Wheel ring + builder, iPad 13" landscape:
 │  ◊ Shades     │               ( ring radius 150, slots 44×72 )            │ Base  ▐▓▌ One-Coat Black   − 1 +  ↑↓ × │
 │  ▯ Bottles    │                       ◌ 14                                │ Top   ▐▓▌ Flakie Holo Taco − 1 +  ↑↓ × │
 │  ◎ Wheels     │                      of 20                                │ [Over black] [Copy from…] [Same as last]│
-│  ♡ Wishlist   │ Swatches                                                  │ [ ⌕ Search shades or a P code     ] [▣] │
+│  ♡ Wishlist   │ Swatches                                                  │ [ ⌕ Search shades                   ] [▣] │
 │               │  12 ▐▓▌ One-Coat Black + Flakie Holo Taco      20 Oct     │ (Owned) (Toppers) (All)                 │
 │  ⚙ Settings   │  13 ▐▓▌ Spirit Fingers ×2                                 │  ▐▓▌ Spirit Fingers            glitter + │
 │               │ Tag and QR · Rename · Archive · Delete                    │  ▐▓▌ Thirst Trap                creme  + │
@@ -358,7 +360,7 @@ Builder sheet, iPhone (detent `.large`; at `.medium` only the head and the layer
 Base  ▐▓▌ One-Coat Black        −  1  +     ↑ ↓   ×
 Top   ▐▓▌ Flakie Holo Taco      −  1  +     ↑ ↓   ×        ← 2 pt rail through the tips
 [ Over black ] [ Copy from… ] [ Same as last ]
-[ ⌕ Search shades or a P code                     ] [▣]
+[ ⌕ Search shades                                   ] [▣]
 ( Owned ) ( Toppers ) ( All )
   ▐▓▌ Spirit Fingers        Glitter, holographic       +
   ▐▓▌ Thirst Trap           Creme                      +
@@ -378,7 +380,7 @@ Scan, iPhone:
 │  [torch]                             [Close] │  ← GlassEffectContainer: the only custom glass
 └──────────────────────────────────────────────┘
 Point at the barcode under the bottle
-[ Type the digits, a P code, or a name           ]
+[ Type the digits or a name                     ]
 ┌ result ──────────────────────────────────────┐
 │ [photo 72×96] ▐▓▓▌ Spirit Fingers            │
 │               Glitter, holographic   $15.50  │
@@ -386,7 +388,7 @@ Point at the barcode under the bottle
 └──────────────────────────────────────────────┘
 Learned codes ›
 ```
-Outcomes map to the web's: `match` (card, Add bottle, This isn't it), `suggestion` ("P259 was Spirit Fingers on a bottle you added before", Use it, plus results), `unknown_code` ("New barcode. Which shade is this?" + picker; choosing learns then opens Add bottle), `unknown_printed` (picker; the code rides into the bottle form), `invalid_code` ("Couldn't read that reliably. Try again."), `results`.
+Outcomes map to the web's: `match` (card, Add bottle, This isn't it), `unknown_code` ("New barcode. Which shade is this?" + picker; choosing learns then opens Add bottle), `invalid_code` ("Couldn't read that reliably. Try again."), `results`.
 
 Tag, iPhone (the NFC flow end to end):
 ```
@@ -447,7 +449,7 @@ One line and one action, the unpainted drawing where the thing will appear: Home
 
 ### 5.10 Accessibility
 
-- VoiceOver: tips are decorative in rows (`accessibilityHidden`) and the row carries one label: "Spirit Fingers, glitter, holographic, wished, owned twice, $15.50". Bottle rows: "Spirit Fingers, P259, half left, bought 21 July 2026, $15.50". Ring slots are buttons: "Slot 12, One-Coat Black + Flakie Holo Taco, painted 20 October" / "Slot 3, empty" / "…, draft in progress". The hero: "Wear today: Acid Drip, holographic, metallic, shimmer, half left". The wheel's hub is one element: "14 of 20 slots filled". Rotor actions on rows: wishlist, level, remove.
+- VoiceOver: tips are decorative in rows (`accessibilityHidden`) and the row carries one label: "Spirit Fingers, glitter, holographic, wished, owned twice, $15.50". Bottle rows: "Spirit Fingers, half left, bought 21 July 2026, $15.50". Ring slots are buttons: "Slot 12, One-Coat Black + Flakie Holo Taco, painted 20 October" / "Slot 3, empty" / "…, draft in progress". The hero: "Wear today: Acid Drip, holographic, metallic, shimmer, half left". The wheel's hub is one element: "14 of 20 slots filled". Rotor actions on rows: wishlist, level, remove.
 - Dynamic Type: every SF text style scales; rows switch to a vertical layout at accessibility sizes (`dynamicTypeSize.isAccessibilitySize`); tips keep their size; the ring's slot numbers hide at AX sizes and VoiceOver carries them.
 - Differentiate without colour: status and level always have words; the heart has a filled/outlined state; the `?hl` ring is accompanied by "Swatched here" in the slot label.
 - Reduce Motion and Transparency as above; Increase Contrast via the asset variants; minimum hit size 44 pt everywhere (ring slots get an invisible 44×72 hit rect).
@@ -466,7 +468,7 @@ Source: `src/polished/static/icons/logo.svg`. Run 1 ships a flattened 1024 px `A
 - **Renderer parity**: for every case in `spec/tips/cases.json`, `TipPainter.ops(for:)` equals the recorded ops (same count, same kinds in order, numbers within 0.001, colours equal). `TipRandom` against `spec/tips/random.json`.
 - **TipShape**: path bounding box equals the frame; symmetric about the vertical axis.
 - **Decoding**: every file in `spec/api/fixtures/` decodes into its DTO with a `JSONDecoder` whose unknown keys are collected (a custom `userInfo` key-tracking decoder) and the test fails on an undecoded top-level key, so contract drift surfaces here first. Errors decode into `APIError`.
-- **Normalisation**: `spec/identifiers/gtin.json` and `printed.json` vectors (the GTIN check digit, the 14-digit rule, `259 → P259`).
+- **Normalisation**: `spec/identifiers/gtin.json` vector (the GTIN check digit, the 14-digit rule).
 - **Marks**: `AttributedString` highlighting from `marks` on titles with `™`, accents and combining marks (`spec/api/fixtures/shades-search-*.json` carry marks from the server).
 - **Deep links**: `/w/k3m9xq` → wheel route; `/w/K3M9XQ`, `/w/../x`, `/shades/abc` → rejected.
 - **Light model**: roll 0 / pitch 0 → default light; ±40° clamps to ±20°; Reduce Motion freezes.
@@ -494,8 +496,8 @@ Checklist (iPhone, after the first TestFlight build; run 5 wrote the Scan and Ta
    - The first time, allow the camera. A grey box says "Point at the barcode under the bottle" with a white frame and the torch at the top left (turn it on in a dim room).
    - Hold the bottle 15 to 25 cm away with the barcode inside the frame. The code is highlighted, the frame turns green and the phone taps once (the rigid haptic).
    - First scan on a fresh server: a card "New barcode 0810170284120. Which shade is it?" with a search field. Type `spirit`, tap **Spirit Fingers**: "Saved. 0810170284120 is now Spirit Fingers." with the bottle photo and the painted tip. (On Jan's server the seed learned it before; if the card says "Barcode 0810170284120 is Spirit Fingers" go on to the next step, or tap **This isn't it** and **Forget it** to see the unknown card.)
-   - Tap **Add bottle**: level, date, More details has the P code (a P code scan fills it). **Add bottle** in the top right closes the scan screen, the arrival moment plays on the tip and the success haptic lands.
-   - Scan the same bottle again: the card says "Barcode 0810170284120 is" Spirit Fingers directly. Scan the printed P code by typing `259`: "Is it Spirit Fingers?" with **Yes, add a bottle**.
+   - Tap **Add bottle**: level, date, More details has Price paid, Opened on and Notes. **Add bottle** in the top right closes the scan screen, the arrival moment plays on the tip and the success haptic lands.
+   - Scan the same bottle again: the card says "Barcode 0810170284120 is" Spirit Fingers directly. Typing `259` is a name search, not a code.
    - Settings (the mark on Home), **Learned codes**: the barcode is listed with its shade and use count; swipe left and tap **Forget** removes it.
    - Deny the camera in iOS Settings, reopen the scan screen: "Camera access is off for Polished. Allow it in Settings, or type the digits below." with **Allow camera access in Settings** (opens the app's page in the Settings app); the typed field still works.
    - In the layer builder (a wheel slot): the barcode button beside the search field scans a bottle and **Add layer** paints it on top.
@@ -539,6 +541,8 @@ Checklist (iPhone, after the first TestFlight build; run 5 wrote the Scan and Ta
 ---
 
 ## 8. Staged implementation plan
+
+(The built-log entries below mention P codes where the app had them; they are retired, see "P codes" in section 3.)
 
 Each run is one agent, ≤ 90 minutes, ends with a build that passes `xcodebuild test` on the iPhone 18 Pro simulator and the flows report for its flows (from run 2 on), and stops. The orchestrator commits (`feat(app): …`, `feat(api): …`, `build(app): …`).
 

@@ -12,7 +12,7 @@ from pathlib import Path
 
 import pytest
 
-from polished import gtin, identifiers, tips
+from polished import gtin, tips
 from polished.tips import TipRandom, TipShade
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -155,15 +155,9 @@ def test_gtin_vectors(vector):
     assert gtin.normalise_gtin(vector["input"]) == vector["output"]
 
 
-@pytest.mark.parametrize("vector", load("identifiers", "printed.json")["vectors"], ids=repr)
-def test_printed_code_vectors(vector):
-    assert identifiers.normalise_printed(vector["input"]) == vector["output"]
-
-
 def test_the_identifier_vectors_have_accepts_and_rejects():
-    for name in ("gtin", "printed"):
-        outputs = [v["output"] for v in load("identifiers", f"{name}.json")["vectors"]]
-        assert None in outputs and any(out is not None for out in outputs)
+    outputs = [v["output"] for v in load("identifiers", "gtin.json")["vectors"]]
+    assert None in outputs and any(out is not None for out in outputs)
 
 
 # --- the revision ---------------------------------------------------------------------------

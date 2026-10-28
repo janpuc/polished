@@ -24,7 +24,7 @@
         "ord": 1,
         "shade_id": 1,
         "title": "Thirst Trap",
-        "coats": 3,
+        "coats": 2,
         "label": "Base",
         "tip": {
           "id": 1,
@@ -35,11 +35,11 @@
           ],
           "topper": false,
           "clear": false,
-          "coats": 3,
+          "coats": 2,
           "colours": [
             "red"
           ],
-          "revision": "8780b51e2f"
+          "revision": "eeb7b02a2b"
         }
       },
       {
@@ -65,7 +65,7 @@
         }
       }
     ],
-    "summary": "Thirst Trap ×3 + Flakie Holo Taco",
+    "summary": "Thirst Trap ×2 + Flakie Holo Taco",
     "full": false,
     "tip": [
       {
@@ -77,11 +77,11 @@
         ],
         "topper": false,
         "clear": false,
-        "coats": 3,
+        "coats": 2,
         "colours": [
           "red"
         ],
-        "revision": "8780b51e2f"
+        "revision": "eeb7b02a2b"
       },
       {
         "id": 14,

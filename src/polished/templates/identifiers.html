@@ -7,7 +7,7 @@
 <header class="page-head">
   <h1 class="title">Learned codes</h1>
 </header>
-<p class="lede">Barcodes and P codes the app learned from you. Nothing here comes from the catalog. Remove one that is wrong and the next scan asks again.</p>
+<p class="lede">Barcodes the app learned from you. Nothing here comes from the catalog. Remove one that is wrong and the next scan asks again.</p>
 {% if items %}
 <ul class="list identifiers">
   {% for item in items %}
@@ -15,7 +15,7 @@
     <a class="row-link" href="/shades/{{ item.shade_id }}">
       <span class="row-body">
         <span class="row-title">{{ item.title }}</span>
-        <span class="row-sub"><span>{% if item.kind == 'gtin' %}Barcode{% else %}P code{% endif %} <span class="code" translate="no">{{ item.value }}</span></span><span>used {{ item.use_count }}×</span></span>
+        <span class="row-sub"><span>Barcode <span class="code" translate="no">{{ item.value }}</span></span><span>used {{ item.use_count }}×</span></span>
       </span>
     </a>
     <button type="button" class="btn btn-text btn-danger" hx-post="/identifiers/{{ item.id }}/delete" hx-confirm="Forget {{ item.value }}?" hx-target="#identifier-{{ item.id }}" hx-swap="outerHTML">Remove</button>

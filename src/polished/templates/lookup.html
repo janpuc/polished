@@ -22,7 +22,7 @@
 <p id="scanner-status" class="scan-caption" role="status">Point at the barcode under the bottle</p>
 <p id="scan-note" class="notice" role="status" hidden></p>
 <form class="lookup-form" action="/lookup" method="get" role="search">
-  <input id="lookup-q" type="search" name="q" value="{{ q }}" inputmode="search" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="search" aria-label="Barcode digits, P code or shade name" placeholder="Type the digits, a P code, or a name"
+  <input id="lookup-q" type="search" name="q" value="{{ q }}" inputmode="search" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="search" aria-label="Barcode digits or shade name" placeholder="Type the digits or a name"
          hx-get="/lookup/resolve" hx-vals='{"via": "typed"}' hx-trigger="input changed delay:300ms, search" hx-target="#lookup-result" hx-sync="this:replace">
 </form>
 <div class="scan-photo-row">

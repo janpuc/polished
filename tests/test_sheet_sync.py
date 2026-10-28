@@ -216,13 +216,13 @@ def own_a_sheet_only_shade(conn):
     alias and a tip colour of the household's own."""
     apply_sheet(conn, rows())
     sheet_id = shade(conn, "Silver Flake Taco")["id"]
-    conn.execute("insert into bottle (shade_id, printed_code) values (?, 'P99')", (sheet_id,))
+    conn.execute("insert into bottle (shade_id) values (?)", (sheet_id,))
     stack = conn.execute("insert into stack default values").lastrowid
     conn.execute(
         "insert into stack_layer (stack_id, ord, shade_id) values (?, 1, ?)", (stack, sheet_id)
     )
     conn.execute(
-        "insert into shade_identifier (kind, value, shade_id) values ('printed', 'P99', ?)",
+        "insert into shade_identifier (kind, value, shade_id) values ('gtin', '0810170284120', ?)",
         (sheet_id,),
     )
     conn.execute(

@@ -23,6 +23,7 @@ from .classify import classify
 from .colour import fill_colours
 from .fetch import Clock, FeedError, Sleep, fetch_feed
 from .hashing import content_hash
+from .overrides import apply_overrides, override_pairs
 from .parse import (
     RETIRED_TAG,
     RETIRING_TAG,
@@ -128,7 +129,7 @@ def _upsert_shade(conn: sqlite3.Connection, product_row_id: int, parsed: _Parsed
     """Writes the shade for a product, with its tags; True when the shade is new."""
     product, variant = parsed.product, parsed.variant
     kind, tags = parsed.kind, product["tags"]
-    pairs = tag_pairs(tags)
+    pairs = override_pairs(product["handle"], tag_pairs(tags))
     values = {
         "kind": kind,
         "title": product["title"],
@@ -297,6 +298,9 @@ def apply_feed(
                         (swatch, product_row_id),
                     )
 
+        apply_overrides(
+            conn
+        )  # an unchanged product is not rewritten, so its overrides are re-applied
         counts.unresolved_aliases = _resolve_aliases(conn)
         refresh_retired(conn)  # a changed product must not undo what the release sheet said
 

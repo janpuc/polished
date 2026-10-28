@@ -71,16 +71,14 @@ def test_the_builder_flow_from_an_empty_slot_to_a_saved_swatch(client, catalog, 
     assert first.headers["HX-Trigger"] == "pickerReset"
     assert first.text.lstrip().startswith('<div id="stack-layers"')
     assert "is-new" in first.text and "Spirit Fingers" in first.text
-    assert re.search(
-        r'<p id="stack-summary"[^>]*hx-swap-oob="true">Spirit Fingers ×2</p>', first.text
-    )
+    assert re.search(r'<p id="stack-summary"[^>]*hx-swap-oob="true">Spirit Fingers</p>', first.text)
     assert (
         'id="save-button"' in first.text
         and "disabled" not in first.text.split('id="save-button"')[1][:80]
     )
     assert 'id="picker-results" hx-swap-oob="innerHTML"' in first.text
     add(client, stack_id, catalog, "flakie-holo-taco")
-    assert titles(catalog, stack_id) == [("Spirit Fingers", 2), ("Flakie Holo Taco", 1)]
+    assert titles(catalog, stack_id) == [("Spirit Fingers", 1), ("Flakie Holo Taco", 1)]
     # Over black puts the black base first, with one coat; a second tap says it is there.
     over = client.post(f"/stacks/{stack_id}/template/over-black", headers=PARTIAL)
     assert over.status_code == 200 and "Already over black." not in over.text
@@ -98,7 +96,7 @@ def test_the_builder_flow_from_an_empty_slot_to_a_saved_swatch(client, catalog, 
         f"/stacks/{stack_id}/layers/{layers[1]['id']}/coats", data={"delta": "1"}, headers=PARTIAL
     )
     assert coats.status_code == 200
-    assert dict(titles(catalog, stack_id))[layers[1]["title"]] == 3
+    assert dict(titles(catalog, stack_id))[layers[1]["title"]] == 2
     gone = client.post(f"/stacks/{stack_id}/layers/{layers[2]['id']}/delete", headers=PARTIAL)
     assert gone.status_code == 200 and len(titles(catalog, stack_id)) == 2
     # Save: the tile comes back out of band as saved, the sheet closes.
@@ -231,9 +229,7 @@ def test_copy_from_lists_saved_swatches_and_copies_the_rows(client, catalog, whe
     assert "Copy from…" in opened.text and "Same as last" in opened.text
     listing = client.get(f"/stacks/{stack_id}/copy-sources", headers=PARTIAL)
     assert listing.status_code == 200
-    assert (
-        "One-Coat Black ×2 + Flakie Holo Taco" in listing.text and "Holos, slot 3" in listing.text
-    )
+    assert "One-Coat Black + Flakie Holo Taco" in listing.text and "Holos, slot 3" in listing.text
     assert listing.text.index("Spirit Fingers") < listing.text.index("One-Coat Black")
     assert "hx-confirm" not in listing.text
     found = client.get(f"/stacks/{stack_id}/copy-sources?q=flakie")
@@ -247,7 +243,7 @@ def test_copy_from_lists_saved_swatches_and_copies_the_rows(client, catalog, whe
         headers=PARTIAL,
     )
     assert copied.status_code == 200 and copied.headers["HX-Trigger"] == "pickerReset"
-    assert titles(catalog, stack_id) == [("One-Coat Black", 2), ("Flakie Holo Taco", 1)]
+    assert titles(catalog, stack_id) == [("One-Coat Black", 1), ("Flakie Holo Taco", 1)]
     assert catalog.execute("select count(*) from stack").fetchone()[0] == 3
     assert "hx-confirm" in client.get(f"/stacks/{stack_id}/copy-sources").text
 
@@ -267,7 +263,7 @@ def test_same_as_last_copies_the_most_recent_save_and_says_when_there_is_none(
         f"/stacks/{stack_id}/template/copy", data={"source": "last"}, headers=PARTIAL
     )
     assert last.status_code == 200
-    assert titles(catalog, stack_id) == [("Spirit Fingers", 2), ("Flakie Holo Taco", 1)]
+    assert titles(catalog, stack_id) == [("Spirit Fingers", 1), ("Flakie Holo Taco", 1)]
 
 
 # --- the draft lifecycle ---------------------------------------------------------------
@@ -352,7 +348,7 @@ def test_resumed_note_is_a_footnote_in_the_head_not_a_notice(client, catalog, wh
 def test_a_saved_slot_opens_with_its_layers_name_and_remove(client, catalog, wheel):
     swatch(catalog, wheel, 12, "one-coat-black", "flakie-holo-taco")
     stack_id, sheet = open_sheet(client, wheel)
-    assert "One-Coat Black ×2 + Flakie Holo Taco" in sheet.text
+    assert "One-Coat Black + Flakie Holo Taco" in sheet.text
     assert "Remove swatch" in sheet.text and "hx-confirm" in sheet.text
     assert "Resumed" not in sheet.text
     fresh_id, fresh = open_sheet(client, make_wheel(client, "Other"), 1)
@@ -440,16 +436,23 @@ def test_search_rows_add_a_layer_and_owned_come_first(client, catalog, wheel):
     assert 'id="scope-owned" name="filter" value="owned" checked' not in opened.text
 
 
-def test_a_p_code_the_resolver_knows_comes_first_as_a_suggestion(client, catalog, wheel):
+def test_a_barcode_the_resolver_knows_comes_first_as_a_suggestion(client, catalog, wheel):
     stack_id, _ = open_sheet(client, wheel)
     from polished import identifiers
 
-    identifiers.learn(catalog, "printed", "P259", shade_id(catalog, "spirit-fingers"))
-    page = client.get(f"/search?ctx=stack&stack_id={stack_id}&filter=all&q=259").text
-    assert "P259 was this on a bottle you added before" in page
+    identifiers.learn(catalog, "gtin", "810170284120", shade_id(catalog, "spirit-fingers"))
+    page = client.get(f"/search?ctx=stack&stack_id={stack_id}&filter=all&q=810170284120").text
+    assert "Barcode 0810170284120 is" in page
     assert "Spirit Fingers" in page and "pick-add" in page
-    unknown = client.get(f"/search?ctx=stack&stack_id={stack_id}&filter=all&q=777").text
-    assert "P777 is not on any bottle yet." in unknown
+    unknown = client.get(f"/search?ctx=stack&stack_id={stack_id}&filter=all&q=5901234123457").text
+    assert "5901234123457 is not on any bottle yet." in unknown
+
+
+def test_a_short_number_in_the_picker_is_just_a_search(client, catalog, wheel):
+    stack_id, _ = open_sheet(client, wheel)
+    page = client.get(f"/search?ctx=stack&stack_id={stack_id}&filter=all&q=259").text
+    assert "pick-lead" not in page and "P259" not in page
+    assert "Nothing matches “259”." in page
 
 
 def test_the_sheet_opens_on_owned_once_there_is_a_bottle(client, catalog, wheel):
@@ -477,6 +480,6 @@ def test_the_shade_page_and_the_highlight_reflect_the_saved_stack(client, catalo
     assert f'href="/w/{slug}?hl={flakie}#slot-12"' in shade
     page = client.get(f"/w/{slug}?hl={flakie}").text
     assert re.search(r'id="slot-12" class="slot [^"]*is-hl', page)
-    assert "One-Coat Black ×2 + Flakie Holo Taco" in page
+    assert "One-Coat Black + Flakie Holo Taco" in page
     spirit = client.get(f"/shades/{shade_id(catalog, 'spirit-fingers')}").text
     assert "Swatched on" not in spirit

@@ -11,10 +11,9 @@ from .routing import ApiRoute, Conn
 router = APIRouter(route_class=ApiRoute, tags=["lookup"])
 
 
-@router.get("/lookup", response_model=schemas.Lookup, summary="Resolve a barcode, P code or name")
+@router.get("/lookup", response_model=schemas.Lookup, summary="Resolve a barcode or a name")
 def lookup(conn: Conn, q: str = "", via: str = "typed"):
-    """DESIGN 7.2 in one call: a barcode, a number that is not one, a P code, a SKU, then a name
-    search. A known barcode counts as used (as on the web)."""
+    """DESIGN 7.2 in one call: a barcode, a number that is not one, a SKU, then a name search. A known barcode counts as used (as on the web)."""
     resolution = identifiers.resolve(conn, q, via if via in ("scan", "typed") else "typed")
     found = resolution.shade
     page: shades.ShadePage | None = resolution.results
@@ -75,18 +74,14 @@ def learn_identifier(conn: Conn, body: schemas.IdentifierRequest, response: Resp
     """A learned code is never overwritten: if `value` already points somewhere, that mapping
     stays, 200 comes back and `identifier.shade_id` says where it points."""
     if body.kind not in identifiers.KINDS:
-        raise invalid({"kind": "Kind must be gtin or printed."})
+        raise invalid({"kind": "Kind must be gtin."})
     if conn.execute("select 1 from shade where id = ?", (body.shade_id,)).fetchone() is None:
         raise not_found("No such shade.")
     try:
         with transaction(conn):
             learned = identifiers.learn(conn, body.kind, body.value, body.shade_id)
     except ValueError:
-        message = (
-            f"\u201c{body.value.strip()}\u201d isn\u2019t a valid barcode number."
-            if body.kind == "gtin"
-            else f"\u201c{body.value.strip()}\u201d isn\u2019t a P code. Use a code like P259."
-        )
+        message = f"\u201c{body.value.strip()}\u201d isn\u2019t a valid barcode number."
         raise invalid({"value": message}) from None
     response.status_code = 201 if learned.created else 200
     return schemas.IdentifierLearned(

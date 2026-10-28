@@ -302,13 +302,19 @@ def test_learn_a_barcode(api):
     ]
 
 
-def test_learn_a_printed_code_in_any_spelling(api):
+def test_a_printed_code_can_no_longer_be_learned(api):
     shade_id = api.shade("Thirst Trap")
-    response = api.client.post(
-        "/api/v1/identifiers", json={"kind": "printed", "value": "p 321", "shade_id": shade_id}
+    before = api.count("shade_identifier")
+    error = assert_error(
+        api.client.post(
+            "/api/v1/identifiers", json={"kind": "printed", "value": "p 321", "shade_id": shade_id}
+        ),
+        422,
+        "validation",
+        "kind",
     )
-    assert response.status_code == 201
-    assert response.json()["identifier"]["value"] == "P321"
+    assert error["message"] == "Kind must be gtin."
+    assert api.count("shade_identifier") == before
 
 
 def test_learning_a_known_code_again_changes_nothing(api):
@@ -319,7 +325,7 @@ def test_learning_a_known_code_again_changes_nothing(api):
     assert response.status_code == 200
     body = response.json()
     assert body["created"] is False and body["identifier"]["id"] == known[0]["id"]
-    assert api.count("shade_identifier") == 2
+    assert api.count("shade_identifier") == 1
 
 
 def test_a_known_code_keeps_its_shade_when_another_is_asked_for(api):
@@ -339,8 +345,8 @@ def test_a_known_code_keeps_its_shade_when_another_is_asked_for(api):
     [
         ("gtin", "12345678", "value", "isn\u2019t a valid barcode number"),
         ("gtin", "hello", "value", "isn\u2019t a valid barcode number"),
-        ("printed", "hello", "value", "isn\u2019t a P code"),
-        ("sku", "HL-1", "kind", "gtin or printed"),
+        ("printed", "P259", "kind", "Kind must be gtin"),
+        ("sku", "HL-1", "kind", "Kind must be gtin"),
     ],
 )
 def test_learn_refuses_what_is_not_a_code(api, kind, value, field, fragment):
@@ -370,5 +376,5 @@ def test_forget_a_code(api):
     assert response.status_code == 204 and response.content == b""
     assert learned["id"] not in [i["id"] for i in api.get("/api/v1/identifiers").json()["items"]]
     outcome = api.get(f"/api/v1/lookup?q={learned['value']}&via=scan").json()["outcome"]
-    assert outcome in ("unknown_code", "unknown_printed")
+    assert outcome == "unknown_code"
     assert_error(api.client.delete(f"/api/v1/identifiers/{learned['id']}"), 404, "not_found")

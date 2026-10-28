@@ -24,7 +24,7 @@
     {% if errors.state %}<p class="field-error" role="alert">{{ errors.state }}</p>{% endif %}
   </fieldset>
   {{ date_field("bought_on", "Bought on", values.bought_on, errors.bought_on, clear="Don’t know") }}
-  <details class="more-fields"{% if values.price_paid or values.opened_on or values.printed_code or values.notes or errors.price_paid or errors.opened_on %} open{% endif %}>
+  <details class="more-fields"{% if values.price_paid or values.opened_on or values.notes or errors.price_paid or errors.opened_on %} open{% endif %}>
     <summary>{{ icon("chevron-right", "icon-sm") }}More details</summary>
     <div class="field">
       <label for="price_paid">Price paid ($)</label>
@@ -32,10 +32,6 @@
       {% if errors.price_paid %}<p class="field-error" role="alert">{{ errors.price_paid }}</p>{% endif %}
     </div>
     {{ date_field("opened_on", "Opened on", values.opened_on, errors.opened_on, clear="Not opened") }}
-    <div class="field">
-      <label for="printed_code">P code</label>
-      <input id="printed_code" name="printed_code" value="{{ values.printed_code or '' }}" inputmode="numeric" enterkeyhint="done" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="12" placeholder="259, stored as P259…">
-    </div>
     <div class="field">
       <label for="notes">Notes</label>
       <textarea id="notes" name="notes" rows="2" maxlength="500">{{ values.notes or '' }}</textarea>

@@ -3,8 +3,8 @@
     uv run python scripts/make_tip_fixtures.py
 
 Writes spec/tips/cases.json (layer recipes with the paint plan tips.ops() makes of them),
-spec/tips/random.json (what TipRandom draws for a few seeds) and spec/identifiers/gtin.json and
-printed.json (normalisation vectors). The Swift package must reproduce every value. It also writes
+spec/tips/random.json (what TipRandom draws for a few seeds) and spec/identifiers/gtin.json
+(normalisation vectors). The Swift package must reproduce every value. It also writes
 tests/fixtures/tip_svg_sha1.json, the pin on the SVG of every case (tests/test_tips_spec.py). Output
 is deterministic; the only thing that changes with the code is the `source` commit. Invented recipes
 and catalog fields only.
@@ -20,7 +20,7 @@ ROOT = Path(__file__).resolve().parents[1]
 SPEC = ROOT / "spec"
 sys.path.insert(0, str(ROOT / "src"))
 
-from polished import gtin, identifiers, tips  # noqa: E402
+from polished import gtin, tips  # noqa: E402
 from polished.tips import TipRandom, TipShade  # noqa: E402
 
 SEEDS = (0, 1, 7, 259, 2**32 + 5)
@@ -179,10 +179,6 @@ GTIN_INPUTS = (
     "10810170284127", "", "   ", "abc", "81017028412x", "8101702841", "81017028412011",
     "8101702841200123", "0000000000000", "036000291452", "١٢٣٤٥٦٧٨",
 )  # fmt: skip
-PRINTED_INPUTS = (
-    "259", "p259", "P259", " p 259 ", "P 0259", "ab12", "AB12345", "ABC12", "A", "P", "A123456",
-    "123456", "1", "hello", "", "  ", "p-259", "P25.9", "p259x", "é12", "Ａ12",
-)  # fmt: skip
 
 
 def gtin_vectors() -> dict:
@@ -190,16 +186,6 @@ def gtin_vectors() -> dict:
         "note": "normalise_gtin: whitespace removed, 8/12/13/14 digits with a valid GS1 check "
         "digit, 14 digits only with a leading 0; the result is the 13-digit form or null.",
         "vectors": [{"input": raw, "output": gtin.normalise_gtin(raw)} for raw in GTIN_INPUTS],
-    }
-
-
-def printed_vectors() -> dict:
-    return {
-        "note": "normalise_printed: whitespace removed, uppercased, all digits get the prefix P, "
-        "then one or two letters and one to five digits; otherwise null.",
-        "vectors": [
-            {"input": raw, "output": identifiers.normalise_printed(raw)} for raw in PRINTED_INPUTS
-        ],
     }
 
 
@@ -223,7 +209,6 @@ def generate() -> dict[Path, dict]:
         SPEC / "tips" / "cases.json": tip_cases(),
         SPEC / "tips" / "random.json": random_vectors(),
         SPEC / "identifiers" / "gtin.json": gtin_vectors(),
-        SPEC / "identifiers" / "printed.json": printed_vectors(),
         ROOT / "tests" / "fixtures" / "tip_svg_sha1.json": svg_pins(),
     }
 
