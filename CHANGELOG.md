@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.9.0](https://github.com/janpuc/polished/compare/v0.8.0...v0.9.0) (2026-10-28)
+
+
+### Features
+
+* **app:** builder v2 (lifted slot on the ring, compact layer rows with a coats popover, wiggle to reorder), P codes removed from the app ([db5abe9](https://github.com/janpuc/polished/commit/db5abe9a7b6f94d70c640332194b00f18abec4ce))
+* **app:** reliable wiggle to reorder (UIKit long press over the layers, Arrange button), tilt light (Core Motion, Metal shader, gated), matte stays still ([40f5978](https://github.com/janpuc/polished/commit/40f5978cbde3cb7cb97a890124ac04f4f893b760))
+* **app:** the builder opens at once on the saved layers, adds layers optimistically, remembers the picker and closes without waiting ([4ae11d3](https://github.com/janpuc/polished/commit/4ae11d3f92da62d46a4e6b639e32e7caa6592e2a))
+
 ## [0.8.0](https://github.com/janpuc/polished/compare/v0.7.0...v0.8.0) (2026-10-28)
 
 
