@@ -18,11 +18,39 @@ public enum PickScope: String, Sendable, CaseIterable, Identifiable {
     }
 }
 
+/// What the wheel page already has of the slot, to open the builder on before the server answers:
+/// the wheel and the slot's tile (the saved layers, which a new draft copies).
+public struct BuilderPreview: Sendable {
+    public var wheel: StackWheel
+    public var tile: Tile
+
+    public init(wheel: StackWheel, tile: Tile) {
+        self.wheel = wheel
+        self.tile = tile
+    }
+}
+
+/// Keeps the picker's last answer per scope while the app runs, so a builder opened again shows the
+/// shades at once and refreshes them quietly (the response cache is emptied by every wheel write,
+/// opening a draft included). Only the unsearched list is kept.
+@MainActor
+public final class PickMemory {
+    private var picks: [PickScope: Pick] = [:]
+
+    public init() {}
+
+    public subscript(scope: PickScope) -> Pick? {
+        get { picks[scope] }
+        set { picks[scope] = newValue }
+    }
+}
+
 /// The layer builder for one slot (docs/NATIVE.md 5.2, docs/DESIGN.md 10): the draft stack the
-/// server holds, and the picker that adds to it. Coats, moves and removals apply at once and are
-/// sent in order; the server's answer replaces the sheet only when no edit is still waiting, so
-/// three quick taps on + never bounce back to the first answer. Adding a layer and the three
-/// templates wait for the server (a new layer's id is the server's).
+/// server holds, and the picker that adds to it. The builder opens on the slot's saved layers from
+/// the wheel page while the draft is being opened; every edit (a new layer, a coat, a move, a
+/// removal) applies at once and is sent in order once the draft is known, and the server's answer
+/// replaces the sheet only when no edit is still waiting, so three quick taps on + never bounce back
+/// to the first answer. The three templates wait for the server (it computes what they add).
 @MainActor
 @Observable
 public final class BuilderModel {
@@ -32,16 +60,20 @@ public final class BuilderModel {
 
     public let wheelID: Int
     public let position: Int
-    /// The swatch being built; nil until the draft is open.
+    /// The swatch being built: the slot's saved layers until the draft answers (nil for a slot that
+    /// has a draft already, whose layers only the server knows).
     public private(set) var sheet: StackSheet?
+    /// The server's stack id of the draft; nil until the draft is open.
+    public private(set) var draftID: Int?
     /// The draft was there already ("Resumed your draft").
     public private(set) var resumed = false
+    /// The background cancel of `discard()`: the slot opened again waits for it, or the draft it
+    /// opens would be the one being thrown away.
+    @ObservationIgnored public private(set) var discarding: Task<Void, Never>?
     /// Why the draft could not be opened.
     public private(set) var openError: APIError?
     /// A sentence under the layers: a refused edit, or what a template found.
     public private(set) var notice: String?
-    /// The shade whose + is waiting for the server.
-    public private(set) var adding: Int?
 
     /// Haptic triggers (docs/NATIVE.md 5.8): a layer or a coat changed, an edit was refused, the
     /// server said "nothing" to a template.
@@ -57,15 +89,38 @@ public final class BuilderModel {
 
     @ObservationIgnored private let api: any PolishedAPI
     @ObservationIgnored private let writes: WriteCoordinator
+    @ObservationIgnored private let memory: PickMemory
     @ObservationIgnored private var waiting = 0
     @ObservationIgnored private var tail: Task<Void, Never>?
     @ObservationIgnored private var opening: Task<Void, Never>?
+    /// Bumped when the queued edits no longer fit the draft; edits queued before it are dropped.
+    @ObservationIgnored private var epoch = 0
+    /// The ids the sheet shows that are not the draft's yet: the saved layers' (the draft copies
+    /// them) and the layers added before their answer.
+    @ObservationIgnored private var draftIDs: [Int: Int] = [:]
+    @ObservationIgnored private var previewIDs: [Int] = []
+    @ObservationIgnored private var provisionalCount = 0
 
-    public init(wheelID: Int, position: Int, api: any PolishedAPI, writes: WriteCoordinator) {
+    public init(
+        wheelID: Int, position: Int, api: any PolishedAPI, writes: WriteCoordinator,
+        preview: BuilderPreview? = nil, pickMemory: PickMemory = PickMemory(), after earlier: Task<Void, Never>? = nil
+    ) {
         self.wheelID = wheelID
         self.position = position
         self.api = api
         self.writes = writes
+        memory = pickMemory
+        // A cancelled builder's draft is thrown away first (`discard()`), or this one would open it.
+        tail = earlier
+        pick = pickMemory[.owned]
+        // A slot with a draft shows the draft's layers, which the tile does not carry.
+        if let preview, !preview.tile.hasDraft {
+            let layers = preview.tile.layers
+            previewIDs = layers.map(\.id)
+            sheet = StackSheet(
+                stackId: preview.tile.stackId ?? 0, wheel: preview.wheel, position: position, layers: layers,
+                summary: Self.summary(of: layers), full: layers.count >= Self.maxLayers, tip: layers.map(\.tip))
+        }
     }
 
     public var layers: [Layer] { sheet?.layers ?? [] }
@@ -74,47 +129,78 @@ public final class BuilderModel {
 
     // MARK: Opening
 
-    /// Opens the slot's draft: the saved layers copied, or the draft that was left there.
+    /// Opens the slot's draft: the saved layers copied, or the draft that was left there. The sheet
+    /// shows the saved layers meanwhile and edits wait in the queue; returns when the answer is in.
     public func open() async {
-        guard sheet == nil else { return }
         // Two views asking at once share one request: a second POST would answer "resumed".
-        if let opening {
-            await opening.value
-            return
-        }
-        openError = nil
-        let task = Task { @MainActor [self] in
-            do {
-                let opened = try await writes.perform(.openDraft(wheelID: wheelID, position: position), affecting: .wheels)
-                sheet = opened
-                resumed = opened.resumed ?? false
-            } catch let error as APIError {
-                openError = error
-            } catch {
-                openError = .offline
+        if opening == nil, draftID == nil {
+            openError = nil
+            opening = enqueue(always: true) { [self] in
+                await openDraft()
+                opening = nil
             }
-            opening = nil
         }
-        opening = task
-        await task.value
+        await opening?.value
+    }
+
+    private func openDraft() async {
+        do {
+            let opened = try await writes.perform(.openDraft(wheelID: wheelID, position: position), affecting: .wheels)
+            take(opened)
+        } catch {
+            openError = error as? APIError ?? .offline
+            // Nothing queued behind it can be sent; the retry opens the sheet from the server.
+            epoch += 1
+            sheet = nil
+        }
+    }
+
+    /// The draft's answer: its id for the edits behind it, and its layers if nothing is waiting on
+    /// the sheet.
+    private func take(_ opened: StackSheet) {
+        draftID = opened.stackId
+        resumed = opened.resumed ?? false
+        let showsSaved = !previewIDs.isEmpty || sheet != nil
+        // A draft that was there already (another phone) has other layers than the ones shown.
+        let differs = showsSaved && (resumed || opened.layers.count != previewIDs.count)
+        if !differs {
+            for (shown, real) in zip(previewIDs, opened.layers.map(\.id)) { draftIDs[shown] = real }
+        }
+        if waiting <= 1 || differs || sheet == nil {
+            if differs, waiting > 1 {
+                epoch += 1
+                notice = "This swatch had a draft already. Your first taps were not applied."
+            }
+            sheet = opened
+        } else {
+            sheet?.stackId = opened.stackId
+            sheet?.name = opened.name
+            sheet?.note = opened.note
+            sheet?.paintedOn = opened.paintedOn
+        }
+        previewIDs = []
     }
 
     // MARK: Layers
 
-    /// Paints `shade` on top. Waits for the server; the answer is the new sheet.
+    /// Paints `shade` on top at once; the server's answer follows.
     public func add(_ shade: ShadeRow) {
-        guard let sheet, adding == nil else { return }
+        guard sheet != nil else { return }
         guard !isFull else {
             refuse("A swatch holds up to \(Self.maxLayers) layers.")
             return
         }
         notice = nil
-        adding = shade.id
-        enqueue { [self] in
-            defer { adding = nil }
-            await send(.addLayer(stackID: sheet.stackId, shadeID: shade.id), edit: nil)
-            // Back to the owned shades, ready for the next layer (the web does the same).
-            query = ""
+        provisionalCount += 1
+        var tip = shade.tip
+        tip.coats = 1
+        let provisional = Layer(
+            id: -provisionalCount, ord: 0, shadeId: shade.id, title: shade.title, coats: 1, label: "", tip: tip)
+        apply { $0.layers.append(provisional) }
+        // Back to the owned shades, ready for the next layer (the web does the same).
+        query = ""
+        edit({ stackID, _ in Request<StackSheet>.addLayer(stackID: stackID, shadeID: shade.id) }) { [self] answer in
+            if let added = answer.layers.last { draftIDs[provisional.id] = added.id }
         }
     }
 
@@ -124,9 +210,10 @@ public final class BuilderModel {
         let coats = sheet.layers[index].coats + delta
         guard (Self.minCoats...Self.maxCoats).contains(coats) else { return }
         notice = nil
-        let stackID = sheet.stackId
         apply { $0.layers[index].coats = coats; $0.layers[index].tip.coats = coats }
-        enqueue { [self] in await send(.changeCoats(stackID: stackID, layerID: layer.id, delta: delta), edit: true) }
+        edit { stackID, serverID in
+            serverID(layer.id).map { Request<StackSheet>.changeCoats(stackID: stackID, layerID: $0, delta: delta) }
+        }
     }
 
     /// One place towards the base (`up`) or the top (`down`).
@@ -135,19 +222,19 @@ public final class BuilderModel {
         let other = up ? index - 1 : index + 1
         guard sheet.layers.indices.contains(other) else { return }
         notice = nil
-        let stackID = sheet.stackId
         apply { $0.layers.swapAt(index, other) }
-        enqueue { [self] in
-            await send(.moveLayer(stackID: stackID, layerID: layer.id, direction: up ? "up" : "down"), edit: true)
+        edit { stackID, serverID in
+            serverID(layer.id).map {
+                Request<StackSheet>.moveLayer(stackID: stackID, layerID: $0, direction: up ? "up" : "down")
+            }
         }
     }
 
     public func remove(_ layer: Layer) {
-        guard let sheet else { return }
+        guard sheet != nil else { return }
         notice = nil
-        let stackID = sheet.stackId
         apply { $0.layers.removeAll { $0.id == layer.id } }
-        enqueue { [self] in await send(.removeLayer(stackID: stackID, layerID: layer.id), edit: true) }
+        edit { stackID, serverID in serverID(layer.id).map { Request<StackSheet>.removeLayer(stackID: stackID, layerID: $0) } }
     }
 
     // MARK: Templates
@@ -165,10 +252,11 @@ public final class BuilderModel {
     }
 
     private func template(_ template: TemplateRequest) {
-        guard let sheet else { return }
+        guard sheet != nil else { return }
         notice = nil
         enqueue { [self] in
-            await send(.template(stackID: sheet.stackId, template), edit: nil) { [self] answer in
+            guard let draftID else { return }
+            await send(.template(stackID: draftID, template), edit: nil) { [self] answer in
                 switch answer.result {
                 case "already": notice = "Already over black."
                 case "unavailable": notice = "Over black isn\u{2019}t in the catalog."
@@ -189,17 +277,34 @@ public final class BuilderModel {
     /// (`empty_stack`, a `validation` on `painted_on`).
     public func save(name: String, note: String, paintedOn: String?) async throws -> SlotResult {
         await settle()
-        guard let sheet else { throw APIError.notFound }
+        guard let draftID else { throw openError ?? APIError.notFound }
         return try await writes.perform(
-            .saveStack(stackID: sheet.stackId, SaveStackRequest(name: name, note: note, paintedOn: paintedOn)),
+            .saveStack(stackID: draftID, SaveStackRequest(name: name, note: note, paintedOn: paintedOn)),
             affecting: .wheelChange)
     }
 
     /// Throws the draft away; the slot keeps its saved swatch.
     public func cancel() async throws -> SlotResult {
         await settle()
-        guard let sheet else { throw APIError.notFound }
-        return try await writes.perform(.cancelStack(stackID: sheet.stackId), affecting: .wheels)
+        guard let draftID else { throw openError ?? APIError.notFound }
+        return try await writes.perform(.cancelStack(stackID: draftID), affecting: .wheels)
+    }
+
+    /// Throws the draft away without keeping the sheet open for the network: the edits still on
+    /// their way go first, then the cancel, in the background. A failure is said under the wheel's
+    /// title; the draft is then still on the slot ("Resumed your draft.").
+    public func discard() {
+        discarding = Task { @MainActor [self] in
+            await settle()
+            guard draftID != nil else { return }
+            do {
+                _ = try await cancel()
+            } catch APIError.notFound, APIError.conflict {
+                // The draft is gone already.
+            } catch {
+                writes.show("Couldn\u{2019}t throw the draft away. It is still on slot \(position).", kind: .failure)
+            }
+        }
     }
 
     /// Removes the saved swatch of the slot, and any draft with it.
@@ -213,9 +318,13 @@ public final class BuilderModel {
     /// Loads the rows for `query` and `scope`; a failure keeps the rows that were there.
     public func refreshPicker() async {
         let words = query.trimmingCharacters(in: .whitespaces)
+        let scope = scope
+        // The last list of this scope shows while the new one is on its way.
+        if words.isEmpty, let remembered = memory[scope] { pick = remembered }
         do {
             let loaded = try await api.get(.pick(q: words, scope: scope.rawValue))
-            guard words == query.trimmingCharacters(in: .whitespaces) else { return }
+            if words.isEmpty { memory[scope] = loaded }
+            guard words == query.trimmingCharacters(in: .whitespaces), scope == self.scope else { return }
             pick = loaded
             pickFailed = false
         } catch is CancellationError {
@@ -247,14 +356,37 @@ public final class BuilderModel {
         edits += 1
     }
 
-    private func enqueue(_ work: @escaping @MainActor () async -> Void) {
+    /// Runs `work` after everything queued before it. Work queued before the draft turned out to
+    /// differ from the sheet is dropped (`always` keeps the opening itself).
+    @discardableResult
+    private func enqueue(always: Bool = false, _ work: @escaping @MainActor () async -> Void) -> Task<Void, Never> {
         waiting += 1
         let earlier = tail
-        tail = Task { @MainActor [self] in
+        let queuedIn = epoch
+        let task = Task { @MainActor [self] in
             await earlier?.value
-            await work()
+            if always || queuedIn == epoch { await work() }
             waiting -= 1
         }
+        tail = task
+        return task
+    }
+
+    /// Queues an edit that is on the sheet already. `request` builds it once the draft is known,
+    /// with the draft's id for a layer the sheet shows (nil when that layer never reached the draft).
+    private func edit(
+        _ request: @escaping @MainActor (_ stackID: Int, _ draftLayerID: (Int) -> Int?) -> Request<StackSheet>?,
+        then: @escaping @MainActor (StackSheet) -> Void = { _ in }
+    ) {
+        enqueue { [self] in
+            guard let draftID, let built = request(draftID, { [self] in draftLayerID(for: $0) }) else { return }
+            await send(built, edit: true, then: then)
+        }
+    }
+
+    private func draftLayerID(for shown: Int) -> Int? {
+        if let real = draftIDs[shown] { return real }
+        return shown > 0 ? shown : nil
     }
 
     /// Waits for every queued edit.
@@ -276,7 +408,7 @@ public final class BuilderModel {
         } catch {
             failures += 1
             notice = Self.sentence(for: error)
-            if waiting <= 1, let id = sheet?.stackId, let reloaded = try? await api.get(.stack(id: id)) {
+            if waiting <= 1, let id = draftID, let reloaded = try? await api.get(.stack(id: id)) {
                 sheet = reloaded
             }
         }

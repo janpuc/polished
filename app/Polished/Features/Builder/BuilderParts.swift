@@ -347,16 +347,10 @@ struct PickRow: View {
                     .lineLimit(1)
                 }
                 Spacer(minLength: 8)
-                ZStack {
-                    if model.adding == shade.id {
-                        ProgressView()
-                    } else {
-                        Image(systemName: "plus")
-                            .font(.body.weight(.semibold))
-                            .foregroundStyle(Color.ink)
-                    }
-                }
-                .frame(width: 36, height: 36)
+                Image(systemName: "plus")
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(Color.ink)
+                    .frame(width: 36, height: 36)
                 .background(Color.fill, in: Circle())
             }
             .padding(.horizontal, 14)

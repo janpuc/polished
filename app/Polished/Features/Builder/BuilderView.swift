@@ -58,31 +58,23 @@ struct BuilderView: View {
                 // The head stays put: the composite and the summary answer every tap, wherever the
                 // list below has been scrolled to, and a refusal is said where it is seen.
                 if horizontalSizeClass == .regular { inspectorBar }
-                if let sheet = model.sheet {
-                    VStack(alignment: .leading, spacing: 10) {
-                        head(sheet)
-                        notice
-                    }
-                    .padding(.horizontal, 16)
-                    .padding(.bottom, 12)
-                    .contentShape(Rectangle())
-                    .onTapGesture { if arranging { arrangement.done() } }
-                    Divider()
+                VStack(alignment: .leading, spacing: 10) {
+                    head(model.sheet)
+                    notice
                 }
+                .padding(.horizontal, 16)
+                .padding(.bottom, 12)
+                .contentShape(Rectangle())
+                .onTapGesture { if arranging { arrangement.done() } }
+                Divider()
                 ScrollViewReader { scroll in
                     ScrollView {
                         VStack(alignment: .leading, spacing: 22) {
-                            if model.sheet != nil {
-                                layersSection
-                                templates
-                                picker(scroll)
-                                details
-                                if target.saved { removeSwatch }
-                            } else if let failure = model.openError {
-                                LoadFailure(error: failure) { Task { await model.open() } }
-                            } else {
-                                ProgressView().frame(maxWidth: .infinity).padding(.top, 80)
-                            }
+                            layersSection
+                            templates
+                            picker(scroll)
+                            details
+                            if target.saved { removeSwatch }
                         }
                         .padding(.horizontal, 16)
                         .padding(.top, 16)
@@ -117,7 +109,7 @@ struct BuilderView: View {
             }
         }
         .task { await model.open() }
-        .onChange(of: model.sheet?.stackId, initial: true) { loadFields() }
+        .onChange(of: model.draftID, initial: true) { loadFields() }
         .onChange(of: save.error) { openDetailsForErrors() }
         // Moves while arranging have the drop's own haptic.
         .sensoryFeedback(.impact(weight: .light), trigger: model.edits) { _, _ in !arranging }
@@ -166,8 +158,8 @@ struct BuilderView: View {
     }
 
     private var cancelButton: some View {
-        Button("Cancel") { Task { await cancel() } }
-            .disabled(save.isRunning || model.sheet == nil)
+        Button("Cancel") { cancel() }
+            .disabled(save.isRunning)
             .accessibilityIdentifier("builder-cancel")
             .accessibilityHint("Throws this draft away")
     }
@@ -184,8 +176,10 @@ struct BuilderView: View {
 
     // MARK: Head
 
-    private func head(_ sheet: StackSheet) -> some View {
-        let recipe = sheet.tip.isEmpty ? nil : TipRecipe(tips: sheet.tip)
+    private func head(_ sheet: StackSheet?) -> some View {
+        let recipe = sheet.flatMap { $0.tip.isEmpty ? nil : TipRecipe(tips: $0.tip) }
+        let summary = sheet?.summary ?? ""
+        let waiting = sheet == nil && model.openError == nil
         return HStack(alignment: .center, spacing: 18) {
             ZStack {
                 // The composite is drawn again from the layers' recipes on every change and fades
@@ -210,14 +204,14 @@ struct BuilderView: View {
                         .foregroundStyle(Color.ink2)
                         .accessibilityIdentifier("builder-resumed")
                 }
-                Text(sheet.summary.isEmpty ? "Nothing painted yet" : sheet.summary)
+                Text(waiting ? "Opening the slot\u{2026}" : summary.isEmpty ? "Nothing painted yet" : summary)
                     .font(.subheadline.weight(.medium))
-                    .foregroundStyle(sheet.summary.isEmpty ? Color.ink3 : Color.ink)
+                    .foregroundStyle(summary.isEmpty ? Color.ink3 : Color.ink)
                     .lineLimit(3)
                     .fixedSize(horizontal: false, vertical: true)
                     .padding(.top, 4)
                     .contentTransition(.opacity)
-                    .animation(.smooth(duration: 0.2), value: sheet.summary)
+                    .animation(.smooth(duration: 0.2), value: summary)
                     .accessibilityIdentifier("builder-summary")
             }
             Spacer(minLength: 0)
@@ -250,7 +244,12 @@ struct BuilderView: View {
     private var layersSection: some View {
         let layers = model.layers
         return VStack(alignment: .leading, spacing: 10) {
-            if layers.isEmpty {
+            if let failure = model.openError {
+                LoadFailure(error: failure) { Task { await model.open() } }
+            } else if model.sheet == nil {
+                // The slot has a draft whose layers only the server knows.
+                ProgressView().frame(maxWidth: .infinity, minHeight: 60)
+            } else if layers.isEmpty {
                 Text("Add the base first, or start from a template.")
                     .font(.subheadline)
                     .foregroundStyle(Color.ink2)
@@ -434,11 +433,12 @@ struct BuilderView: View {
     // MARK: Actions
 
     private func loadFields() {
-        guard let sheet = model.sheet, !loadedFields else { return }
+        guard model.draftID != nil, let sheet = model.sheet, !loadedFields else { return }
         loadedFields = true
-        name = sheet.name ?? ""
-        note = sheet.note ?? ""
-        paintedOn = sheet.paintedOn ?? app.day.today()
+        // Typed before the draft answered: kept.
+        if name.isEmpty { name = sheet.name ?? "" }
+        if note.isEmpty { note = sheet.note ?? "" }
+        paintedOn = paintedOn ?? sheet.paintedOn ?? app.day.today()
         showsDetails = !name.isEmpty || !note.isEmpty
     }
 
@@ -456,18 +456,12 @@ struct BuilderView: View {
         onFinish(.saved(result))
     }
 
-    private func cancel() async {
+    /// The sheet closes at once; the draft is thrown away in the background.
+    private func cancel() {
         searchFocused = false
         arrangement.done()
-        if await save.run({ try await model.cancel() }) != nil {
-            onFinish(.cancelled)
-            return
-        }
-        // A draft that is gone already has nothing left to cancel.
-        switch save.error {
-        case .notFound?, .conflict?: onFinish(.cancelled)
-        default: break
-        }
+        model.discard()
+        onFinish(.cancelled)
     }
 
     private func remove() async {

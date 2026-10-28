@@ -8,6 +8,16 @@ public struct Layer: Codable, Sendable, Hashable, Identifiable {
     public var coats: Int
     public var label: String
     public var tip: Tip
+
+    public init(id: Int, ord: Int, shadeId: Int, title: String, coats: Int, label: String, tip: Tip) {
+        self.id = id
+        self.ord = ord
+        self.shadeId = shadeId
+        self.title = title
+        self.coats = coats
+        self.label = label
+        self.tip = tip
+    }
 }
 
 /// One slot of a wheel.
@@ -23,6 +33,21 @@ public struct Tile: Codable, Sendable, Hashable, Identifiable {
     public var note: String?
 
     public var id: Int { position }
+
+    public init(
+        position: Int, filled: Bool, hasDraft: Bool = false, stackId: Int? = nil, draftStackId: Int? = nil,
+        summary: String = "", layers: [Layer] = [], paintedOn: String? = nil, note: String? = nil
+    ) {
+        self.position = position
+        self.filled = filled
+        self.hasDraft = hasDraft
+        self.stackId = stackId
+        self.draftStackId = draftStackId
+        self.summary = summary
+        self.layers = layers
+        self.paintedOn = paintedOn
+        self.note = note
+    }
 
     /// What the slot shows: the layers' tips in order; nil for an empty or draft-only slot.
     public var layerTips: [Tip] { layers.map(\.tip) }
@@ -85,6 +110,12 @@ public struct StackWheel: Codable, Sendable, Hashable {
     public var id: Int
     public var slug: String
     public var name: String
+
+    public init(id: Int, slug: String, name: String) {
+        self.id = id
+        self.slug = slug
+        self.name = name
+    }
 }
 
 /// `GET /stacks/{id}`: the swatch being built, or a saved one's layers.
@@ -103,6 +134,25 @@ public struct StackSheet: Codable, Sendable, Hashable {
     public var resumed: Bool?
     /// Only on the answer of a template: `added`, `already`, `unavailable`, `copied` or `nothing_saved`.
     public var result: String?
+
+    public init(
+        stackId: Int, wheel: StackWheel, position: Int, name: String? = nil, note: String? = nil,
+        paintedOn: String? = nil, layers: [Layer], summary: String, full: Bool, tip: [Tip],
+        resumed: Bool? = nil, result: String? = nil
+    ) {
+        self.stackId = stackId
+        self.wheel = wheel
+        self.position = position
+        self.name = name
+        self.note = note
+        self.paintedOn = paintedOn
+        self.layers = layers
+        self.summary = summary
+        self.full = full
+        self.tip = tip
+        self.resumed = resumed
+        self.result = result
+    }
 }
 
 public struct CopySource: Codable, Sendable, Hashable, Identifiable {

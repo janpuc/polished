@@ -23,6 +23,8 @@ final class AppModel {
     /// The household's time zone from `/me`, which decides what "today" is for dates the server
     /// checks; the phone's until it arrives.
     private(set) var day = HouseholdDay()
+    /// The builder's picker lists from the last time, shown at once (docs/NATIVE.md 8, run 9).
+    let pickMemory = PickMemory()
     /// The wheel's layer builder is up beside the ring; a split view gives its sidebar column back.
     var builderIsOpen = false
     /// The NFC stickers (a fake one in a Debug build launched with `-nfc`).

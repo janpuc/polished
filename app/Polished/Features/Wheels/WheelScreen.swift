@@ -17,6 +17,8 @@ struct WheelScreen: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var wheel = Resource<WheelDetail>()
     @State private var builder: BuilderTarget?
+    /// The builder closed last with Cancel, whose draft may still be on its way out.
+    @State private var closing: BuilderModel?
     @State private var sheet: WheelSheet?
     /// The slot that was just saved: its tile gets the sweep once the builder has closed.
     @State private var swept: SweptSlot?
@@ -106,15 +108,20 @@ struct WheelScreen: View {
 
     private func openBuilder(_ tile: Tile, in value: WheelDetail) {
         guard builder?.position != tile.position else { return }
-        builder = BuilderTarget(
-            position: tile.position, saved: tile.filled,
-            model: BuilderModel(wheelID: value.id, position: tile.position, api: app.api, writes: app.writes))
+        // The sheet shows the tile's layers at once; the draft opens in the background.
+        let model = BuilderModel(
+            wheelID: value.id, position: tile.position, api: app.api, writes: app.writes,
+            preview: BuilderPreview(wheel: StackWheel(id: value.id, slug: value.slug, name: value.name), tile: tile),
+            pickMemory: app.pickMemory, after: closing?.discarding)
+        builder = BuilderTarget(position: tile.position, saved: tile.filled, model: model)
+        Task { await model.open() }
     }
 
     /// The builder closed: a saved swatch gets its sweep once the sheet is gone, with the success
     /// haptic as it lands (docs/NATIVE.md 5.7, 5.8).
     private func finish(_ outcome: BuilderOutcome) {
         let removed = builder?.position
+        if case .cancelled = outcome { closing = builder?.model }
         builder = nil
         switch outcome {
         case .saved(let result):
