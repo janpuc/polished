@@ -23,7 +23,7 @@ cd "$ROOT/app"
 DEVICES="iphone,ipad,duo"
 SCHEMES="light,dark"
 DUO_ALSO=""
-FLOWS="SearchFlow,TabsFlow,HistoryFlow,DeepLinkFlow,ShadeDetailFlow,WheelFlow,WishlistFlow,SignInFlow,AddBottleFlow,BottleLevelFlow,WishlistWritesFlow,WheelDeleteFlow,TagFlow,TagStickerFlow,ScanTypedFlow,WearFlow,TipColourFlow,BuilderFlow,BuilderCopyFlow,BuilderResumeFlow"
+FLOWS="SearchFlow,TabsFlow,HistoryFlow,DeepLinkFlow,ShadeDetailFlow,WheelFlow,WishlistFlow,SignInFlow,AddBottleFlow,BottleLevelFlow,WishlistWritesFlow,WheelDeleteFlow,TagFlow,TagStickerFlow,ScanTypedFlow,WearFlow,TipColourFlow,BuilderFlow,BuilderReducedMotionFlow,BuilderCopyFlow,BuilderResumeFlow"
 while [ $# -gt 0 ]; do
   case "$1" in
     --devices) DEVICES="$2"; shift 2 ;;

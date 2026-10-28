@@ -46,16 +46,10 @@ struct ScanResultView: View {
                 .accessibilityLabel("Looking")
         case .match(let found):
             matchCard(found)
-        case .suggestion(let found):
-            suggestionCard(found)
         case .unknownCode(let code):
             unknown(
                 lead: "New barcode \(code). Which shade is it?", lede: "Pick it once and the next scan finds it.",
                 id: "scan-unknown-code")
-        case .unknownPrinted(let code):
-            unknown(
-                lead: "\(code) isn\u{2019}t on any bottle yet. Which shade is it?",
-                lede: "Pick the shade and the P code goes on the bottle you add.", id: "scan-unknown-printed")
         case .invalid(let text, let scanned):
             invalid(text: text, scanned: scanned)
         case .results(let query, let results):
@@ -84,7 +78,7 @@ struct ScanResultView: View {
                 .accessibilityIdentifier("scan-lead")
             ShadeCard(shade: found.shade, opensShade: !purpose.isLayer, close: close)
             HStack(spacing: 12) {
-                addButton(found.shade, printedCode: found.printedCode, title: purpose.actionTitle)
+                addButton(found.shade, title: purpose.actionTitle)
                 if found.identifierID != nil {
                     Button("This isn\u{2019}t it") { confirmsForget = found }
                         .buttonStyle(SecondaryButtonStyle())
@@ -92,26 +86,6 @@ struct ScanResultView: View {
                 }
             }
             GeneralError(message: scan.learnError)
-        }
-    }
-
-    private func suggestionCard(_ found: ScanFound) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Is it \(found.shade.title)?")
-                .font(.title3.weight(.semibold))
-                .foregroundStyle(Color.ink)
-                .accessibilityIdentifier("scan-suggestion")
-            Text("\(found.code) was \(found.shade.title) on a bottle you added before. A P code can differ between batches, so check the bottle.")
-                .font(.subheadline)
-                .foregroundStyle(Color.ink2)
-                .fixedSize(horizontal: false, vertical: true)
-            ShadeCard(shade: found.shade, opensShade: !purpose.isLayer, close: close)
-            addButton(
-                found.shade, printedCode: found.printedCode,
-                title: purpose.isLayer ? "Yes, add a layer" : "Yes, add a bottle")
-            SectionHeading(title: "Not that one? Pick the shade")
-                .padding(.top, 8)
-            LearnPicker(scan: scan)
         }
     }
 
@@ -182,11 +156,11 @@ struct ScanResultView: View {
 
     // MARK: Actions
 
-    private func addButton(_ shade: ShadeRow, printedCode: String?, title: String) -> some View {
+    private func addButton(_ shade: ShadeRow, title: String) -> some View {
         Button {
             switch purpose {
             case .bottle:
-                bottleSheet = .add(shade, printedCode: printedCode)
+                bottleSheet = .add(shade)
             case .layer(let pick):
                 pick(shade)
                 close()

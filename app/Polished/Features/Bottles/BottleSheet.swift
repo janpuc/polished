@@ -6,26 +6,25 @@ import SwiftUI
 
 /// Which bottle the sheet is for.
 enum BottleSheetMode: Identifiable {
-    /// `printedCode` rides into the form: a scan of a P code, which the bottle then carries.
-    case add(ShadeRow, printedCode: String? = nil)
+    case add(ShadeRow)
     case edit(Bottle, ShadeRow)
 
     var id: String {
         switch self {
-        case .add(let shade, _): "add-\(shade.id)"
+        case .add(let shade): "add-\(shade.id)"
         case .edit(let bottle, _): "edit-\(bottle.id)"
         }
     }
 
     var shade: ShadeRow {
         switch self {
-        case .add(let shade, _), .edit(_, let shade): shade
+        case .add(let shade), .edit(_, let shade): shade
         }
     }
 }
 
-/// Add bottle and Edit bottle: Level first, then Bought on, and the rest under More details (the
-/// P code is the lightest fact, docs/advice v3 4.3). Save awaits the server; a 422 puts its
+/// Add bottle and Edit bottle: Level first, then Bought on, and the rest under More details.
+/// Save awaits the server; a 422 puts its
 /// message under the field it names. Archive and Delete live at the foot of an edit.
 struct BottleSheet: View {
     let mode: BottleSheetMode
@@ -36,7 +35,6 @@ struct BottleSheet: View {
     @State private var state = BottleState.full
     @State private var boughtOn: String?
     @State private var price = ""
-    @State private var printedCode = ""
     @State private var openedOn: String?
     @State private var notes = ""
     @State private var showsMore = false
@@ -82,22 +80,6 @@ struct BottleSheet: View {
                         DateField(
                             title: "Opened on", iso: $openedOn, clearLabel: "Not opened", emptyText: "Not opened",
                             error: save.fieldErrors["opened_on"])
-                        VStack(alignment: .leading, spacing: 4) {
-                            HStack {
-                                Text("P code").foregroundStyle(Color.ink)
-                                Spacer(minLength: 12)
-                                TextField("259, stored as P259", text: $printedCode)
-                                    .multilineTextAlignment(.trailing)
-                                    .textInputAutocapitalization(.characters)
-                                    .autocorrectionDisabled()
-                                    .keyboardType(.numbersAndPunctuation)
-                                    .frame(maxWidth: 190)
-                                    .accessibilityIdentifier("printed-code")
-                                    .onChange(of: printedCode) { printedCode = String(printedCode.prefix(12)) }
-                            }
-                            .frame(minHeight: 44)
-                            FieldError(message: save.fieldErrors["printed_code"])
-                        }
                         VStack(alignment: .leading, spacing: 4) {
                             Text("Notes").foregroundStyle(Color.ink)
                             TextField("Where it came from, how it wears", text: $notes, axis: .vertical)
@@ -175,26 +157,21 @@ struct BottleSheet: View {
 
     private func load() {
         switch mode {
-        case .add(_, let printedCode):
+        case .add:
             boughtOn = app.day.today()
-            if let printedCode {
-                self.printedCode = printedCode
-                showsMore = true
-            }
         case .edit(let bottle, _):
             state = bottle.state
             boughtOn = bottle.boughtOn
             price = bottle.pricePaidCents.map(Entry.field(cents:)) ?? ""
-            printedCode = bottle.printedCode ?? ""
             openedOn = bottle.openedOn
             notes = bottle.notes ?? ""
-            showsMore = !price.isEmpty || !printedCode.isEmpty || openedOn != nil || !notes.isEmpty
+            showsMore = !price.isEmpty || openedOn != nil || !notes.isEmpty
         }
     }
 
     private func openMoreDetailsForErrors() {
         let fields = save.fieldErrors.keys
-        if fields.contains(where: { ["price_paid_cents", "opened_on", "printed_code", "notes"].contains($0) }) {
+        if fields.contains(where: { ["price_paid_cents", "opened_on", "notes"].contains($0) }) {
             showsMore = true
         }
     }
@@ -206,11 +183,6 @@ struct BottleSheet: View {
         if text.isEmpty { return (nil, true) }
         guard let value = Entry.cents(text) else { return (nil, false) }
         return (value, true)
-    }
-
-    private var trimmedCode: String? {
-        let code = printedCode.trimmingCharacters(in: .whitespaces)
-        return code.isEmpty ? nil : code
     }
 
     private var trimmedNotes: String? {
@@ -229,23 +201,21 @@ struct BottleSheet: View {
         }
         localPriceError = nil
         switch mode {
-        case .add(let shade, _):
+        case .add(let shade):
             let request = BottleRequest(
-                state: state, printedCode: trimmedCode, boughtOn: boughtOn, pricePaidCents: amount.value,
+                state: state, boughtOn: boughtOn, pricePaidCents: amount.value,
                 openedOn: openedOn, notes: trimmedNotes)
             guard
-                let created = await save.run({
+                await save.run({
                     try await app.writes.perform(.addBottle(shadeID: shade.id, request), affecting: .bottleChange)
-                })
+                }) != nil
             else { return }
-            tellWhatWasLearned(created.learned, shade: shade)
             app.arrive(shadeID: shade.id)
             dismiss()
             onAdded?()
         case .edit(let bottle, _):
             var patch = BottlePatch()
             patch.state = .set(state)
-            patch.printedCode = Patch(trimmedCode)
             patch.boughtOn = Patch(boughtOn)
             patch.pricePaidCents = Patch(amount.value)
             patch.openedOn = Patch(openedOn)
@@ -255,15 +225,6 @@ struct BottleSheet: View {
                     != nil
             else { return }
             dismiss()
-        }
-    }
-
-    private func tellWhatWasLearned(_ learned: LearnedCode?, shade: ShadeRow) {
-        guard let learned else { return }
-        if let previous = learned.previousShade {
-            app.writes.show("\(learned.code) already means \(previous.title). That match stays.", kind: .warning)
-        } else {
-            app.writes.show("Learned \(learned.code) for \(shade.title)")
         }
     }
 

@@ -29,6 +29,9 @@ struct BuilderTarget: Identifiable {
 struct BuilderView: View {
     let target: BuilderTarget
     let wheelName: String
+    /// The sheet's detent: the builder opens at `.medium` and asks for `.large` when the search
+    /// field is focused or the list is scrolled. Nil in the inspector, which has none.
+    var detent: Binding<PresentationDetent>?
     let onFinish: (BuilderOutcome) -> Void
 
     @Environment(AppModel.self) private var app
@@ -43,6 +46,7 @@ struct BuilderView: View {
     @State private var confirmsRemoval = false
     @State private var loadedFields = false
     @State private var showsScan = false
+    @State private var arranging = false
     @FocusState private var searchFocused: Bool
 
     private var model: BuilderModel { target.model }
@@ -60,6 +64,8 @@ struct BuilderView: View {
                     }
                     .padding(.horizontal, 16)
                     .padding(.bottom, 12)
+                    .contentShape(Rectangle())
+                    .onTapGesture { if arranging { arranging = false } }
                     Divider()
                 }
                 ScrollViewReader { scroll in
@@ -80,8 +86,16 @@ struct BuilderView: View {
                         .padding(.horizontal, 16)
                         .padding(.top, 16)
                         .padding(.bottom, 28)
+                        // A tap outside the layers ends arranging; the rows and controls keep their own taps.
+                        .frame(maxWidth: .infinity, minHeight: 700, alignment: .top)
+                        .contentShape(Rectangle())
+                        .onTapGesture { if arranging { arranging = false } }
                     }
                     .scrollDismissesKeyboard(.interactively)
+                    .scrollDisabled(arranging)
+                    .onScrollPhaseChange { _, phase in
+                        if phase == .interacting { detent?.wrappedValue = .large }
+                    }
                 }
             }
             .background(Color.board)
@@ -104,11 +118,13 @@ struct BuilderView: View {
         .task { await model.open() }
         .onChange(of: model.sheet?.stackId, initial: true) { loadFields() }
         .onChange(of: save.error) { openDetailsForErrors() }
-        .sensoryFeedback(.impact(weight: .light), trigger: model.edits)
+        // Moves while arranging have the drop's own haptic.
+        .sensoryFeedback(.impact(weight: .light), trigger: model.edits) { _, _ in !arranging }
         .sensoryFeedback(.error, trigger: model.failures)
         .sensoryFeedback(.warning, trigger: model.warnings)
         .sensoryFeedback(.error, trigger: save.error)
         .interactiveDismissDisabled(save.isRunning)
+        .onDisappear { arranging = false }
     }
 
     // MARK: Bar
@@ -237,21 +253,12 @@ struct BuilderView: View {
                     .foregroundStyle(Color.ink2)
                     .padding(.vertical, 6)
             } else {
-                VStack(spacing: 0) {
-                    ForEach(Array(layers.enumerated()), id: \.element.id) { index, layer in
-                        LayerRow(
-                            layer: layer, isFirst: index == 0, isLast: index == layers.count - 1, model: model
-                        )
-                        .transition(
-                            reduceMotion
-                                ? .opacity : .scale(scale: 0.94, anchor: .top).combined(with: .opacity))
-                    }
-                }
-                .groupCard()
-                .accessibilityIdentifier("builder-layers")
+                LayerStack(model: model, arranging: $arranging)
             }
         }
-        .animation(reduceMotion ? .easeOut(duration: 0.15) : .smooth(duration: 0.3), value: layers.map(\.id))
+        // A layer added or removed animates; a reorder is the hand's own (LayerStack settles it).
+        .animation(
+            reduceMotion ? .easeOut(duration: 0.15) : .smooth(duration: 0.3), value: layers.map(\.id).sorted())
     }
 
     // MARK: Templates
@@ -284,7 +291,7 @@ struct BuilderView: View {
                 Image(systemName: "magnifyingglass")
                     .foregroundStyle(Color.ink3)
                     .accessibilityHidden(true)
-                TextField("Search shades or a P code", text: $model.query)
+                TextField("Search shades", text: $model.query)
                     .focused($searchFocused)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
@@ -309,6 +316,7 @@ struct BuilderView: View {
             .id("picker")
             .onChange(of: searchFocused) {
                 if searchFocused {
+                    detent?.wrappedValue = .large
                     withAnimation(.smooth) { scroll.scrollTo("picker", anchor: .top) }
                 }
             }
@@ -337,14 +345,7 @@ struct BuilderView: View {
         let query = model.query.trimmingCharacters(in: .whitespaces)
         if let pick = model.pick {
             VStack(alignment: .leading, spacing: 0) {
-                if let found = pick.suggestion {
-                    Text(suggestionLead(query))
-                        .font(.footnote)
-                        .foregroundStyle(Color.ink2)
-                        .padding(.bottom, 6)
-                    PickRow(shade: found, model: model, marks: false)
-                        .groupCard()
-                } else if pick.items.isEmpty {
+                if pick.items.isEmpty {
                     emptyResults(query)
                 } else {
                     VStack(spacing: 0) {
@@ -362,7 +363,6 @@ struct BuilderView: View {
                     }
                 }
             }
-            .accessibilityIdentifier("builder-results")
         } else if model.pickFailed {
             Text("Couldn\u{2019}t load the shades. Check the connection.")
                 .font(.subheadline)
@@ -370,11 +370,6 @@ struct BuilderView: View {
         } else {
             ProgressView().frame(maxWidth: .infinity).padding(.vertical, 24)
         }
-    }
-
-    private func suggestionLead(_ query: String) -> String {
-        if let printed = Identifiers.normalisePrinted(query) { return "\(printed) was this on a bottle you added before:" }
-        return "That code is:"
     }
 
     @ViewBuilder
@@ -450,6 +445,7 @@ struct BuilderView: View {
 
     private func saveSwatch() async {
         searchFocused = false
+        arranging = false
         let trimmedName = name.trimmingCharacters(in: .whitespaces)
         let trimmedNote = note.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let result = await save.run({ try await model.save(name: trimmedName, note: trimmedNote, paintedOn: paintedOn) })
@@ -459,6 +455,7 @@ struct BuilderView: View {
 
     private func cancel() async {
         searchFocused = false
+        arranging = false
         if await save.run({ try await model.cancel() }) != nil {
             onFinish(.cancelled)
             return

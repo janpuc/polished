@@ -4,7 +4,7 @@ import PolishedModels
 import PolishedStore
 import SwiftUI
 
-/// The codes the app was taught: a barcode or P code and the shade it means, newest first. Swipe
+/// The codes the app was taught: a barcode and the shade it means, newest first. Swipe
 /// to forget one; the next scan of it asks again.
 struct LearnedCodesScreen: View {
     @Environment(AppModel.self) private var app
@@ -78,7 +78,6 @@ struct LearnedCodesScreen: View {
     private func label(_ code: Identifier) -> String {
         switch code.kind {
         case "gtin": "Barcode \(code.value)"
-        case "printed": code.value
         default: "SKU \(code.value)"
         }
     }

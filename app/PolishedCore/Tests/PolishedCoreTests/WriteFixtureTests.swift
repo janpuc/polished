@@ -39,9 +39,8 @@ private let writeFixtures: [WriteFixture] = [
         .addBottle(
             shadeID: 1,
             BottleRequest(
-                state: .half, printedCode: "321", boughtOn: "2026-10-20", pricePaidCents: 1550,
+                state: .half, boughtOn: "2026-10-20", pricePaidCents: 1550,
                 openedOn: "2026-10-24", notes: "From the pop-up"))),
-    .init("bottle_create_known_code.json", .addBottle(shadeID: 1, BottleRequest(state: .full, printedCode: "P259"))),
     .init("bottle_update.json", .updateBottle(id: 7, patch)),
     .init("bottle_delete.json", .deleteBottle(id: 7)),
     .init("wishlist_add.json", .wish(shadeID: 1, priority: 2)),
@@ -62,7 +61,7 @@ private let writeFixtures: [WriteFixture] = [
     .init("wheel_slug_regenerate.json", .regenerateTag(wheelID: 3)),
     .init("wheel_slug_take.json", .takeTag(wheelID: 3, from: 2)),
     .init("identifier_learn.json", .learn(LearnRequest(kind: "gtin", value: "5901234123457", shadeId: 1))),
-    .init("identifier_forget.json", .forgetCode(id: 4)),
+    .init("identifier_forget.json", .forgetCode(id: 2)),
     .init("sync_run.json", .runSync()),
     .init("slot_draft.json", .openDraft(wheelID: 3, position: 3)),
     .init("slot_draft_new.json", .openDraft(wheelID: 3, position: 4)),
@@ -90,8 +89,9 @@ private var patch: BottlePatch {
     return patch
 }
 
-/// The write fixtures that belong to the sign-in, which is device-only.
-private let laterFixtures: Set<String> = ["auth_exchange.json"]
+/// The write fixtures that belong to the sign-in, which is device-only, and the one a build from
+/// before P codes were retired would send (the app no longer sends a `printed_code`).
+private let laterFixtures: Set<String> = ["auth_exchange.json", "bottle_create_legacy_printed_code.json"]
 
 @Suite("Write fixtures")
 struct WriteFixtureTests {
@@ -126,13 +126,15 @@ struct WriteFixtureTests {
         #expect(Request<Bottle>.updateBottle(id: 3, BottlePatch()).body.map { String(decoding: $0, as: UTF8.self) } == "{}")
     }
 
-    @Test("a created bottle says what was learned")
-    func learnedCodes() throws {
-        let fresh = try APICoding.makeDecoder().decode(BottleCreated.self, from: recording("bottle_create.json").bodyData)
-        #expect(fresh.learned?.code == "P321")
-        #expect(fresh.learned?.previousShade == nil)
-        let known = try APICoding.makeDecoder().decode(BottleCreated.self, from: recording("bottle_create_known_code.json").bodyData)
-        #expect(known.learned?.previousShade?.title == "Spirit Fingers")
+    @Test("a bottle the server created from a legacy printed_code body decodes without one")
+    func legacyPrintedCode() throws {
+        let created = try APICoding.makeDecoder().decode(
+            BottleCreated.self, from: recording("bottle_create_legacy_printed_code.json").bodyData)
+        #expect(created.bottle.id == 8)
+        let request = Request<BottleCreated>.addBottle(shadeID: 1, BottleRequest(state: .full))
+        let data = try #require(request.body)
+        let body = try #require(JSONSerialization.jsonObject(with: data) as? NSDictionary)
+        #expect(body["printed_code"] == nil)
     }
 
     @Test("a 422 lists every wrong field")

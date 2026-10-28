@@ -14,12 +14,20 @@ struct WheelScreen: View {
     var highlight: Int?
     @Environment(AppModel.self) private var app
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var wheel = Resource<WheelDetail>()
     @State private var builder: BuilderTarget?
     @State private var sheet: WheelSheet?
     /// The slot that was just saved: its tile gets the sweep once the builder has closed.
     @State private var swept: SweptSlot?
     @State private var saves = 0
+    /// The room above the builder's sheet: the screen's height and the bars above the page, to size the ring to it.
+    @State private var page = PageMetrics()
+
+    private struct PageMetrics: Equatable {
+        var screenHeight: CGFloat = 0
+        var barsHeight: CGFloat = 0
+    }
 
     private struct SweptSlot: Equatable {
         var position: Int
@@ -32,8 +40,23 @@ struct WheelScreen: View {
     }
 
     var body: some View {
+        ScrollViewReader { page in
+            scroll
+                .onChange(of: builder?.position) { _, position in
+                    guard horizontalSizeClass != .regular else { return }
+                    // The sheet opens over the lower half: the ring comes up under the bar, so the slot
+                    // being edited stays in sight above it, and goes back when the builder closes.
+                    withAnimation(.smooth(duration: 0.35)) {
+                        page.scrollTo(position == nil ? "top" : "ring", anchor: .top)
+                    }
+                }
+        }
+    }
+
+    private var scroll: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
+                Color.clear.frame(height: 0).id("top")
                 if wheel.isOffline { OfflineLine().padding(.horizontal, -16) }
                 if let value = wheel.value {
                     content(value)
@@ -50,6 +73,11 @@ struct WheelScreen: View {
             .frame(maxWidth: .infinity)
         }
         .background(Color.board)
+        .onGeometryChange(for: PageMetrics.self) { proxy in
+            PageMetrics(
+                screenHeight: proxy.size.height + proxy.safeAreaInsets.top + proxy.safeAreaInsets.bottom,
+                barsHeight: proxy.safeAreaInsets.top)
+        } action: { page = $0 }
         .navigationTitle("")
         .toolbarTitleDisplayMode(.inline)
         .revalidating(wheel, .wheel(slug: slug))
@@ -110,6 +138,10 @@ struct WheelScreen: View {
                 .foregroundStyle(Color.ink)
                 .lineLimit(2)
                 .accessibilityAddTraits(.isHeader)
+                // The sheet's head names the wheel while the builder is open; the title would
+                // only slide under the bar.
+                .opacity(builder == nil || horizontalSizeClass == .regular ? 1 : 0)
+                .animation(.smooth(duration: 0.25), value: builder == nil)
             ViewThatFits(in: .horizontal) {
                 HStack(alignment: .top, spacing: 32) {
                     ring(value)
@@ -163,12 +195,30 @@ struct WheelScreen: View {
     private func ring(_ value: WheelDetail) -> some View {
         WheelRing(
             tiles: value.tiles, slotCount: value.slotCount, filled: value.filledCount, highlighted: highlight,
-            editing: builder?.position, sweeping: swept.map { ($0.position, $0.serial) }
+            editing: builder?.position, editingRecipe: draftRecipe, editingSummary: builder?.model.sheet?.summary,
+            sweeping: swept.map { ($0.position, $0.serial) }
         ) { tile in
             openBuilder(tile, in: value)
         }
         .frame(maxWidth: .infinity)
+        .scaleEffect(ringScale, anchor: .top)
+        .animation(.smooth(duration: 0.35), value: ringScale)
+        .id("ring")
         .accessibilityIdentifier("wheel-ring")
+    }
+
+    /// Under the builder's sheet the ring shrinks to fit between the bar and the sheet's top
+    /// edge (the middle detent, a little under half the screen), so every slot stays in view.
+    private var ringScale: CGFloat {
+        guard builder != nil, horizontalSizeClass != .regular, page.screenHeight > 0 else { return 1 }
+        let room = page.screenHeight * 0.475 - page.barsHeight - 20
+        return min(1, max(0.5, room / 362))
+    }
+
+    /// The draft in the open slot, painted as the builder has it.
+    private var draftRecipe: TipRecipe? {
+        guard let tips = builder?.model.sheet?.tip, !tips.isEmpty else { return nil }
+        return TipRecipe(tips: tips)
     }
 
     private func swatches(_ value: WheelDetail) -> some View {

@@ -40,13 +40,12 @@ extension Bottle {
         } else if let paid = pricePaidCents {
             parts.append("Paid \(Words.money(paid))")
         }
-        if parts.isEmpty, printedCode == nil { parts.append("Added \(Words.day(String(createdAt.prefix(10))) ?? "")") }
+        if parts.isEmpty { parts.append("Added \(Words.day(String(createdAt.prefix(10))) ?? "")") }
         return parts.joined(separator: ". ")
     }
 
     var spokenLabel: String {
-        var parts = [factsLine, state.label]
-        if let printedCode { parts.append(printedCode) }
+        let parts = [factsLine, state.label]
         return parts.filter { !$0.isEmpty }.joined(separator: ", ")
     }
 }

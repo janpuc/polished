@@ -30,18 +30,16 @@ extension KeyedEncodingContainer {
 /// `POST /shades/{id}/bottles`. Every field is optional; the level defaults to full on the server.
 public struct BottleRequest: Encodable, Sendable, Hashable {
     public var state: BottleState
-    public var printedCode: String?
     public var boughtOn: String?
     public var pricePaidCents: Int?
     public var openedOn: String?
     public var notes: String?
 
     public init(
-        state: BottleState = .full, printedCode: String? = nil, boughtOn: String? = nil,
+        state: BottleState = .full, boughtOn: String? = nil,
         pricePaidCents: Int? = nil, openedOn: String? = nil, notes: String? = nil
     ) {
         self.state = state
-        self.printedCode = printedCode
         self.boughtOn = boughtOn
         self.pricePaidCents = pricePaidCents
         self.openedOn = openedOn
@@ -52,7 +50,6 @@ public struct BottleRequest: Encodable, Sendable, Hashable {
 /// `PATCH /bottles/{id}`: any subset of the bottle's fields, `archived` included.
 public struct BottlePatch: Encodable, Sendable, Hashable {
     public var state: Patch<BottleState> = .keep
-    public var printedCode: Patch<String> = .keep
     public var boughtOn: Patch<String> = .keep
     public var pricePaidCents: Patch<Int> = .keep
     public var openedOn: Patch<String> = .keep
@@ -62,13 +59,12 @@ public struct BottlePatch: Encodable, Sendable, Hashable {
     public init() {}
 
     private enum CodingKeys: String, CodingKey {
-        case state, printedCode, boughtOn, pricePaidCents, openedOn, notes, archived
+        case state, boughtOn, pricePaidCents, openedOn, notes, archived
     }
 
     public func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(state, forKey: .state)
-        try container.encode(printedCode, forKey: .printedCode)
         try container.encode(boughtOn, forKey: .boughtOn)
         try container.encode(pricePaidCents, forKey: .pricePaidCents)
         try container.encode(openedOn, forKey: .openedOn)
@@ -77,17 +73,9 @@ public struct BottlePatch: Encodable, Sendable, Hashable {
     }
 }
 
-/// What the server learned from a P code on a new bottle: `previousShade` is nil when the code was
-/// new, else the shade it already meant (that match stays).
-public struct LearnedCode: Codable, Sendable, Hashable {
-    public var code: String
-    public var previousShade: ShadeRow?
-}
-
 /// `POST /shades/{id}/bottles` (201).
 public struct BottleCreated: Codable, Sendable, Hashable {
     public var bottle: Bottle
-    public var learned: LearnedCode?
 }
 
 // MARK: Wishlist
@@ -310,8 +298,8 @@ public struct SlotResult: Codable, Sendable, Hashable {
 
 // MARK: Identifiers
 
-/// `POST /identifiers`: teach the server that a code is a shade. `kind` is "gtin" (the 13-digit
-/// form) or "printed" (a P code).
+/// `POST /identifiers`: teach the server that a barcode is a shade. `kind` is "gtin" (the 13-digit
+/// form).
 public struct LearnRequest: Encodable, Sendable, Hashable {
     public var kind: String
     public var value: String

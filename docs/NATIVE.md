@@ -288,7 +288,7 @@ Rules: never branch on the device model; read `horizontalSizeClass` and the cont
 | Wishlist | head: "$78.50 for 5 shades in stock", Open in Holo Taco checkout (filled; opens `SFSafariViewController`), Copy list, I bought these; include segmented; rows by priority with swipe actions (priority menu, remove) | rows left; the bought flow as an inspector |
 | Wheels | title + `+` (sheet: name, slot count stepper 1–40), cards with mini rings, archived in a collapsed section | 2 or 4 column grid; detail column holds the wheel |
 | Wheel | ring, Swatches list, foot: Tag and QR, Rename, Archive, Delete (red) | ring + builder side by side (`ArrangementView` on Duo, `HStack` elsewhere) |
-| Builder | sheet, detents `.medium` + `.large`, opens at `.large`, background interaction up through `.medium` | inspector 360–400 pt (iPad), fold pane (Duo) |
+| Builder | sheet, detents `.medium` + `.large`, opens at `.medium` (the ring stays in view, the page scrolls and the ring shrinks to fit above the sheet); focusing the search field or scrolling the list sets `.large`; adding a layer never changes the detent; background interaction up through `.medium` | inspector 360–400 pt (iPad), fold pane (Duo) |
 | Scan | full-screen cover: VisionKit view, framing guide, torch, Close, a text field "Type the digits or a name" under it, result card, Learned codes link | centred 480 pt viewfinder, result beside from 1000 pt |
 | Tag | QR 216 pt on `Surface` radius 20, the address with Copy, **Write to sticker** (filled; hidden on iPad and under "Designed for iPad"), Check the sticker, Move the tag (New tag URL, Take the tag of…), last written date | same, "Write it from your iPhone" lede when NFC is unavailable |
 | Settings | (More on compact: the Home mark and the sidebar foot) Signed in as, Server, Devices, Catalog sync (status, Sync now), Learned codes, Add a shade by hand, Sign out, version | a sheet `presentationSizing(.form)` |
@@ -342,33 +342,53 @@ Wheel ring + builder, iPad 13" landscape:
 ```
 │ ▌Polished     │ Holos                                           [Tag] [⋯] │ Slot 12                 Cancel  Save │
 │  ⌂ Home       │                                                           │ ▐▓▓▓▌ One-Coat Black + Flakie Holo…  │
-│  ◊ Shades     │               ( ring radius 150, slots 44×72 )            │ Base  ▐▓▌ One-Coat Black   − 1 +  ↑↓ × │
-│  ▯ Bottles    │                       ◌ 14                                │ Top   ▐▓▌ Flakie Holo Taco − 1 +  ↑↓ × │
-│  ◎ Wheels     │                      of 20                                │ [Over black] [Copy from…] [Same as last]│
+│  ◊ Shades     │               ( ring radius 150, slots 44×72 )            │ ▐▓▌ One-Coat Black                      │
+│  ▯ Bottles    │                       ◌ 12                                │ ▐▓▌ Flakie Holo Taco               ×2   │
+│  ◎ Wheels     │                      slot                                 │ [Over black] [Copy from…] [Same as last]│
 │  ♡ Wishlist   │ Swatches                                                  │ [ ⌕ Search shades                   ] [▣] │
 │               │  12 ▐▓▌ One-Coat Black + Flakie Holo Taco      20 Oct     │ (Owned) (Toppers) (All)                 │
 │  ⚙ Settings   │  13 ▐▓▌ Spirit Fingers ×2                                 │  ▐▓▌ Spirit Fingers            glitter + │
 │               │ Tag and QR · Rename · Archive · Delete                    │  ▐▓▌ Thirst Trap                creme  + │
 ```
 
-Builder sheet, iPhone (detent `.large`; at `.medium` only the head and the layers show, the ring behind stays tappable):
+Builder sheet, iPhone (opens at `.medium`: only the head, the layers and the search field show, and the ring behind stays in view and tappable; the search field or a scroll goes to `.large`):
 ```
+(ring behind: slot 11 lifted with the live composite, the rest dimmed, the hub "11 slot")
 ━━
-▐▓▓▓▌  Slot 12                                        Cancel
-▐▓▓▓▌  Holos · Resumed your draft                           ← tip-xl composite, live light
-▐▓▓▓▌  One-Coat Black + Flakie Holo Taco
-Base  ▐▓▌ One-Coat Black        −  1  +     ↑ ↓   ×
-Top   ▐▓▌ Flakie Holo Taco      −  1  +     ↑ ↓   ×        ← 2 pt rail through the tips
+          Cancel                                      Save swatch
+▐▓▓▓▌  Slot 11
+▐▓▓▓▌  Holos
+▐▓▓▓▌  One-Coat Black + Flakie Holo Taco ×2                 ← tip-l composite, live light
+Hold a layer to rearrange                                   ← "Drag to reorder" + (Done) while arranging
+┌─────────────────────────────────────┐
+│ ▐▓▌ One-Coat Black                  │   52 pt rows on a 2 pt rail through the tips
+│ ▐▓▌ Flakie Holo Taco           ×2   │   ×N only when coats > 1; a tap opens the popover
+└─────────────────────────────────────┘
 [ Over black ] [ Copy from… ] [ Same as last ]
-[ ⌕ Search shades                                   ] [▣]
+[ ⌕ Search shades                                   ] [▣]      ← focus pulls .large
 ( Owned ) ( Toppers ) ( All )
   ▐▓▌ Spirit Fingers        Glitter, holographic       +
   ▐▓▌ Thirst Trap           Creme                      +
 ▸ Name and note                                               ← disclosure
 Painted on  [ Today  26 Oct 2026 ▾ ]  (Today) (Yesterday)
-[ Save swatch                                       ]         ← ToolbarItem .confirmationAction, glass bar
 ```
-Three taps add three layers; the field keeps focus after a tap (`@FocusState` re-set in the same transaction, which native SwiftUI allows where Safari did not).
+The row popover (anchored to the row, stays a popover on the phone, 260 pt wide):
+```
+┌───────────────────────┐
+│ Coats 2        [ − + ]│   Stepper 1…5, the number in .numericText
+├───────────────────────┤
+│ Remove                │   destructive
+└───────────────────────┘
+```
+Arranging (long press a row 0.35 s): every row jiggles (1.5° at 7 Hz, a phase per row), the pressed row lifts (scale 1.04, a shadow) and follows the finger 1:1; the rows it passes make room; Done at the card's top right, or a tap outside the layers, ends it.
+```
+Drag to reorder                                     (Done)
+┌─────────────────────────────────────┐
+│ ▐▓▌ One-Coat Black        ≡ (jiggle) │   ≡ only under Reduce Motion (no jiggle, no lift)
+│ ▐▓▌ Flakie Holo Taco  ×2  ≡ (jiggle) │
+└─────────────────────────────────────┘
+```
+Save swatch and Cancel are `ToolbarItem`s (`.confirmationAction`, `.cancellationAction`), a glass bar. A tap on a result adds a layer and the field keeps focus.
 
 Scan, iPhone:
 ```
@@ -427,8 +447,9 @@ Springs, interruptible, from the current value (apple-design skill). Defaults `.
 2. **Tip to detail**: `navigationTransition(.zoom(sourceID: shade.id, in: tips))` with `matchedTransitionSource` on the row tip, the rack tip and the ring slot; the detail's hero tip is the target. Reduce Motion: the system crossfades.
 3. **Add to collection** (the authored moment, 600 ms): the new bottle row's tip arrives with a `KeyframeAnimator` on scale (0.85 → 1.04 at 30% → 0.98 at 45% → 1) and opacity, plus one specular sweep (the band's offset from −60% to 160% over 700 ms) via `TipView(sweep:)`. The same sweep on a saved ring slot and on the Home hero after Another. `.impact(.medium)` haptic on landing.
 4. **Sheets**: system presentation; builder detents as in 5.2; `presentationDragIndicator(.visible)`.
-5. **Ring tap**: slot scales to 1.08 for 120 ms, then the sheet.
+5. **Ring tap**: slot scales to 1.08 for 120 ms, then the sheet. While the builder is open the edited slot stays lifted: `scaleEffect(1.12)` and 6 pt outward along its radius (`zIndex(1)`, `.snappy(duration: 0.25)`), the 2 pt ink ring kept; the other slots dim to `opacity(0.55)` (`.smooth(duration: 0.3)`); the hub swaps to the slot number over "slot" (`.numericText`) and back to the count on close; the slot paints the live composite with the head's `.id(recipe)` crossfade (an empty draft shows the unpainted tip and its number). Reduce Motion: no lift, dim and hub swap only. On a phone the wheel page scrolls the ring to the top and shrinks it to fit above the sheet's middle detent while the builder is open.
 6. **Fold and resize**: nothing animates on a size-class change beyond the system's; the ring re-lays out with `.animation(nil)` so it never swims.
+7. **Arranging layers**: `LongPressGesture(0.35 s)` sequenced before a `DragGesture(minimumDistance: 0)` in the stack's coordinate space. The long press fires `.selection`, lifts the row (scale 1.04, shadow 16/8 `ShadowInk` 20%) and starts the jiggle: a `TimelineView(.animation(minimumInterval: 1/60))` gives each row `rotationEffect(1.5° · sin(2π · 7 · t + 1.3 · i))` and a ±0.5 pt `offset(y:)`; the held row does not jiggle. While arranging a plain drag on any row picks it up. The held row follows the finger 1:1 (no animation reaches its offset); the target index is `clamp(from + round(translation / 52))` (`BuilderArrangement`, unit-tested); the rows it passes shift by ±52 pt under `.spring(response: 0.3, dampingFraction: 1)` and each crossing fires `.selection`. The drop fires `.impact(.medium)` and settles with `.spring(response: 0.35, dampingFraction: 0.85)`; the model gets one `move(layer, up:)` per row crossed, in order (the write queue keeps them sequential, the API is unchanged). Done or a tap outside the layers ends it, as do Save, Cancel and the sheet closing. Reduce Motion: no jiggle and no lift scale, a trailing `line.3.horizontal` handle on each row, the drag still works. The row popover (`Stepper`, Remove) opens on a tap.
 Reduce Motion: no scale, no sweep, no tilt; opacity only, 150 ms. Nothing animates on first appearance except the arrival moment when it is caused by her action.
 
 ### 5.8 Haptics map (`sensoryFeedback`)
@@ -436,7 +457,9 @@ Reduce Motion: no scale, no sweep, no tilt; opacity only, 150 ms. Nothing animat
 | Event | Feedback |
 |---|---|
 | Segment, level chip, priority, detent change, ring slot focus | `.selection` |
-| Layer appended; coats ±; move | `.impact(weight: .light)` |
+| Layer appended; coats ±; move (the up and down accessibility actions) | `.impact(weight: .light)` |
+| Layer picked up (arranging starts); the held layer crosses another | `.selection` |
+| Layer dropped | `.impact(weight: .medium)` |
 | Bottle added (arrival lands); swatch saved; tag written; bought | `.success` |
 | "This isn't it"; a code already known to another shade; nothing saved for Same as last | `.warning` |
 | Write failed; save refused (empty stack); network failure on a write | `.error` |
@@ -449,7 +472,7 @@ One line and one action, the unpainted drawing where the thing will appear: Home
 
 ### 5.10 Accessibility
 
-- VoiceOver: tips are decorative in rows (`accessibilityHidden`) and the row carries one label: "Spirit Fingers, glitter, holographic, wished, owned twice, $15.50". Bottle rows: "Spirit Fingers, half left, bought 21 July 2026, $15.50". Ring slots are buttons: "Slot 12, One-Coat Black + Flakie Holo Taco, painted 20 October" / "Slot 3, empty" / "…, draft in progress". The hero: "Wear today: Acid Drip, holographic, metallic, shimmer, half left". The wheel's hub is one element: "14 of 20 slots filled". Rotor actions on rows: wishlist, level, remove.
+- VoiceOver: tips are decorative in rows (`accessibilityHidden`) and the row carries one label: "Spirit Fingers, glitter, holographic, wished, owned twice, $15.50". Bottle rows: "Spirit Fingers, half left, bought 21 July 2026, $15.50". Ring slots are buttons: "Slot 12, One-Coat Black + Flakie Holo Taco, painted 20 October" / "Slot 3, empty" / "…, draft in progress". The hero: "Wear today: Acid Drip, holographic, metallic, shimmer, half left". The wheel's hub is one element: "14 of 20 slots filled", or "Editing slot 11" while the builder is open, and the edited slot's label carries the draft ("Slot 11, editing, One-Coat Black + Flakie Holo Taco"). A builder layer row is one element, "Top, Flakie Holo Taco, 2 coats", with the actions Move up, Move down and Remove and an adjustable value for the coats (a tap opens the popover). Rotor actions on rows: wishlist, level, remove.
 - Dynamic Type: every SF text style scales; rows switch to a vertical layout at accessibility sizes (`dynamicTypeSize.isAccessibilitySize`); tips keep their size; the ring's slot numbers hide at AX sizes and VoiceOver carries them.
 - Differentiate without colour: status and level always have words; the heart has a filled/outlined state; the `?hl` ring is accompanied by "Swatched here" in the slot label.
 - Reduce Motion and Transparency as above; Increase Contrast via the asset variants; minimum hit size 44 pt everywhere (ring slots get an invisible 44×72 hit rect).
@@ -607,6 +630,12 @@ Each run is one agent, ≤ 90 minutes, ends with a build that passes `xcodebuild
    - `BuilderFlow` on an iPad opens the builder in portrait (the list column is folded, the inspector beside the ring), closes it keeping the draft, turns the device to landscape (`XCUIDevice.shared.orientation = .landscapeLeft`), opens slot 11 again (`opened-landscape`) and turns back. `FlowCase.setUp` puts the device upright first so one flow cannot leave the next sideways. Turning the iPad **while the builder is open** closes it (the draft is kept on the server, "Resumed your draft." on the next open); not fixed in 6a. XCUITest's landscape screenshot on the iPad simulator is the portrait buffer with the landscape layout drawn rotated and cropped, so read the landscape step with that in mind.
    - Release: `CFBundleShortVersionString` and `CFBundleVersion` come from the build settings (they were XcodeGen's literal `1.0` and `1`, which would have ignored `bump-build.sh`), `Build.xcconfig` carries the build number, `PrivacyInfo.xcprivacy` is in the app, `ExportOptions.plist`, `archive.sh`, `bump-build.sh`, `upload.sh` exist (section 7).
 
+   **Run 7 (2026-10-28), P codes out and builder v2** (docs/advice/fable-builder-v2-tilt-2026-10-28.md section A):
+   - P codes: `Bottle`, `BottleRequest`, `BottlePatch`, `Pick`, `Lookup.kind`, `LearnedCode`/`BottleCreated.learned`, `Identifiers.normalisePrinted`, `ScanPhase.suggestion` and `.unknownPrinted`, the bottle sheet's field, the "Is it …?" card and the builder's suggestion row are gone; the Scan field reads "Type the digits or a name", the builder's "Search shades". The decoding tests run against the regenerated `spec/api/fixtures` (`bottle_create_legacy_printed_code.json` is decoded only: the app no longer sends a `printed_code`).
+   - The builder opens at `.medium`; the search field or a scroll of the list sets `.large` through the `$detent` binding. Compact 52 pt `LayerRow`s with the popover (`LayerPopover`: `Stepper` 1 to 5, Remove), accessibility actions Move up, Move down, Remove and an adjustable value for the coats; `LayerStack` owns the wiggle-to-reorder (long press 0.35 s, jiggle, 1:1 drag with reflow, Done or a tap outside, handles under Reduce Motion), its arithmetic is `PolishedStore.BuilderArrangement` (tested). `-reducemotion 1` (Debug) makes the builder and the ring behave as under Reduce Motion, for the flows.
+   - The ring: the edited slot lifts, the others dim, the hub reads the slot number, the slot paints the draft (`editingRecipe`, `editingSummary` for its label). A phone's wheel page scrolls the ring up and shrinks it to fit above the middle detent while the builder is open (`WheelScreen.ringScale`), because slot 11 is at six o'clock and the sheet would have covered it.
+   - Container accessibility identifiers (`builder-results`, `builder-layers`) were removed: they overrode the identifiers of the rows inside them (`pick-<id>`, `layer-row-<id>`).
+   - Flows: `BuilderFlow` (hub "Editing slot 11", the ring slot's label names the added shade, coats through the popover, press-and-drag reorder, Done, a tap outside), `BuilderReducedMotionFlow`, `BuilderCopyFlow` and `BuilderResumeFlow` assert the ring too; `ScanTypedFlow` types short digits and gets a name search. `closeBuilderKeepingDraft` drags the sheet by its top bar (a drag above the sheet lands on the page behind it).
 
 **Parallelism and boundaries:** S0 → (S1 ∥ app 1) → (S2 ∥ app 2) → app 3 → app 4 → (app 5 ∥ app 6's shader half, if two agents are available; otherwise in order). The web's phase-1 runs 1–3 proceed in parallel throughout: they never touch `app/`, `spec/` or `src/polished/api/`; the only shared files are `tips.py` (S0, coordinated into web run 1) and the `wear` migration (web run 3 and S2 agree on the file name in their briefs). `DESIGN.md` gains a section 17 "API and the native app" in S1 and `docs/NATIVE.md` (this spec) is updated at the end of each app run where the build departs from it.
 

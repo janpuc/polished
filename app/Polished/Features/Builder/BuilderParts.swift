@@ -3,99 +3,300 @@ import PolishedModels
 import PolishedStore
 import SwiftUI
 
-/// One layer of the swatch: its mini tip on the rail that runs through the stack, the name with
-/// Base or Top above it, a coats stepper, and move up, move down and remove. Every control is at
-/// least 44 pt to tap.
+/// The layers of the swatch in painting order, base first: one compact row each on the 2 pt rail
+/// that runs through the tips (docs/NATIVE.md 5.2). A tap opens the row's popover (coats,
+/// Remove); a long press makes the rows jiggle and a drag reorders them, the rows it passes
+/// making room, until Done or a tap outside (`arranging`, owned by the builder so Save, Cancel
+/// and the sheet closing can end it).
+struct LayerStack: View {
+    let model: BuilderModel
+    @Binding var arranging: Bool
+
+    static let rowHeight: CGFloat = 52
+
+    @Environment(\.accessibilityReduceMotion) private var systemReduceMotion
+    @State private var drag: LayerDrag?
+    @State private var popover: Int?
+    @State private var pickups = 0
+    @State private var crossings = 0
+    @State private var drops = 0
+
+    private var reduceMotion: Bool { systemReduceMotion || LaunchOptions.current.reduceMotion }
+
+    private struct LayerDrag: Equatable {
+        var id: Int
+        var from: Int
+        var translation: CGFloat
+        var target: Int
+    }
+
+    var body: some View {
+        let layers = model.layers
+        VStack(alignment: .leading, spacing: 8) {
+            if layers.count > 1 { header }
+            TimelineView(.animation(minimumInterval: 1.0 / 60, paused: !(arranging && !reduceMotion))) { context in
+                let time = context.date.timeIntervalSinceReferenceDate
+                VStack(spacing: 0) {
+                    ForEach(Array(layers.enumerated()), id: \.element.id) { index, layer in
+                        row(layer, index: index, count: layers.count, time: time)
+                    }
+                }
+                .coordinateSpace(.named("stack"))
+            }
+            .groupCard()
+        }
+        .onChange(of: layers.count) { if layers.count < 2 { arranging = false } }
+        .onChange(of: arranging) { if !arranging { drag = nil } }
+        .sensoryFeedback(.selection, trigger: pickups)
+        .sensoryFeedback(.selection, trigger: crossings)
+        .sensoryFeedback(.impact(weight: .medium), trigger: drops)
+    }
+
+    // MARK: Head
+
+    private var header: some View {
+        HStack(spacing: 8) {
+            Text(arranging ? "Drag to reorder" : "Hold a layer to rearrange")
+                .font(.footnote)
+                .foregroundStyle(Color.ink2)
+                .contentTransition(.opacity)
+            Spacer(minLength: 0)
+            if arranging {
+                Button("Done") { arranging = false }
+                    .buttonStyle(CompactPrimaryButtonStyle())
+                    .accessibilityIdentifier("layers-done")
+                    .transition(.opacity.combined(with: .scale(scale: 0.9, anchor: .trailing)))
+            }
+        }
+        .frame(minHeight: 36)
+        .padding(.horizontal, 4)
+        .animation(.smooth(duration: 0.2), value: arranging)
+    }
+
+    // MARK: Rows
+
+    private func row(_ layer: Layer, index: Int, count: Int, time: TimeInterval) -> some View {
+        let lifted = drag?.id == layer.id
+        let reflow = drag.map {
+            lifted
+                ? 0
+                : BuilderArrangement.reflow(
+                    index: index, from: $0.from, target: $0.target, rowHeight: Self.rowHeight)
+        } ?? 0
+        return LayerRow(
+            layer: layer, isFirst: index == 0, isLast: index == count - 1, arranging: arranging,
+            showsHandle: arranging && reduceMotion, model: model,
+            isPopoverPresented: Binding(
+                get: { popover == layer.id },
+                set: { if !$0, popover == layer.id { popover = nil } }),
+            removal: { popover = nil; model.remove(layer) }
+        )
+        .offset(y: lifted ? drag?.translation ?? 0 : reflow)
+        // The dragged row follows the finger 1:1: no animation reaches its offset while it is held.
+        .transaction { if lifted { $0.animation = nil } }
+        .rotationEffect(.degrees(jiggles(lifted) ? 1.5 * sin(2 * .pi * 7 * time + 1.3 * Double(index)) : 0))
+        .offset(y: jiggles(lifted) ? 0.5 * sin(2 * .pi * 7 * time + 1.9 * Double(index)) : 0)
+        .scaleEffect(lifted && !reduceMotion ? 1.04 : 1)
+        .background(lifted ? Color.surface : Color.clear, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .shadow(color: Color.shadowInk.opacity(lifted ? 0.2 : 0), radius: 16, y: 8)
+        .zIndex(lifted ? 1 : 0)
+        .onTapGesture { if !arranging { popover = layer.id } }
+        .simultaneousGesture(holdThenDrag(layer, index: index, count: count))
+        .simultaneousGesture(dragWhileArranging(layer, index: index, count: count), including: arranging ? .all : .none)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(spoken(layer))
+        .accessibilityValue(arranging ? "Rearranging" : "")
+        .accessibilityHint("Opens coats and remove")
+        .accessibilityAddTraits(.isButton)
+        .accessibilityIdentifier("layer-row-\(layer.id)")
+        .accessibilityAdjustableAction { direction in
+            model.changeCoats(of: layer, by: direction == .increment ? 1 : -1)
+        }
+        .accessibilityAction(named: "Move up") { withAnimation(.smooth(duration: 0.3)) { model.move(layer, up: true) } }
+        .accessibilityAction(named: "Move down") { withAnimation(.smooth(duration: 0.3)) { model.move(layer, up: false) } }
+        .accessibilityAction(named: "Remove") { model.remove(layer) }
+    }
+
+    private func jiggles(_ lifted: Bool) -> Bool { arranging && !lifted && !reduceMotion }
+
+    /// "Top, Flakie Holo Taco, 2 coats".
+    private func spoken(_ layer: Layer) -> String {
+        let coats = "\(layer.coats) coat\(layer.coats == 1 ? "" : "s")"
+        return [layer.label, layer.title, coats].filter { !$0.isEmpty }.joined(separator: ", ")
+    }
+
+    // MARK: Gestures
+
+    /// A long press makes the rows jiggle and picks the row up; the finger then drags it.
+    private func holdThenDrag(_ layer: Layer, index: Int, count: Int) -> some Gesture {
+        LongPressGesture(minimumDuration: 0.35)
+            .sequenced(before: DragGesture(minimumDistance: 0, coordinateSpace: .named("stack")))
+            .onChanged { value in
+                guard case .second(true, let dragged) = value else { return }
+                if !arranging { arranging = true }
+                pickUp(layer, count: count)
+                if let dragged { follow(dragged.translation.height, count: count) }
+            }
+            .onEnded { value in
+                if case .second(true, _) = value { drop(layer) }
+            }
+    }
+
+    /// Once the rows jiggle, a plain drag on any of them picks it up.
+    private func dragWhileArranging(_ layer: Layer, index: Int, count: Int) -> some Gesture {
+        DragGesture(minimumDistance: 3, coordinateSpace: .named("stack"))
+            .onChanged { value in
+                pickUp(layer, count: count)
+                follow(value.translation.height, count: count)
+            }
+            .onEnded { _ in drop(layer) }
+    }
+
+    private func pickUp(_ layer: Layer, count: Int) {
+        guard drag == nil, let from = model.layers.firstIndex(where: { $0.id == layer.id }) else { return }
+        pickups += 1
+        withAnimation(.snappy(duration: 0.2)) {
+            drag = LayerDrag(id: layer.id, from: from, translation: 0, target: from)
+        }
+    }
+
+    private func follow(_ translation: CGFloat, count: Int) {
+        guard var current = drag else { return }
+        let target = BuilderArrangement.target(
+            from: current.from, translation: translation, count: count, rowHeight: Self.rowHeight)
+        current.translation = translation
+        if target != current.target {
+            crossings += 1
+            // The rows it passes make room with a critically damped spring; the held row is not
+            // animated (`transaction` above).
+            withAnimation(.spring(response: 0.3, dampingFraction: 1)) {
+                current.target = target
+                drag = current
+            }
+        } else {
+            drag = current
+        }
+    }
+
+    /// Settles the held row: the model gets one move per row crossed, in order, and the row
+    /// springs from where the finger left it to its place.
+    private func drop(_ layer: Layer) {
+        guard let current = drag, current.id == layer.id else { return }
+        drops += 1
+        withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+            for up in BuilderArrangement.moves(from: current.from, target: current.target) {
+                model.move(layer, up: up)
+            }
+            drag = nil
+        }
+    }
+}
+
+/// One layer: its mini tip on the rail, its name, and a ×N badge when it has more than one coat.
+/// 52 pt tall. The popover holds the coats stepper and Remove.
 struct LayerRow: View {
     let layer: Layer
     let isFirst: Bool
     let isLast: Bool
+    let arranging: Bool
+    /// Reduce Motion: a handle takes the place of the jiggle.
+    let showsHandle: Bool
     let model: BuilderModel
+    @Binding var isPopoverPresented: Bool
+    let removal: () -> Void
 
     var body: some View {
-        HStack(alignment: .top, spacing: 12) {
+        HStack(spacing: 12) {
             TipView(TipRecipe(layer.tip.shade), size: .s)
-                .padding(.top, 2)
-            VStack(alignment: .leading, spacing: 4) {
-                VStack(alignment: .leading, spacing: 0) {
-                    if !layer.label.isEmpty {
-                        Text(layer.label)
-                            .font(.caption)
-                            .foregroundStyle(Color.ink2)
-                    }
-                    Text(layer.title)
-                        .font(.headline)
-                        .foregroundStyle(Color.ink)
-                        .lineLimit(2)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                .accessibilityElement(children: .combine)
-                HStack(spacing: 0) {
-                    coats
-                    Spacer(minLength: 4)
-                    iconButton("chevron.up", "Move \(layer.title) up", enabled: !isFirst) { model.move(layer, up: true) }
-                    iconButton("chevron.down", "Move \(layer.title) down", enabled: !isLast) { model.move(layer, up: false) }
-                    iconButton("xmark", "Remove \(layer.title)", enabled: true) { model.remove(layer) }
-                }
+            Text(layer.title)
+                .font(.headline)
+                .foregroundStyle(Color.ink)
+                .lineLimit(1)
+                .truncationMode(.middle)
+            Spacer(minLength: 4)
+            if layer.coats > 1 {
+                Text("\u{00D7}\(layer.coats)")
+                    .font(.footnote)
+                    .monospacedDigit()
+                    .foregroundStyle(Color.ink)
+                    .padding(.horizontal, 9)
+                    .frame(minHeight: 24)
+                    .background(Color.fill, in: Capsule())
+                    .transition(.opacity)
+            }
+            if showsHandle {
+                Image(systemName: "line.3.horizontal")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(Color.ink3)
+                    .transition(.opacity)
             }
         }
-        .padding(.vertical, 12)
-        .background(alignment: .leading) { rail }
         .padding(.horizontal, 14)
+        .frame(height: LayerStack.rowHeight)
+        .background(alignment: .leading) { rail }
+        .contentShape(Rectangle())
+        .animation(.snappy(duration: 0.2), value: layer.coats)
+        .popover(isPresented: $isPopoverPresented) {
+            LayerPopover(layerID: layer.id, model: model, remove: removal)
+                .presentationCompactAdaptation(.popover)
+        }
     }
 
     /// The 2 pt line through the tips: the first row starts at its tip, the last ends at it. The
-    /// tip's middle sits 12 pt of padding, 2 pt and half the 46 pt tip from the top.
+    /// tip's middle sits half the 52 pt row from the top.
     private var rail: some View {
         VStack(spacing: 0) {
-            Rectangle().fill(isFirst ? Color.clear : Color.line2).frame(height: 37)
+            Rectangle().fill(isFirst ? Color.clear : Color.line2).frame(height: LayerStack.rowHeight / 2)
             Rectangle().fill(isLast ? Color.clear : Color.line2)
         }
         .frame(width: 2)
-        .padding(.leading, 13)
+        .padding(.leading, 27)
         .accessibilityHidden(true)
-    }
-
-    private var coats: some View {
-        HStack(spacing: 0) {
-            iconButton("minus", "Remove a coat of \(layer.title)", enabled: layer.coats > BuilderModel.minCoats) {
-                model.changeCoats(of: layer, by: -1)
-            }
-            Text("\(layer.coats)")
-                .font(.body.weight(.semibold))
-                .monospacedDigit()
-                .foregroundStyle(Color.ink)
-                .frame(minWidth: 22)
-                .contentTransition(.numericText())
-                .animation(.snappy(duration: 0.2), value: layer.coats)
-                .accessibilityLabel("\(layer.coats) coat\(layer.coats == 1 ? "" : "s") of \(layer.title)")
-            iconButton("plus", "Add a coat of \(layer.title)", enabled: layer.coats < BuilderModel.maxCoats) {
-                model.changeCoats(of: layer, by: 1)
-            }
-        }
-        .background(Color.fill, in: Capsule())
-    }
-
-    private func iconButton(_ symbol: String, _ label: String, enabled: Bool, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Image(systemName: symbol)
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(Color.ink)
-                .frame(width: 40, height: 40)
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(IconPressStyle())
-        .disabled(!enabled)
-        .opacity(enabled ? 1 : 0.3)
-        .accessibilityLabel(label)
     }
 }
 
-private struct IconPressStyle: ButtonStyle {
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+/// What a row's tap opens: the number of coats, 1 to 5, and Remove.
+struct LayerPopover: View {
+    let layerID: Int
+    let model: BuilderModel
+    let remove: () -> Void
 
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label.pressScale(configuration.isPressed, reduceMotion: reduceMotion)
+    var body: some View {
+        let coats = model.layers.first { $0.id == layerID }?.coats ?? 1
+        VStack(spacing: 0) {
+            Stepper(
+                value: Binding(
+                    get: { coats },
+                    set: { value in
+                        if let layer = model.layers.first(where: { $0.id == layerID }) {
+                            model.changeCoats(of: layer, by: value - layer.coats)
+                        }
+                    }),
+                in: BuilderModel.minCoats...BuilderModel.maxCoats
+            ) {
+                HStack {
+                    Text("Coats")
+                    Text("\(coats)")
+                        .monospacedDigit()
+                        .foregroundStyle(Color.ink2)
+                        .contentTransition(.numericText())
+                        .animation(.snappy(duration: 0.2), value: coats)
+                }
+            }
+            .accessibilityIdentifier("layer-coats")
+            .padding(.horizontal, 16)
+            .frame(minHeight: 52)
+            Divider()
+            Button(role: .destructive, action: remove) {
+                Text("Remove")
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .contentShape(Rectangle())
+            }
+            .padding(.horizontal, 16)
+            .frame(minHeight: 48)
+            .accessibilityIdentifier("layer-remove")
+        }
+        .frame(width: 260)
     }
 }
 

@@ -24,12 +24,11 @@ public struct LookupResults: Codable, Sendable, Hashable {
     public var total: Int
 }
 
-/// `GET /lookup`. `outcome` is one of match, suggestion, unknown_code, unknown_printed,
-/// invalid_code, results.
+/// `GET /lookup`. `outcome` is one of match, unknown_code, invalid_code, results.
 public struct Lookup: Codable, Sendable, Hashable {
     public var outcome: String
     public var code: String?
-    /// "gtin", "printed" or "sku".
+    /// "gtin" or "sku".
     public var kind: String?
     public var shade: LookupShade?
     public var identifierId: Int?

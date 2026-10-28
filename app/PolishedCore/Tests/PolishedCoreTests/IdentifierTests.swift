@@ -25,9 +25,4 @@ struct IdentifierTests {
     fileprivate func gtin(_ vector: Vector) {
         #expect(Identifiers.normaliseGTIN(vector.input) == vector.output)
     }
-
-    @Test(arguments: load("identifiers/printed.json"))
-    fileprivate func printed(_ vector: Vector) {
-        #expect(Identifiers.normalisePrinted(vector.input) == vector.output)
-    }
 }

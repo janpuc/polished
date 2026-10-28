@@ -6,7 +6,7 @@ import PolishedModels
 /// A code and the shade it means.
 public struct ScanFound: Hashable, Sendable {
     public var code: String
-    /// "gtin", "printed" or "sku".
+    /// "gtin" or "sku".
     public var kind: String
     public var shade: ShadeRow
     /// The learned code's row, so "This isn't it" can forget it.
@@ -14,17 +14,13 @@ public struct ScanFound: Hashable, Sendable {
     /// "Saved. 810170284120 is now Spirit Fingers.", after a learn.
     public var notice: String?
 
-    /// "Barcode 810170284120 is", "P259 is", "SKU … is".
+    /// "Barcode 810170284120 is", "SKU … is".
     public var lead: String {
         switch kind {
         case "gtin": "Barcode \(code) is"
-        case "printed": "\(code) is"
         default: "SKU \(code) is"
         }
     }
-
-    /// A P code rides into the bottle form, so the bottle carries it.
-    public var printedCode: String? { kind == "printed" ? code : nil }
 }
 
 /// What the scan screen shows: one case per outcome of the lookup (docs/DESIGN.md 7.2).
@@ -32,11 +28,8 @@ public enum ScanPhase: Hashable, Sendable {
     case idle
     case looking
     case match(ScanFound)
-    case suggestion(ScanFound)
     /// A barcode nobody has taught the app yet.
     case unknownCode(String)
-    /// A P code that is on no bottle yet.
-    case unknownPrinted(String)
     /// `text` is what was typed; `scanned` when a camera read it.
     case invalid(text: String, scanned: Bool)
     case results(query: String, LookupResults)
@@ -88,7 +81,7 @@ public final class ScanModel {
         return true
     }
 
-    /// What was typed in the field: a code, a P code or words. Nothing typed clears the card.
+    /// What was typed in the field: a code or words. Nothing typed clears the card.
     public func lookup(typed text: String) async {
         let words = text.trimmingCharacters(in: .whitespaces)
         guard !words.isEmpty else {
@@ -129,13 +122,12 @@ public final class ScanModel {
     static func phase(for answer: Lookup, asked: String, scanned: Bool) -> ScanPhase {
         let code = answer.code ?? asked
         switch answer.outcome {
-        case "match", "suggestion":
+        case "match":
             guard let shade = answer.shade else { return .failed("Couldn't look that up. Try again.") }
             let found = ScanFound(
                 code: code, kind: answer.kind ?? "gtin", shade: shade.row, identifierID: answer.identifierId, notice: nil)
-            return answer.outcome == "match" ? .match(found) : .suggestion(found)
+            return .match(found)
         case "unknown_code": return .unknownCode(code)
-        case "unknown_printed": return .unknownPrinted(code)
         case "invalid_code": return .invalid(text: asked, scanned: scanned)
         case "results":
             guard let results = answer.results else { return .failed("Couldn't look that up. Try again.") }
@@ -183,14 +175,8 @@ public final class ScanModel {
         }
     }
 
-    /// The kind and code a picked shade would be taught: an unknown barcode (gtin), an unknown P
-    /// code or one whose suggestion was waved away (printed).
+    /// The kind and code a picked shade would be taught: an unknown barcode (gtin).
     private var learnable: (kind: String, code: String)? {
-        switch phase {
-        case .unknownCode(let code): ("gtin", code)
-        case .unknownPrinted(let code): ("printed", code)
-        case .suggestion(let found): (found.kind, found.code)
-        default: nil
-        }
+        if case .unknownCode(let code) = phase { ("gtin", code) } else { nil }
     }
 }

@@ -4,7 +4,6 @@ public struct Bottle: Codable, Sendable, Hashable, Identifiable {
     public var id: Int
     public var shadeId: Int
     public var state: BottleState
-    public var printedCode: String?
     public var boughtOn: String?
     public var pricePaidCents: Int?
     public var openedOn: String?
@@ -14,14 +13,13 @@ public struct Bottle: Codable, Sendable, Hashable, Identifiable {
     public var updatedAt: String
 
     public init(
-        id: Int, shadeId: Int, state: BottleState = .full, printedCode: String? = nil, boughtOn: String? = nil,
+        id: Int, shadeId: Int, state: BottleState = .full, boughtOn: String? = nil,
         pricePaidCents: Int? = nil, openedOn: String? = nil, notes: String? = nil, archived: Bool = false,
         createdAt: String = "", updatedAt: String = ""
     ) {
         self.id = id
         self.shadeId = shadeId
         self.state = state
-        self.printedCode = printedCode
         self.boughtOn = boughtOn
         self.pricePaidCents = pricePaidCents
         self.openedOn = openedOn

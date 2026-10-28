@@ -151,7 +151,7 @@ struct ScanScreen: View {
                 .accessibilityHidden(true)
             Text(camera == .denied
                 ? "Camera access is off for Polished. Allow it in Settings, or type the digits below."
-                : "This device can\u{2019}t scan barcodes. Type the digits, a P code, or a name below.")
+                : "This device can\u{2019}t scan barcodes. Type the digits or a name below.")
                 .font(.subheadline)
                 .foregroundStyle(Color.ink2)
                 .multilineTextAlignment(.center)
@@ -210,7 +210,7 @@ struct ScanScreen: View {
                 Image(systemName: "magnifyingglass")
                     .foregroundStyle(Color.ink3)
                     .accessibilityHidden(true)
-                TextField("Type the digits, a P code, or a name", text: $text)
+                TextField("Type the digits or a name", text: $text)
                     .focused($fieldFocused)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()

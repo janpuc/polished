@@ -343,8 +343,7 @@ struct DetailPlate: View {
 }
 
 /// One bottle in a group: when it was bought and for how much, when it was opened, the notes; the
-/// level at the trailing edge as a menu that changes it, the P code as the lightest fact. The
-/// body opens the edit sheet.
+/// level at the trailing edge as a menu that changes it. The body opens the edit sheet.
 struct BottleRow: View {
     let bottle: Bottle
     var onEdit: (() -> Void)?
@@ -379,17 +378,9 @@ struct BottleRow: View {
 
     private var info: some View {
         VStack(alignment: .leading, spacing: 3) {
-            HStack(alignment: .firstTextBaseline, spacing: 8) {
-                Text(bottle.factsLine)
-                    .font(.subheadline)
-                    .foregroundStyle(Color.ink)
-                if let code = bottle.printedCode {
-                    Text(code)
-                        .font(.footnote)
-                        .monospacedDigit()
-                        .foregroundStyle(Color.ink3)
-                }
-            }
+            Text(bottle.factsLine)
+                .font(.subheadline)
+                .foregroundStyle(Color.ink)
             if let opened = Words.day(bottle.openedOn) {
                 Text("Opened \(opened)")
                     .font(.footnote)

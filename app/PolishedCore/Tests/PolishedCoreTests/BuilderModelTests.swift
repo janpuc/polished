@@ -61,15 +61,15 @@ struct BuilderModelTests {
     @Test func coatsAndMovesShowAtOnceAndTheLastAnswerWins() async throws {
         let start = try fixtureSheet()
         var settled = start
-        settled.layers[0].coats = 4
-        settled.layers[0].tip.coats = 4
+        settled.layers[0].coats = start.layers[0].coats + 2
+        settled.layers[0].tip.coats = start.layers[0].coats + 2
         let final = settled
         let api = StackAPI { line in line.contains("PATCH") ? final : start }
         let model = try await opened(api)
         let base = try #require(model.layers.first)
         for _ in 0..<2 { model.changeCoats(of: base, by: 1) }
-        #expect(model.layers[0].coats == 4)
-        #expect(model.sheet?.summary.contains("×4") == true)
+        #expect(model.layers[0].coats == start.layers[0].coats + 2)
+        #expect(model.sheet?.summary.contains("×\(start.layers[0].coats + 2)") == true)
         model.move(base, up: false)
         #expect(model.layers.map(\.title) == [start.layers[1].title, base.title])
         #expect(model.layers.map(\.label) == ["Base", "Top"])
@@ -103,8 +103,8 @@ struct BuilderModelTests {
         let model = try await opened(api)
         #expect(model.isFull)
         let shade = try APICoding.makeDecoder().decode(
-            Pick.self, from: recording("stack_pick_suggestion.json").bodyData
-        ).suggestion
+            Pick.self, from: recording("stack_pick_barcode.json").bodyData
+        ).items.first
         model.add(try #require(shade))
         #expect(model.notice == "A swatch holds up to 8 layers.")
         #expect(model.failures == 1)

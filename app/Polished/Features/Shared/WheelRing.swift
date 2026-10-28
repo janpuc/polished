@@ -6,7 +6,9 @@ import SwiftUI
 /// numbers running clockwise (the web's `.ring`). A filled slot shows its stack's painted tip, an
 /// empty one the plain Fill tip with its number, a draft the same with a dashed die-cut edge. Every
 /// slot is a button that opens the builder.
-/// The hub is the count in Fraunces over "of 20". Tips are decoration: each slot is a button that
+/// The hub is the count in Fraunces over "of 20"; while the builder is open it is the slot's number
+/// over "slot". The slot being edited lifts out of the ring, the others dim, and the slot paints
+/// the draft as it grows (docs/NATIVE.md 5.2). Tips are decoration: each slot is a button that
 /// says what it holds.
 struct WheelRing: View {
     let tiles: [Tile]
@@ -14,13 +16,22 @@ struct WheelRing: View {
     let filled: Int
     /// The slot to ring in foil (`?hl`, from Swatched on).
     var highlighted: Int?
-    /// The slot the builder is open on: a plain ink ring.
+    /// The slot the builder is open on: a plain ink ring, lifted 6 pt out of the ring and scaled
+    /// to 1.12, the other slots dimmed, the hub reading its number.
     var editing: Int?
+    /// What the draft in that slot looks like now; nil is an empty draft. Only read once
+    /// `editingSummary` is set, so a draft that is still opening shows the slot as it was.
+    var editingRecipe: TipRecipe?
+    /// The draft's layers as a sentence ("" for an empty draft), nil until the draft is open.
+    var editingSummary: String?
     /// A slot that was just saved and the serial of the save: one band of light crosses its tip.
     var sweeping: (position: Int, serial: Int)?
     var onSelect: ((Tile) -> Void)?
 
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.accessibilityReduceMotion) private var systemReduceMotion
+
+    private var reduceMotion: Bool { systemReduceMotion || LaunchOptions.current.reduceMotion }
 
     /// 62 pt tips on a phone, 72 on a regular width; the radius 150 gives way to the screen.
     private var slotHeight: CGFloat { horizontalSizeClass == .regular ? 72 : 62 }
@@ -44,7 +55,6 @@ struct WheelRing: View {
         .aspectRatio(1, contentMode: .fit)
         .frame(maxWidth: 150 * 2 + slotHeight)
         .accessibilityElement(children: .contain)
-        .accessibilityLabel("\(filled) of \(slotCount) slots filled")
     }
 
     private func slot(_ tile: Tile, _ geometry: RingGeometry) -> some View {
@@ -52,6 +62,11 @@ struct WheelRing: View {
         let angle = geometry.angle(for: tile.position)
         let light = geometry.light(for: tile.position, screen: (TipLight.static.lx, TipLight.static.ly))
         let size = CGSize(width: geometry.slotWidth, height: geometry.slotHeight)
+        let isEditing = editing == tile.position
+        // The draft stands in for the slot once it is open.
+        let draft = isEditing && editingSummary != nil
+        let recipe = draft ? editingRecipe : (tile.filled ? TipRecipe(tips: tile.layerTips) : nil)
+        let lift: Double = isEditing && !reduceMotion ? 6 : 0
         return Button {
             onSelect?(tile)
         } label: {
@@ -66,11 +81,15 @@ struct WheelRing: View {
                         .stroke(Color.ink, lineWidth: 2)
                         .frame(width: size.width + 7, height: size.height + 7)
                 }
-                TipView(
-                    tile.filled ? TipRecipe(tips: tile.layerTips) : nil, size: .ring, dimensions: size,
-                    light: TipLight(lx: light.x, ly: light.y))
-                    .sweep(trigger: sweeping?.position == tile.position ? sweeping?.serial ?? 0 : 0)
-                if tile.hasDraft && !tile.filled {
+                ZStack {
+                    TipView(
+                        recipe, size: .ring, dimensions: size, light: TipLight(lx: light.x, ly: light.y))
+                        .id(recipe)
+                        .transition(.opacity)
+                }
+                .animation(.smooth(duration: reduceMotion ? 0.15 : 0.3), value: recipe)
+                .sweep(trigger: sweeping?.position == tile.position ? sweeping?.serial ?? 0 : 0)
+                if tile.hasDraft && !tile.filled && !draft {
                     TipShape()
                         .stroke(Color.ink2, style: StrokeStyle(lineWidth: 1.5, dash: [3, 3]))
                         .frame(width: size.width, height: size.height)
@@ -78,7 +97,7 @@ struct WheelRing: View {
             }
             .rotationEffect(.radians(angle))
             .overlay {
-                if !tile.filled && !dynamicTypeIsAccessibility {
+                if recipe == nil && !dynamicTypeIsAccessibility {
                     Text("\(tile.position)")
                         .font(.caption.weight(.semibold))
                         .monospacedDigit()
@@ -89,15 +108,22 @@ struct WheelRing: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(RingSlotStyle())
-        .offset(x: offset.x, y: offset.y)
-        .accessibilityLabel(label(tile))
+        .scaleEffect(isEditing && !reduceMotion ? 1.12 : 1)
+        .offset(x: offset.x + lift * sin(angle), y: offset.y - lift * cos(angle))
+        .opacity(editing != nil && !isEditing ? 0.55 : 1)
+        .zIndex(isEditing ? 1 : 0)
+        .animation(reduceMotion ? .easeOut(duration: 0.15) : .snappy(duration: 0.25), value: editing)
+        .accessibilityLabel(label(tile, draft: draft ? editingSummary : nil))
         .accessibilityAddTraits(.isButton)
     }
 
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     private var dynamicTypeIsAccessibility: Bool { dynamicTypeSize.isAccessibilitySize }
 
-    private func label(_ tile: Tile) -> String {
+    private func label(_ tile: Tile, draft: String?) -> String {
+        if let draft {
+            return draft.isEmpty ? "Slot \(tile.position), editing, nothing painted yet" : "Slot \(tile.position), editing, \(draft)"
+        }
         if tile.filled {
             let painted = Words.day(tile.paintedOn).map { ", painted \($0)" } ?? ""
             let swatched = highlighted == tile.position ? ", swatched here" : ""
@@ -108,13 +134,17 @@ struct WheelRing: View {
 
     private var hub: some View {
         VStack(spacing: 0) {
-            DisplayNumber(value: filled, role: .hubNumber)
+            DisplayNumber(value: editing ?? filled, role: .hubNumber)
                 .foregroundStyle(Color.ink)
-            Text("of \(slotCount)")
+            Text(editing == nil ? "of \(slotCount)" : "slot")
                 .font(.subheadline)
                 .foregroundStyle(Color.ink2)
         }
-        .accessibilityHidden(true)
+        .contentTransition(.numericText())
+        .animation(.smooth(duration: reduceMotion ? 0.15 : 0.3), value: editing)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(editing.map { "Editing slot \($0)" } ?? "\(filled) of \(slotCount) slots filled")
+        .accessibilityIdentifier("wheel-hub")
     }
 }
 

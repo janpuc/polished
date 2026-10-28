@@ -437,8 +437,8 @@ final class TagStickerFlow: FlowCase {
     }
 }
 
-/// The Scan screen's typed field on a device without a camera: a P code suggests, a barcode the
-/// app knows is a match, forgetting it makes it new, teaching it again, Add bottle, and the learned
+/// The Scan screen's typed field on a device without a camera: short digits are a name search that
+/// finds nothing, a barcode the app knows is a match, forgetting it makes it new, teaching it again, Add bottle, and the learned
 /// codes list.
 final class ScanTypedFlow: FlowCase {
     @MainActor
@@ -453,10 +453,10 @@ final class ScanTypedFlow: FlowCase {
         let field = app.textFields["scan-field"].firstMatch
         field.tap()
         field.typeText("259")
-        waitFor(element("scan-suggestion"), "the P code suggestion")
-        waitForLabel(element("scan-suggestion"), containing: "Is it Spirit Fingers?")
-        waitFor(app.buttons["Yes, add a bottle"].firstMatch, "the confirm button")
-        step("suggestion")
+        waitFor(element("scan-no-results"), "a name search for the digits")
+        waitForLabel(element("scan-no-results"), containing: "Nothing matches")
+        XCTAssertFalse(element("scan-suggestion").exists, "digits that are not a barcode suggest nothing")
+        step("short-digits")
 
         // The card that appeared under the field took the keyboard with it on an iPad.
         if !field.hasKeyboardFocus { field.tap() }
@@ -490,8 +490,9 @@ final class ScanTypedFlow: FlowCase {
         waitFor(app.navigationBars["Add bottle"], "the Add bottle sheet")
         step("add-bottle")
         element("sheet-save").tap()
-        waitUntilGone(element("scan-field"), "the scan screen closes after the bottle is added")
+        // The status line is short-lived: it is looked for first, the closing of the cover after it.
         waitFor(labelled("Added Spirit Fingers"), "the status line")
+        waitUntilGone(element("scan-field"), "the scan screen closes after the bottle is added")
         step("added")
 
         // The learned codes: Settings on a phone (the mark on Home), the sidebar's tab on an iPad.
@@ -513,7 +514,9 @@ final class ScanTypedFlow: FlowCase {
         step("swipe")
         forget.tap()
         waitUntilGone(labelled("Barcode 0810170284120"), "the barcode is forgotten")
-        XCTAssertTrue(code.exists)
+        // It was the only learned code: the list gives way to the empty line.
+        waitFor(element("learned-empty"), "nothing learned any more")
+        XCTAssertFalse(code.exists)
         step("forgotten")
     }
 }
@@ -613,6 +616,60 @@ extension FlowCase {
         waitFor(app.buttons[label].firstMatch, label)
     }
 
+    /// The row of a layer in the builder by its shade's name (its label is "Top, Flakie Holo Taco, 2 coats").
+    @MainActor
+    func layerRow(_ title: String) -> XCUIElement {
+        app.descendants(matching: .any).matching(
+            NSPredicate(format: "identifier BEGINSWITH 'layer-row-' AND label CONTAINS %@", title)
+        ).firstMatch
+    }
+
+    /// Taps the layer's row and steps its coats to `count` in the popover, then closes the popover.
+    @MainActor
+    func setCoats(of title: String, to count: Int) {
+        let row = waitFor(layerRow(title), "the row of \(title)")
+        row.tap()
+        // A tap that lands while the list is still settling after the keyboard went away does nothing.
+        if !element("layer-coats").waitForExistence(timeout: 4) { row.tap() }
+        let stepper = waitFor(element("layer-coats"), "the coats stepper")
+        while true {
+            let shown = Int(stepper.label.filter(\.isNumber)) ?? Int(String(describing: stepper.value ?? "")) ?? 0
+            if shown >= count { break }
+            // The stepper is one element; its plus is the right end of the control.
+            stepper.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5)).tap()
+            waitForLabel(layerRow(title), containing: "\(shown + 1) coat")
+        }
+        closePopover()
+    }
+
+    /// The search key of the keyboard closes it, as a person would, and the list goes back to its top.
+    @MainActor
+    func closeKeyboard() {
+        let key = app.keyboards.buttons.matching(NSPredicate(format: "label IN {'Search','search','Return','return','Done'}")).firstMatch
+        if key.waitForExistence(timeout: 2) { key.tap() }
+        app.swipeDown()
+        sleep(1)
+    }
+
+    /// A tap on the dimmed rest of the screen closes a popover.
+    @MainActor
+    func closePopover() {
+        let dismiss = app.otherElements["PopoverDismissRegion"].firstMatch
+        if dismiss.waitForExistence(timeout: 2) {
+            dismiss.tap()
+        } else {
+            element("builder-summary").tap()
+        }
+        waitUntilGone(element("layer-coats"), "the popover closes")
+    }
+
+    /// The hub of the ring says which slot is being edited, and the slot is lifted and named for what the draft holds.
+    @MainActor
+    func assertRingEditing(_ position: Int, containing shade: String? = nil) {
+        waitForLabel(element("wheel-hub"), containing: "Editing slot \(position)")
+        if let shade { waitForLabel(slot(position), containing: shade) }
+    }
+
     /// Leaves the builder open on the screen and keeps its draft: the inspector's Close, a sheet's drag.
     @MainActor
     func closeBuilderKeepingDraft() {
@@ -620,10 +677,12 @@ extension FlowCase {
         if close.waitForExistence(timeout: 2) {
             close.tap()
         } else {
-            // The sheet comes down in two drags: .large to .medium, then away.
+            // The sheet comes down by its top bar, between Cancel and Save: from .large to .medium
+            // (where it opens), then away. A drag above it would land on the page behind.
             let window = app.windows.firstMatch
-            for drag in 0..<3 where element("builder-save").exists {
-                let top = window.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: drag == 0 ? 0.2 : 0.6))
+            for _ in 0..<3 where element("builder-save").exists {
+                let bar = element("builder-save").frame.midY / window.frame.height
+                let top = window.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: bar))
                 top.press(forDuration: 0.1, thenDragTo: window.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.98)))
                 sleep(1)
             }
@@ -632,12 +691,15 @@ extension FlowCase {
     }
 }
 
-/// Slot 11, empty: Over black, search "flak", add it, a second coat, move it up and down, Save swatch.
+/// Slot 11, empty: the sheet opens at its middle detent with the ring in view and slot 11 lifted;
+/// Over black, search "flak", add it (the ring slot paints it), a second coat from the popover,
+/// press and drag a layer to reorder, Done, Save swatch.
 final class BuilderFlow: FlowCase {
     @MainActor
     func testBuilder() throws {
         openBuilder(slot: 11)
         sleep(1)
+        assertRingEditing(11)
         step("opened")
 
         if UIDevice.current.userInterfaceIdiom == .pad {
@@ -661,29 +723,53 @@ final class BuilderFlow: FlowCase {
         }
 
         button("Over black").tap()
-        waitFor(app.buttons["Remove One-Coat Black"].firstMatch, "One-Coat Black as the base")
+        waitFor(layerRow("One-Coat Black"), "One-Coat Black as the base")
+        assertRingEditing(11, containing: "One-Coat Black")
+        sleep(1)
         step("over-black")
+
+        // The popover on the base, at the middle detent: coats and Remove.
+        waitFor(layerRow("One-Coat Black"), "the base row").tap()
+        waitFor(element("layer-coats"), "the coats stepper")
+        step("popover")
+        closePopover()
 
         typeInBuilder("flak")
         let add = waitFor(app.buttons["Add Flakie Holo Taco"].firstMatch, "Flakie Holo Taco in the results")
         step("searching")
         add.tap()
-        waitFor(app.buttons["Remove Flakie Holo Taco"].firstMatch, "Flakie Holo Taco as the top layer")
+        waitFor(layerRow("Flakie Holo Taco"), "Flakie Holo Taco as the top layer")
+        assertRingEditing(11, containing: "Flakie Holo Taco")
+        waitForLabel(layerRow("Flakie Holo Taco"), containing: "1 coat")
         sleep(1)
         step("added")
+        closeKeyboard()
 
-        button("Add a coat of Flakie Holo Taco").tap()
+        setCoats(of: "Flakie Holo Taco", to: 2)
         waitForLabel(element("builder-summary"), containing: "Flakie Holo Taco ×2")
+        sleep(1)
         step("two-coats")
 
-        button("Move Flakie Holo Taco up").tap()
+        // Press and drag the top layer above the base.
+        layerRow("Flakie Holo Taco").press(forDuration: 0.6, thenDragTo: layerRow("One-Coat Black"))
+        waitFor(element("layers-done"), "Done while arranging")
         waitForLabel(element("builder-summary"), containing: "Flakie Holo Taco ×2 + One-Coat Black")
         sleep(1)
-        step("moved-up")
-        button("Move Flakie Holo Taco down").tap()
-        waitForLabel(element("builder-summary"), containing: "One-Coat Black + Flakie Holo Taco ×2")
+        step("arranging")
+        element("layers-done").tap()
+        waitUntilGone(element("layers-done"), "Done goes away")
+        waitForLabel(element("builder-summary"), containing: "Flakie Holo Taco ×2 + One-Coat Black")
         sleep(1)
-        step("moved-down")
+        step("rearranged")
+
+        // And back, then a tap outside the layers ends arranging as well.
+        layerRow("Flakie Holo Taco").press(forDuration: 0.6, thenDragTo: layerRow("One-Coat Black"))
+        waitForLabel(element("builder-summary"), containing: "One-Coat Black + Flakie Holo Taco ×2")
+        waitFor(element("layers-done"), "Done while arranging again")
+        element("builder-summary").tap()
+        waitUntilGone(element("layers-done"), "a tap outside ends arranging")
+        sleep(1)
+        step("restored")
 
         button("Save swatch").tap()
         waitUntilGone(element("builder-save"), "the builder closes")
@@ -691,8 +777,38 @@ final class BuilderFlow: FlowCase {
         let row = waitFor(element("swatch-row-11"), "the Swatches row of slot 11")
         waitForLabel(row, containing: "One-Coat Black + Flakie Holo Taco ×2")
         waitForLabel(slot(11), containing: "One-Coat Black + Flakie Holo Taco ×2")
+        XCTAssertFalse(element("wheel-hub").label.contains("Editing"), "the hub is the count again")
         sleep(2)
         step("tile-filled")
+    }
+}
+
+/// The same arranging under Reduce Motion (the launch argument stands in for the setting): the
+/// rows do not jiggle or lift, each shows a handle, and the drag still reorders.
+final class BuilderReducedMotionFlow: FlowCase {
+    @MainActor
+    func testReducedMotion() throws {
+        launch(open: "https://polished.janpuc.com/w/\(wheelSlug)", extra: ["-reducemotion", "1"])
+        waitFor(element("wheel-ring"), "the ring")
+        sleep(1)
+        waitFor(slot(11), "slot 11").tap()
+        waitFor(app.staticTexts["Slot 11"].firstMatch, "the builder")
+        assertRingEditing(11)
+        button("Over black").tap()
+        waitFor(layerRow("One-Coat Black"), "One-Coat Black")
+        typeInBuilder("flak")
+        app.buttons["Add Flakie Holo Taco"].firstMatch.tap()
+        waitFor(layerRow("Flakie Holo Taco"), "Flakie Holo Taco")
+        closeKeyboard()
+        layerRow("One-Coat Black").press(forDuration: 0.6, thenDragTo: layerRow("Flakie Holo Taco"))
+        waitFor(element("layers-done"), "Done while arranging")
+        waitForLabel(element("builder-summary"), containing: "Flakie Holo Taco + One-Coat Black")
+        sleep(1)
+        step("handles")
+        element("layers-done").tap()
+        waitUntilGone(element("layers-done"), "Done goes away")
+        element("builder-cancel").tap()
+        waitUntilGone(element("builder-save"), "the builder closes")
     }
 }
 
@@ -715,6 +831,7 @@ final class BuilderCopyFlow: FlowCase {
         step("copy-search")
         source.tap()
         waitForLabel(element("builder-summary"), containing: "Spirit Fingers")
+        assertRingEditing(10, containing: "Spirit Fingers")
         sleep(1)
         step("copied")
 
@@ -737,7 +854,7 @@ final class BuilderResumeFlow: FlowCase {
     func testResume() throws {
         openBuilder(slot: 10)
         button("Over black").tap()
-        waitFor(app.buttons["Remove One-Coat Black"].firstMatch, "One-Coat Black")
+        waitFor(layerRow("One-Coat Black"), "One-Coat Black")
         XCTAssertFalse(element("builder-resumed").exists, "a new draft is not a resumed one")
         step("started")
         closeBuilderKeepingDraft()
@@ -748,6 +865,7 @@ final class BuilderResumeFlow: FlowCase {
         slot(10).tap()
         waitFor(element("builder-resumed"), "Resumed your draft")
         waitForLabel(element("builder-summary"), containing: "One-Coat Black")
+        assertRingEditing(10, containing: "One-Coat Black")
         sleep(1)
         step("resumed")
 

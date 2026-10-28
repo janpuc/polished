@@ -1,5 +1,4 @@
-/// Barcode and printed-code normalisation: ports of `gtin.py` and `normalise_printed` in
-/// `identifiers.py`, checked by `spec/identifiers/*.json`.
+/// Barcode normalisation: a port of `gtin.py`, checked by `spec/identifiers/gtin.json`.
 public enum Identifiers {
     private static let gtinLengths: Set<Int> = [8, 12, 13, 14]
     private static let canonicalLength = 13
@@ -11,11 +10,6 @@ public enum Identifiers {
 
     private static func isAsciiDigits(_ text: String) -> Bool {
         !text.isEmpty && text.unicodeScalars.allSatisfy { $0.value >= 0x30 && $0.value <= 0x39 }
-    }
-
-    /// Python's `\d` and `str.isdigit` for the printed code: any decimal digit (category Nd).
-    private static func isDecimalDigit(_ scalar: Unicode.Scalar) -> Bool {
-        scalar.properties.generalCategory == .decimalNumber
     }
 
     /// GS1 check digit: from the right, the digit before the check is weighted 3, then 1, 3, …
@@ -40,19 +34,5 @@ public enum Identifiers {
         }
         guard checkDigitOK(digits.compactMap(\.wholeNumberValue)) else { return nil }
         return String(repeating: "0", count: canonicalLength - digits.count) + digits
-    }
-
-    /// Strip, uppercase, remove spaces; all digits gets the prefix `P`; the result must be one
-    /// or two letters A-Z and one to five digits. "259" and "p 259" are "P259"; "hello" is nil.
-    public static func normalisePrinted(_ raw: String) -> String? {
-        var text = withoutWhitespace(raw).uppercased()
-        if !text.isEmpty, text.unicodeScalars.allSatisfy(isDecimalDigit) { text = "P" + text }
-        let scalars = Array(text.unicodeScalars)
-        let letters = scalars.prefix { $0.value >= 0x41 && $0.value <= 0x5A }.count
-        let digits = scalars.count - letters
-        guard (1...2).contains(letters), (1...5).contains(digits),
-            scalars.dropFirst(letters).allSatisfy(isDecimalDigit)
-        else { return nil }
-        return text
     }
 }

@@ -127,5 +127,4 @@ public struct CopySources: Codable, Sendable, Hashable {
 public struct Pick: Codable, Sendable, Hashable {
     public var items: [ShadeRow]
     public var total: Int
-    public var suggestion: ShadeRow?
 }

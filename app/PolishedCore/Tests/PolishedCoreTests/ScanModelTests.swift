@@ -37,19 +37,16 @@ struct ScanModelTests {
         try APICoding.makeDecoder().decode(IdentifierSaved.self, from: recording("identifier_learn.json").bodyData).shade
     }
 
-    @Test("a typed P code suggests the shade it was on before")
-    func typedSuggestion() async throws {
+    @Test("typed digits that are not a barcode are a name search")
+    func typedShortNumber() async throws {
         let scan = try model()
         await scan.lookup(typed: "259")
-        guard case .suggestion(let found) = scan.phase else {
+        guard case .results(let query, let found) = scan.phase else {
             Issue.record("phase is \(scan.phase)")
             return
         }
-        #expect(found.code == "P259")
-        #expect(found.kind == "printed")
-        #expect(found.shade.title == "Spirit Fingers")
-        #expect(found.printedCode == "P259")
-        #expect(found.lead == "P259 is")
+        #expect(query == "259")
+        #expect(found.items.isEmpty)
     }
 
     @Test("typed nothing clears the card")
@@ -73,7 +70,7 @@ struct ScanModelTests {
             return
         }
         #expect(found.shade.title == "Thirst Trap")
-        #expect(found.identifierID == 4)
+        #expect(found.identifierID == 2)
         #expect(found.notice == "Saved. 5901234123457 is now Thirst Trap.")
         #expect(found.lead == "Barcode 5901234123457 is")
     }
@@ -114,7 +111,7 @@ struct ScanModelTests {
             let answer = try decoder.decode(Lookup.self, from: recording(file).bodyData)
             return ScanModel.phase(for: answer, asked: "asked", scanned: scanned)
         }
-        #expect(try phase("lookup_unknown_printed.json") == .unknownPrinted("P999"))
+        #expect(try phase("lookup_unknown_code.json") == .unknownCode("5901234123457"))
         #expect(try phase("lookup_invalid_code.json", scanned: true) == .invalid(text: "asked", scanned: true))
         guard case .match(let found) = try phase("lookup_match.json") else {
             Issue.record("lookup_match is not a match")

@@ -396,10 +396,7 @@ struct WearTodayHero: View {
     }
 
     private var detail: String {
-        var parts: [String] = []
-        if let code = wear.bottle.printedCode { parts.append(code) }
-        parts.append(wear.bottle.state.leftLabel.lowercased())
-        return parts.joined(separator: ", ").prefix(1).uppercased() + parts.joined(separator: ", ").dropFirst()
+        wear.bottle.state.leftLabel
     }
 }
 

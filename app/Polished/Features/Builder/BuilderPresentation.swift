@@ -2,14 +2,14 @@ import PolishedStore
 import SwiftUI
 
 /// Where the builder opens (docs/NATIVE.md 5.1): a sheet on a compact width, with detents
-/// `.medium` and `.large`, opening at `.large`, and the ring behind it still tappable down to
-/// `.medium`; an inspector beside the ring on a regular width (the iPad, the iPhone Duo unfolded).
+/// `.medium` and `.large`, opening at `.medium` so the ring stays in view (the search field or a
+/// scroll of the list asks for `.large`), and the ring behind it still tappable down to `.medium`; an inspector beside the ring on a regular width (the iPad, the iPhone Duo unfolded).
 private struct BuilderPresentation: ViewModifier {
     @Binding var target: BuilderTarget?
     let wheelName: String
     let onFinish: (BuilderOutcome) -> Void
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
-    @State private var detent = PresentationDetent.large
+    @State private var detent = PresentationDetent.medium
 
     private var isCompact: Bool { horizontalSizeClass != .regular }
 
@@ -22,12 +22,12 @@ private struct BuilderPresentation: ViewModifier {
                         get: { target },
                         set: { if $0 == nil { target = nil } })
                 ) { target in
-                    BuilderView(target: target, wheelName: wheelName, onFinish: onFinish)
+                    BuilderView(target: target, wheelName: wheelName, detent: $detent, onFinish: onFinish)
                         .presentationDetents([.medium, .large], selection: $detent)
                         .presentationBackgroundInteraction(.enabled(upThrough: .medium))
                         .presentationDragIndicator(.visible)
                         .sensoryFeedback(.selection, trigger: detent)
-                        .onAppear { detent = .large }
+                        .onAppear { detent = .medium }
                 }
         } else {
             content
