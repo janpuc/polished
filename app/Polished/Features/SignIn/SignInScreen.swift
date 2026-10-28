@@ -1,4 +1,5 @@
 import AuthenticationServices
+import OSLog
 import PolishedAPI
 import PolishedModels
 import SwiftUI
@@ -82,13 +83,19 @@ struct SignInScreen: View {
         } catch let error as APIError {
             failure = error.message
         } catch {
-            failure = "Couldn't sign in. Try again."
+            // The domain and code go on screen: a sign-in that fails on a phone can't be debugged
+            // any other way (TestFlight builds have no attached console).
+            let detail = error as NSError
+            failure = "Couldn't sign in (\(detail.domain) \(detail.code)). Try again."
+            SignInFlow.log.error("sign-in failed: \(detail.domain, privacy: .public) \(detail.code, privacy: .public) \(detail.localizedDescription, privacy: .public)")
         }
     }
 }
 
 /// One sign-in attempt: the PKCE verifier lives here and nowhere else.
 struct SignInFlow {
+    static let log = Logger(subsystem: "com.janpuc.polished", category: "sign-in")
+
     let server: URL
     let deviceName: String
     let verifier = PKCE.makeVerifier()
